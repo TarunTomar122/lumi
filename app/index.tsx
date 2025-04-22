@@ -83,7 +83,7 @@ export default function Home() {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+          'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(requestBody)
@@ -155,7 +155,7 @@ export default function Home() {
         const finalResponse = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`,
+            'Authorization': `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(finalRequestBody)
