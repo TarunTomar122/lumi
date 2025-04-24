@@ -1,14 +1,12 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Stack } from 'expo-router';
+import { Tabs } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
-import 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 
-// Prevent the splash screen from auto-hiding before asset loading is complete.
-SplashScreen.preventAutoHideAsync();
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
@@ -30,10 +28,50 @@ export default function RootLayout() {
 
   return (
     <ThemeProvider value={colorScheme === 'light' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="index" options={{ headerShown: false }} />
-        <Stack.Screen name="+not-found" />
-      </Stack>
+      <Tabs
+        screenOptions={{
+          tabBarActiveTintColor: '#000000',
+          tabBarInactiveTintColor: '#666666',
+          tabBarStyle: {
+            backgroundColor: '#FFFFFF',
+            borderTopWidth: 1,
+            borderTopColor: '#E5E5E5',
+            height: 60,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingTop: 3,
+          },
+          headerShown: false,
+        }}
+      >
+        <Tabs.Screen
+          name="index"
+          options={{
+            title: 'Home',
+            tabBarIcon: ({ focused, color }) => (
+              <Ionicons
+                name={focused ? 'home' : 'home-outline'}
+                size={24}
+                color={color}
+              />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="tasks"
+          options={{
+            title: 'Tasks',
+            tabBarIcon: ({ focused, color }) => (
+              <Ionicons
+                name={focused ? 'list' : 'list-outline'}
+                size={24}
+                color={color}
+              />
+            ),
+          }}
+        />
+      </Tabs>
       <StatusBar style="auto" />
     </ThemeProvider>
   );
