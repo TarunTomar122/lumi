@@ -1,12 +1,14 @@
 import { useNavigation } from 'expo-router';
-import { Pressable, Text, View, StyleSheet } from 'react-native';
-import React, { useEffect, useState } from 'react';
+import { Pressable, Text, View, StyleSheet, ActivityIndicator } from 'react-native';
+import React from 'react';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
 import { clientTools } from '@/utils/tools';
 import { clientToolsSchema } from '@/utils/tools';
 import { SvgXml } from 'react-native-svg';
 
-import ohwwwwwwSvg from '@/assets/images/ohwwwww.svg';
+import { useAuth } from '@/hooks/useAuth';
+
+import { getBusySlots } from '@/utils/calendar';
 
 const ohwFaceSvg = `
   <svg width="144" height="144" viewBox="0 0 144 144" fill="#DBDDE6" xmlns="http://www.w3.org/2000/svg">
@@ -31,17 +33,21 @@ const SYSTEM_MESSAGE = {
               you can use your best judgement to set them.
               If the user is confused about what to do and asks you to help, you can use the "getAllTasks" tool to get a list of all tasks. 
               Then you can decide based on the user's goals and the list of tasks, prioritize and decide what to do next.
+              You have access to user's Google Calendar and can use the "getBusySlots" tool to get the busy slots for the current user for a given date. 
+              Based on this information, you know when the user is busy and can avoid scheduling tasks during those times. 
+              And ohw you can remind them to take breaks and rest if they're working too hard like if they have too many consecutive busy slots lol.
+              As well get more stuff done before the user's busy slots. Like do the optimization to make their day more productive.
             
             Note:
-              Today is ${new Date().toLocaleString('en-IN', { 
+              Today is ${new Date().toLocaleString('en-IN', {
                 weekday: 'long',
-                year: 'numeric', 
-                month: 'long', 
+                year: 'numeric',
+                month: 'long',
                 day: 'numeric',
                 hour: 'numeric',
                 minute: 'numeric',
                 second: 'numeric',
-                timeZone: 'Asia/Kolkata'
+                timeZone: 'Asia/Kolkata',
               })}.
               Do not say things like you don't know how to do xyz, you are a helpful assistant, you can do anything and so based on user's prompt
               try to be appropriate and helpful in the way you can. But if you're really confused, just ask for clarification.
@@ -54,18 +60,28 @@ const MAX_HISTORY = 50;
 export default function Home() {
   const navigation = useNavigation();
   const { state, startRecognizing, stopRecognizing, destroyRecognizer } = useVoiceRecognition();
-  const [assistantResponse, setAssistantResponse] = useState<string>('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isRecording, setIsRecording] = useState(false);
-  const [pendingSubmit, setPendingSubmit] = useState(false);
-  const [messageHistory, setMessageHistory] = useState<Array<any>>([SYSTEM_MESSAGE]);
+  const { user, loading, signInWithGoogle, signOut } = useAuth();
+  const [assistantResponse, setAssistantResponse] = React.useState<string>('');
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [isRecording, setIsRecording] = React.useState(false);
+  const [pendingSubmit, setPendingSubmit] = React.useState(false);
+  const [messageHistory, setMessageHistory] = React.useState<Array<any>>([SYSTEM_MESSAGE]);
 
-  useEffect(() => {
+  React.useEffect(() => {
+    const checkTodaysBusySlots = async () => {
+      const busySlots = await getBusySlots(new Date().toISOString());
+      console.log("Today's busy slots:", busySlots);
+    };
+    console
+    checkTodaysBusySlots();
+  }, []);
+
+  React.useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
   // Watch for transcription results when we're waiting for them
-  useEffect(() => {
+  React.useEffect(() => {
     if (pendingSubmit && state.results[0]) {
       setPendingSubmit(false);
       handleSubmit();
@@ -121,7 +137,7 @@ export default function Home() {
             },
           })),
         };
-        console.log('📦 Request body:', JSON.stringify(requestBody, null, 2));
+        // console.log('📦 Request body:', JSON.stringify(requestBody, null, 2));
 
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
           method: 'POST',
@@ -139,7 +155,7 @@ export default function Home() {
         }
 
         const responseData = await response.json();
-        console.log('📥 OpenAI response:', JSON.stringify(responseData, null, 2));
+        // console.log('📥 OpenAI response:', JSON.stringify(responseData, null, 2));
 
         const assistantMessage = responseData.choices[0].message;
         currentMessageHistory.push(assistantMessage);
@@ -148,18 +164,18 @@ export default function Home() {
         if (assistantMessage.tool_calls) {
           console.log('🔧 OpenAI requested tool calls');
           const toolCalls = assistantMessage.tool_calls;
-          console.log('🛠️ Tool calls:', JSON.stringify(toolCalls, null, 2));
+          // console.log('🛠️ Tool calls:', JSON.stringify(toolCalls, null, 2));
 
           // Execute each tool call sequentially and add results to message history
           for (const toolCall of toolCalls) {
             const tool = clientTools[toolCall.function.name as keyof typeof clientTools];
             if (tool) {
               try {
-                console.log(`🔨 Executing tool: ${toolCall.function.name}`);
+                // console.log(`🔨 Executing tool: ${toolCall.function.name}`);
                 const args = JSON.parse(toolCall.function.arguments);
-                console.log('📝 Tool arguments:', args);
+                // console.log('📝 Tool arguments:', args);
                 const result = await tool(args);
-                console.log('✅ Tool result:', result);
+                // console.log('✅ Tool result:', result);
 
                 // Add tool result to message history
                 currentMessageHistory.push({
@@ -177,13 +193,13 @@ export default function Home() {
           // Continue the loop - model will see tool results and may make more calls
         } else {
           // Model gave a final response without tool calls
-          console.log('💬 Model provided final response');
+          // console.log('💬 Model provided final response');
           setAssistantResponse(assistantMessage.content || 'No response');
           updateMessageHistory(currentMessageHistory);
           isModelThinking = false;
         }
       }
-      console.log('✨ All done!');
+      // console.log('✨ All done!');
     } catch (e) {
       console.error('❌ Error in handleSubmit:', e);
       setAssistantResponse('Sorry, there was an error processing your request.');
@@ -192,6 +208,14 @@ export default function Home() {
     }
   };
 
+  if (loading) {
+    return (
+      <View style={[styles.container, styles.centered]}>
+        <ActivityIndicator size="large" color="#000000" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.contentContainer}>
@@ -199,23 +223,56 @@ export default function Home() {
           <SvgXml xml={ohwFaceSvg} width="200" height="200" />
         </View>
 
-        <Text style={styles.messageText}>{state.results[0] || 'What can I help you with?'}</Text>
+        {user ? (
+          <>
+            <Text style={styles.welcomeText}>Welcome, {user.displayName}!</Text>
+            <Text style={styles.messageText}>
+              {state.results[0] || 'What can I help you with?'}
+            </Text>
+            {assistantResponse && <Text style={styles.responseText}>{assistantResponse}</Text>}
 
-        {assistantResponse && <Text style={styles.responseText}>{assistantResponse}</Text>}
+            <View style={styles.buttonContainer}>
+              <Pressable
+                onPress={handleToggleRecording}
+                style={({ pressed }: { pressed: boolean }) => [
+                  styles.button,
+                  pressed && styles.buttonPressed,
+                  isLoading && styles.buttonDisabled,
+                  isRecording && styles.buttonRecording,
+                ]}
+                disabled={isLoading}>
+                <Text style={styles.buttonText}>
+                  {isLoading ? 'Processing...' : isRecording ? 'Stop Recording' : 'Start Recording'}
+                </Text>
+              </Pressable>
 
-        <Pressable
-          onPress={handleToggleRecording}
-          style={({ pressed }) => [
-            styles.button,
-            pressed && styles.buttonPressed,
-            isLoading && styles.buttonDisabled,
-            isRecording && styles.buttonRecording,
-          ]}
-          disabled={isLoading}>
-          <Text style={styles.buttonText}>
-            {isLoading ? 'Processing...' : isRecording ? 'Stop Recording' : 'Start Recording'}
-          </Text>
-        </Pressable>
+              <Pressable
+                onPress={signOut}
+                style={({ pressed }: { pressed: boolean }) => [
+                  styles.button,
+                  styles.signOutButton,
+                  pressed && styles.buttonPressed,
+                ]}>
+                <Text style={styles.buttonText}>Sign Out</Text>
+              </Pressable>
+            </View>
+          </>
+        ) : (
+          <>
+            <Text style={styles.messageText}>Welcome to Lumi!</Text>
+            <Text style={styles.responseText}>Please sign in to continue</Text>
+
+            <Pressable
+              onPress={signInWithGoogle}
+              style={({ pressed }: { pressed: boolean }) => [
+                styles.button,
+                styles.signInButton,
+                pressed && styles.buttonPressed,
+              ]}>
+              <Text style={styles.buttonText}>Sign in with Google</Text>
+            </Pressable>
+          </>
+        )}
       </View>
     </View>
   );
@@ -224,54 +281,75 @@ export default function Home() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAF9F6',
+    backgroundColor: '#fff',
   },
   contentContainer: {
     flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  centered: {
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    gap: 30,
   },
   imageContainer: {
     marginBottom: 20,
-    alignItems: 'center',
+  },
+  welcomeText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginBottom: 20,
+    textAlign: 'center',
   },
   messageText: {
-    fontSize: 24,
-    textAlign: 'center',
-    color: '#000000',
-    lineHeight: 32,
+    fontSize: 18,
     marginBottom: 20,
+    textAlign: 'center',
+    color: '#666',
   },
   responseText: {
-    fontSize: 18,
-    textAlign: 'center',
-    color: '#666666',
-    lineHeight: 24,
+    fontSize: 16,
     marginBottom: 20,
+    textAlign: 'center',
+    color: '#333',
+    padding: 10,
+    backgroundColor: '#f5f5f5',
+    borderRadius: 10,
+  },
+  buttonContainer: {
+    width: '100%',
+    gap: 10,
     paddingHorizontal: 20,
   },
   button: {
-    backgroundColor: '#000000',
-    paddingVertical: 12,
-    paddingHorizontal: 32,
-    borderRadius: 25,
-    minWidth: 100,
+    backgroundColor: '#000',
+    padding: 15,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   buttonPressed: {
-    backgroundColor: '#333333',
+    opacity: 0.8,
   },
   buttonDisabled: {
-    backgroundColor: '#999999',
-  },
-  buttonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    textAlign: 'center',
-    fontWeight: '500',
+    backgroundColor: '#666',
   },
   buttonRecording: {
-    backgroundColor: '#FF4444',
-  }
+    backgroundColor: '#ff0000',
+  },
+  signOutButton: {
+    backgroundColor: '#666',
+  },
+  calendarButton: {
+    backgroundColor: '#2196F3',
+  },
+  buttonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '500',
+  },
+  signInButton: {
+    backgroundColor: '#4285F4',
+  },
 });

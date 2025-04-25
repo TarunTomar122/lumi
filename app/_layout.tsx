@@ -1,10 +1,16 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
+import {
+  DarkTheme,
+  DefaultTheme,
+  NavigationContainer,
+  ThemeProvider,
+} from '@react-navigation/native';
 import { useFonts } from 'expo-font';
-import { Tabs } from 'expo-router';
+import { Stack, Tabs } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
+import { initializeFirebase } from '../config/firebase';
 import { Ionicons } from '@expo/vector-icons';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -17,6 +23,9 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    // Initialize Firebase when the app starts
+    initializeFirebase();
+
     if (loaded) {
       SplashScreen.hideAsync();
     }
@@ -25,6 +34,8 @@ export default function RootLayout() {
   if (!loaded) {
     return null;
   }
+
+  const theme = colorScheme === 'light' ? DarkTheme : DefaultTheme;
 
   return (
     <ThemeProvider value={colorScheme === 'light' ? DarkTheme : DefaultTheme}>
@@ -43,18 +54,13 @@ export default function RootLayout() {
             paddingTop: 3,
           },
           headerShown: false,
-        }}
-      >
+        }}>
         <Tabs.Screen
           name="index"
           options={{
             title: 'Home',
             tabBarIcon: ({ focused, color }) => (
-              <Ionicons
-                name={focused ? 'home' : 'home-outline'}
-                size={24}
-                color={color}
-              />
+              <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
             ),
           }}
         />
@@ -63,11 +69,16 @@ export default function RootLayout() {
           options={{
             title: 'Tasks',
             tabBarIcon: ({ focused, color }) => (
-              <Ionicons
-                name={focused ? 'list' : 'list-outline'}
-                size={24}
-                color={color}
-              />
+              <Ionicons name={focused ? 'list' : 'list-outline'} size={24} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="calendar"
+          options={{
+            title: 'Calendar',
+            tabBarIcon: ({ focused, color }) => (
+              <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
             ),
           }}
         />
