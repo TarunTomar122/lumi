@@ -12,6 +12,7 @@ import React, { useEffect } from 'react';
 import { useColorScheme } from 'react-native';
 import { initializeFirebase } from '../config/firebase';
 import { Ionicons } from '@expo/vector-icons';
+import { db } from '../utils/database';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -23,8 +24,19 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    // Initialize Firebase when the app starts
-    initializeFirebase();
+    const initializeApp = async () => {
+      try {
+        // Initialize Firebase
+        initializeFirebase();
+        // Initialize SQLite database
+        await db.init();
+        console.log('✅ Database initialized');
+      } catch (error) {
+        console.error('❌ Error initializing:', error);
+      }
+    };
+
+    initializeApp();
 
     if (loaded) {
       SplashScreen.hideAsync();
@@ -56,15 +68,6 @@ export default function RootLayout() {
           headerShown: false,
         }}>
         <Tabs.Screen
-          name="index"
-          options={{
-            title: 'Home',
-            tabBarIcon: ({ focused, color }) => (
-              <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
-            ),
-          }}
-        />
-        <Tabs.Screen
           name="tasks"
           options={{
             title: 'Tasks',
@@ -74,11 +77,20 @@ export default function RootLayout() {
           }}
         />
         <Tabs.Screen
-          name="calendar"
+          name="index"
           options={{
-            title: 'Calendar',
+            title: 'Home',
             tabBarIcon: ({ focused, color }) => (
-              <Ionicons name={focused ? 'calendar' : 'calendar-outline'} size={24} color={color} />
+              <Ionicons name={focused ? 'home' : 'home-outline'} size={24} color={color} />
+            ),
+          }}
+        />
+        <Tabs.Screen
+          name="profile"
+          options={{
+            title: 'Profile',
+            tabBarIcon: ({ focused, color }) => (
+              <Ionicons name={focused ? 'person' : 'person-outline'} size={24} color={color} />
             ),
           }}
         />

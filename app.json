@@ -22,10 +22,7 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.lumi.mobile",
-      "permissions": [
-        "android.permission.RECORD_AUDIO",
-        "android.permission.INTERNET"
-      ]
+      "permissions": ["android.permission.RECORD_AUDIO", "android.permission.INTERNET"]
     },
     "web": {
       "bundler": "metro",

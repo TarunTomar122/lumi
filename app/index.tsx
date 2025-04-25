@@ -8,7 +8,7 @@ import { SvgXml } from 'react-native-svg';
 
 import { useAuth } from '@/hooks/useAuth';
 
-import { getBusySlots } from '@/utils/calendar';
+import { setupNotifications, scheduleNotification } from '@/utils/tools';
 
 const ohwFaceSvg = `
   <svg width="144" height="144" viewBox="0 0 144 144" fill="#DBDDE6" xmlns="http://www.w3.org/2000/svg">
@@ -33,10 +33,8 @@ const SYSTEM_MESSAGE = {
               you can use your best judgement to set them.
               If the user is confused about what to do and asks you to help, you can use the "getAllTasks" tool to get a list of all tasks. 
               Then you can decide based on the user's goals and the list of tasks, prioritize and decide what to do next.
-              You have access to user's Google Calendar and can use the "getBusySlots" tool to get the busy slots for the current user for a given date. 
-              Based on this information, you know when the user is busy and can avoid scheduling tasks during those times. 
-              And ohw you can remind them to take breaks and rest if they're working too hard like if they have too many consecutive busy slots lol.
-              As well get more stuff done before the user's busy slots. Like do the optimization to make their day more productive.
+              Also you can use the "getBusySlots" tool to get the busy slots for the current user for a given date while scheduling a reminder automatically 
+              for the task.
             
             Note:
               Today is ${new Date().toLocaleString('en-IN', {
@@ -68,12 +66,7 @@ export default function Home() {
   const [messageHistory, setMessageHistory] = React.useState<Array<any>>([SYSTEM_MESSAGE]);
 
   React.useEffect(() => {
-    const checkTodaysBusySlots = async () => {
-      const busySlots = await getBusySlots(new Date().toISOString());
-      console.log("Today's busy slots:", busySlots);
-    };
-    console
-    checkTodaysBusySlots();
+    setupNotifications();
   }, []);
 
   React.useEffect(() => {
@@ -164,18 +157,18 @@ export default function Home() {
         if (assistantMessage.tool_calls) {
           console.log('🔧 OpenAI requested tool calls');
           const toolCalls = assistantMessage.tool_calls;
-          // console.log('🛠️ Tool calls:', JSON.stringify(toolCalls, null, 2));
+          console.log('🛠️ Tool calls:', JSON.stringify(toolCalls, null, 2));
 
           // Execute each tool call sequentially and add results to message history
           for (const toolCall of toolCalls) {
             const tool = clientTools[toolCall.function.name as keyof typeof clientTools];
             if (tool) {
               try {
-                // console.log(`🔨 Executing tool: ${toolCall.function.name}`);
+                console.log(`🔨 Executing tool: ${toolCall.function.name}`);
                 const args = JSON.parse(toolCall.function.arguments);
-                // console.log('📝 Tool arguments:', args);
+                console.log('📝 Tool arguments:', args);
                 const result = await tool(args);
-                // console.log('✅ Tool result:', result);
+                console.log('✅ Tool result:', result);
 
                 // Add tool result to message history
                 currentMessageHistory.push({
@@ -193,7 +186,7 @@ export default function Home() {
           // Continue the loop - model will see tool results and may make more calls
         } else {
           // Model gave a final response without tool calls
-          // console.log('💬 Model provided final response');
+          console.log('💬 Model provided final response');
           setAssistantResponse(assistantMessage.content || 'No response');
           updateMessageHistory(currentMessageHistory);
           isModelThinking = false;
@@ -223,14 +216,8 @@ export default function Home() {
           <SvgXml xml={ohwFaceSvg} width="200" height="200" />
         </View>
 
-        {user ? (
-          <>
-            <Text style={styles.welcomeText}>Welcome, {user.displayName}!</Text>
-            <Text style={styles.messageText}>
-              {state.results[0] || 'What can I help you with?'}
-            </Text>
-            {assistantResponse && <Text style={styles.responseText}>{assistantResponse}</Text>}
-
+        <Text style={styles.welcomeText}>Welcome, {user?.displayName}!</Text>
+         {assistantResponse && <Text style={styles.responseText}>{assistantResponse}</Text>}
             <View style={styles.buttonContainer}>
               <Pressable
                 onPress={handleToggleRecording}
@@ -245,34 +232,7 @@ export default function Home() {
                   {isLoading ? 'Processing...' : isRecording ? 'Stop Recording' : 'Start Recording'}
                 </Text>
               </Pressable>
-
-              <Pressable
-                onPress={signOut}
-                style={({ pressed }: { pressed: boolean }) => [
-                  styles.button,
-                  styles.signOutButton,
-                  pressed && styles.buttonPressed,
-                ]}>
-                <Text style={styles.buttonText}>Sign Out</Text>
-              </Pressable>
-            </View>
-          </>
-        ) : (
-          <>
-            <Text style={styles.messageText}>Welcome to Lumi!</Text>
-            <Text style={styles.responseText}>Please sign in to continue</Text>
-
-            <Pressable
-              onPress={signInWithGoogle}
-              style={({ pressed }: { pressed: boolean }) => [
-                styles.button,
-                styles.signInButton,
-                pressed && styles.buttonPressed,
-              ]}>
-              <Text style={styles.buttonText}>Sign in with Google</Text>
-            </Pressable>
-          </>
-        )}
+        </View>
       </View>
     </View>
   );
