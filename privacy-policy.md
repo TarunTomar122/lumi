@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Effective Date**: [Insert Date]
+**Effective Date**: 25-April-2025
 
 Thank you for using our app ("lumi-mobile"). We take your privacy seriously. This Privacy Policy outlines how we collect, use, and protect your personal data, particularly in relation to your tasks, preferences, and calendar data.
 
@@ -65,9 +65,9 @@ We may update this policy from time to time. All changes will be communicated wi
 
 If you have questions about your data or this privacy policy, please contact us at:
 
-**Email**: [your-support-email@example.com]  
-**App Developer**: [Your Name or Company Name]  
-**Website**: [your-website.com]
+**Email**: [tomartarun2001@gmail.com]  
+**App Developer**: [Tarun Singh Tomar]  
+**Website**: [tarat.space]
 
 ---
 
