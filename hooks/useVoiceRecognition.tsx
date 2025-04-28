@@ -55,24 +55,44 @@ export const useVoiceRecognition = () => {
       await Voice.destroy();
       await Voice.removeAllListeners();
       
-      // Set up event listeners
       Voice.onSpeechStart = () => {
+        console.log('onSpeechStart');
         setState((prevState) => ({
           ...prevState,
           started: "√",
           isRecording: true,
+          results: [], // Clear previous results
+          partialResults: [], // Clear previous partial results
         }));
       };
 
       Voice.onSpeechRecognized = () => {
+        console.log('onSpeechRecognized');
         setState((prevState) => ({ ...prevState, recognized: "√" }));
       };
 
       Voice.onSpeechEnd = () => {
-        setState((prevState) => ({ ...prevState, end: "√", isRecording: false }));
+        console.log('onSpeechEnd');
+        setState((prevState) => {
+          // Always use the most recent results we have
+          const finalResults = prevState.results.length > 0 
+            ? prevState.results 
+            : prevState.partialResults.length > 0
+              ? prevState.partialResults
+              : [];
+          
+          console.log('onSpeechEnd - using results:', finalResults);
+          return {
+            ...prevState,
+            end: "√",
+            isRecording: false,
+            results: finalResults
+          };
+        });
       };
 
       Voice.onSpeechError = (e: SpeechErrorEvent) => {
+        console.log('onSpeechError:', e.error);
         setState((prevState) => ({
           ...prevState,
           error: JSON.stringify(e.error),
@@ -81,14 +101,26 @@ export const useVoiceRecognition = () => {
       };
 
       Voice.onSpeechResults = (e: SpeechResultsEvent) => {
+        console.log('onSpeechResults:', e.value);
         if (e.value) {
-          setState((prevState) => ({ ...prevState, results: e.value! }));
+          setState((prevState) => ({ 
+            ...prevState, 
+            results: e.value!,
+            end: "√",
+            isRecording: false
+          }));
         }
       };
 
       Voice.onSpeechPartialResults = (e: SpeechResultsEvent) => {
+        console.log('onSpeechPartialResults:', e.value);
         if (e.value) {
-          setState((prevState) => ({ ...prevState, partialResults: e.value! }));
+          setState((prevState) => ({ 
+            ...prevState, 
+            partialResults: e.value!,
+            // Only update results if we don't have final results yet
+            results: prevState.results.length === 0 ? e.value! : prevState.results
+          }));
         }
       };
 

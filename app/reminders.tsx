@@ -2,20 +2,21 @@ import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
+  TouchableOpacity,
   FlatList,
   ActivityIndicator,
-  TouchableOpacity,
   Pressable,
   RefreshControl,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
+import { styles } from './styles/remindersStyles';
 import { clientTools } from '@/utils/tools';
 import { Task } from '@/utils/database';
-import { Ionicons } from '@expo/vector-icons';
 import TaskEditModal from '../components/TaskEditModal';
-import { styles } from './styles/taskStyles';
 
-export default function TasksScreen() {
+export default function RemindersScreen() {
+  const navigation = useNavigation();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,12 +31,19 @@ export default function TasksScreen() {
     try {
       const result = await clientTools.getAllTasks();
       if (result.success && result.tasks) {
-        setTasks(result.tasks);
+        console.log('All tasks:', JSON.stringify(result.tasks, null, 2));
+        // Filter tasks that have reminders
+        const tasksWithReminders = result.tasks.filter(task => {
+          console.log('Checking task for reminder:', task.title, 'reminder_time:', task.reminder_time);
+          return task.reminder_time !== null && task.reminder_time !== undefined;
+        });
+        console.log('Tasks with reminders:', JSON.stringify(tasksWithReminders, null, 2));
+        setTasks(tasksWithReminders);
       } else {
-        setError('Failed to load tasks');
+        setError('Failed to load reminders');
       }
     } catch (err) {
-      setError('Error loading tasks');
+      setError('Error loading reminders');
       console.error(err);
     } finally {
       setLoading(false);
@@ -65,25 +73,38 @@ export default function TasksScreen() {
 
       const result = await clientTools.updateTask({ id: taskId, ...updates });
       if (result.success) {
-        await loadTasks();
         setError(null); // Clear any existing errors
+        await loadTasks();
       } else {
-        setError('Failed to update task');
+        setError('Failed to update reminder');
       }
     } catch (err) {
-      console.error('Error updating task:', err);
+      console.error('Error updating reminder:', err);
       if (err instanceof Error && err.message.includes('must be in the future')) {
         setError('Reminder time must be in the future');
       } else {
-        setError('Error updating task');
+        setError('Error updating reminder');
       }
     }
   };
 
-  const handleToggleStatus = async (task: Task) => {
-    if (task.id === undefined) return;
-    const newStatus = task.status === 'done' ? 'todo' : 'done';
-    await handleUpdateTask(task.id, { status: newStatus });
+  const handleRemoveReminder = async (taskId: number) => {
+    try {
+      const result = await clientTools.updateTask({ 
+        id: taskId, 
+        reminder_time: null,
+        notification_id: null 
+      });
+      if (result.success) {
+        setError(null); // Clear any existing errors
+        await loadTasks();
+      } else {
+        setError('Failed to remove reminder');
+      }
+    } catch (err) {
+      console.error('Error removing reminder:', err);
+      setError('Error removing reminder');
+    }
   };
 
   const getPriorityColor = (priority: string): string => {
@@ -110,55 +131,8 @@ export default function TasksScreen() {
     }
   };
 
-  const handleAddTask = async (taskData: Partial<Task>) => {
-    try {
-      console.log('Adding task with data:', taskData);
-      
-      // Validate reminder time if present
-      if (taskData.reminder_time && !validateReminderTime(taskData.reminder_time)) {
-        setError('Reminder time must be in the future');
-        return;
-      }
-
-      const result = await clientTools.addTask({
-        title: taskData.title || '',
-        description: taskData.description || null,
-        category: taskData.category || 'Personal',
-        status: taskData.status || 'todo',
-        due_date: taskData.due_date || new Date().toISOString(),
-        priority: taskData.priority || 'medium',
-        reminder_time: taskData.reminder_time || null,
-      });
-
-      if (result.success) {
-        console.log('Task added successfully:', result.task);
-        await loadTasks();
-      } else {
-        setError('Failed to add task');
-      }
-    } catch (err) {
-      console.error('Error adding task:', err);
-      if (err instanceof Error && err.message.includes('must be in the future')) {
-        setError('Reminder time must be in the future');
-      } else {
-        setError('Error adding task');
-      }
-    }
-  };
-
-  const createNewTask = (): Task => ({
-    id: -1, // Temporary ID for new task
-    title: '',
-    description: null,
-    category: 'Personal',
-    status: 'todo',
-    created_at: new Date().toISOString(),
-    due_date: new Date().toISOString(),
-    priority: 'medium',
-  });
-
-  const renderTask = ({ item }: { item: Task }) => {
-    if (!item.id) return null;
+  const renderReminder = ({ item }: { item: Task }) => {
+    if (!item.id || !item.reminder_time) return null;
     return (
       <Pressable style={styles.taskItem} onPress={() => setEditingTask(item)}>
         <View style={[styles.priorityBar, { backgroundColor: getPriorityColor(item.priority) }]} />
@@ -170,13 +144,15 @@ export default function TasksScreen() {
                 <View style={styles.categoryPill}>
                   <Text style={styles.categoryText}>{item.category}</Text>
                 </View>
-                <Text style={styles.dueText}>Due {getRelativeTime(item.due_date)}</Text>
+                <Text style={styles.reminderText}>
+                  Reminder {getRelativeTime(item.reminder_time)}
+                </Text>
               </View>
             </View>
             <TouchableOpacity
-              style={[styles.checkbox, item.status === 'done' && styles.checkboxChecked]}
-              onPress={() => handleToggleStatus(item)}>
-              {item.status === 'done' && <Ionicons name="checkmark" size={16} color="white" />}
+              style={styles.deleteButton}
+              onPress={() => handleRemoveReminder(item.id!)}>
+              <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
             </TouchableOpacity>
           </View>
         </View>
@@ -203,17 +179,35 @@ export default function TasksScreen() {
   return (
     <View style={styles.container}>
       <View style={styles.headerContainer}>
-        <View>
-          <Text style={styles.headerText}>Tasks</Text>
-        </View>
-        <Ionicons name="calendar-outline" size={30} color="#333" />
+        <Text style={styles.headerText}>Reminders</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()}>
+          <Ionicons name="close-outline" size={32} color="#333" />
+        </TouchableOpacity>
       </View>
+
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity onPress={() => setError(null)} style={styles.errorDismiss}>
+            <Ionicons name="close-circle" size={20} color="#FF6B6B" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <FlatList
         data={tasks}
-        renderItem={renderTask}
+        renderItem={renderReminder}
         keyExtractor={item => (item.id || Date.now()).toString()}
         contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={<Text style={styles.emptyText}>No tasks yet</Text>}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Ionicons name="notifications-off-outline" size={48} color="#666" />
+            <Text style={styles.emptyText}>No reminders yet</Text>
+            <Text style={styles.emptySubText}>
+              Add reminders to tasks by editing them and enabling the reminder option
+            </Text>
+          </View>
+        }
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -224,18 +218,16 @@ export default function TasksScreen() {
           />
         }
       />
-      <TouchableOpacity style={styles.fab} onPress={() => setEditingTask(createNewTask())}>
-        <Ionicons name="add-outline" size={40} color="#333" />
-      </TouchableOpacity>
-      {editingTask && ( 
+      {editingTask && (
         <TaskEditModal
           visible={true}
           task={editingTask}
-          onClose={() => setEditingTask(null)}
+          onClose={() => {
+            setEditingTask(null);
+            setError(null); // Clear any errors when closing modal
+          }}
           onSave={updates => {
-            if (editingTask.id === -1) {
-              handleAddTask(updates);
-            } else if (editingTask.id !== undefined) {
+            if (editingTask.id !== undefined) {
               handleUpdateTask(editingTask.id, updates);
             }
             setEditingTask(null);
@@ -244,13 +236,14 @@ export default function TasksScreen() {
             try {
               const result = await clientTools.deleteTask({ id: taskId });
               if (result.success) {
+                setError(null);
                 await loadTasks();
               } else {
-                setError('Failed to delete task');
+                setError('Failed to delete reminder');
               }
             } catch (err) {
-              setError('Error deleting task');
-              console.error(err);
+              console.error('Error deleting reminder:', err);
+              setError('Error deleting reminder');
             }
           }}
         />

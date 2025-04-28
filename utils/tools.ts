@@ -6,7 +6,7 @@ import notifee, {
   AndroidColor,
 } from '@notifee/react-native';
 import { db } from './database';
-import type { Task, LocalReminder } from './database';
+import type { Task } from './database';
 
 const clientToolsSchema = [
   {
@@ -34,6 +34,10 @@ const clientToolsSchema = [
           type: 'string',
           enum: ['low', 'medium', 'high'],
           description: 'Priority of the task',
+        },
+        reminder_time: { 
+          type: 'string', 
+          description: 'Optional reminder time in ISO format' 
         },
       },
       required: ['title', 'category', 'status', 'due_date', 'priority'],
@@ -73,58 +77,12 @@ const clientToolsSchema = [
           enum: ['low', 'medium', 'high'],
           description: 'Priority of the task',
         },
-      },
-      required: ['id'],
-    },
-  },
-  {
-    type: 'function',
-    name: 'addReminder',
-    description: 'Adds a reminder that will trigger a local notification.',
-    parameters: {
-      type: 'object',
-      properties: {
-        title: { type: 'string', description: 'Title of the reminder' },
-        description: { type: 'string', description: 'Optional description of the reminder' },
-        notification_time: {
-          type: 'string',
-          description: 'When to send the notification in ISO format',
+        reminder_time: { 
+          type: 'string', 
+          description: 'Optional reminder time in ISO format' 
         },
       },
-      required: ['title', 'notification_time'],
-    },
-  },
-  {
-    type: 'function',
-    name: 'getAllReminders',
-    description: 'Gets all scheduled reminders.',
-  },
-  {
-    type: 'function',
-    name: 'deleteReminder',
-    description: 'Deletes a reminder.',
-    parameters: {
-      type: 'object',
-      properties: {
-        id: { type: 'string', description: 'ID of the reminder to delete' },
-      },
       required: ['id'],
-    },
-  },
-  {
-    type: 'function',
-    name: 'getBusySlots',
-    description:
-      'Gets the busy slots for the current user from their Google Calendar for a given date.',
-    parameters: {
-      type: 'object',
-      properties: {
-        date: {
-          type: 'string',
-          description: 'Date in ISO format (e.g. "2024-04-25")',
-        },
-      },
-      required: ['date'],
     },
   },
 ];
@@ -142,7 +100,20 @@ const clientTools = {
 
   addTask: async (taskData: Omit<Task, 'id' | 'created_at'>) => {
     try {
-      const task = await db.addTask(taskData);
+      let notificationId = null;
+      if (taskData.reminder_time) {
+        notificationId = await scheduleNotification(
+          taskData.title,
+          taskData.description || null,
+          new Date(taskData.reminder_time)
+        );
+      }
+
+      const task = await db.addTask({
+        ...taskData,
+        notification_id: notificationId,
+      });
+
       return { success: true, task };
     } catch (error) {
       console.error('Error adding task:', error);
@@ -152,6 +123,15 @@ const clientTools = {
 
   deleteTask: async ({ id }: { id: number }) => {
     try {
+      // Get the task to check if it has a notification
+      const tasks = await db.getAllTasks();
+      const task = tasks.find(t => t.id === id);
+      
+      if (task?.notification_id) {
+        // Cancel the notification if it exists
+        await notifee.cancelTriggerNotification(task.notification_id);
+      }
+
       await db.deleteTask(id);
       return { success: true };
     } catch (error) {
@@ -165,72 +145,38 @@ const clientTools = {
     ...updates
   }: { id: number } & Partial<Omit<Task, 'id' | 'created_at'>>) => {
     try {
-      await db.updateTask(id, updates);
+      // Get the current task to check for notification changes
       const tasks = await db.getAllTasks();
       const task = tasks.find(t => t.id === id);
-      return { success: true, task };
+
+      // Handle notification updates
+      if (updates.reminder_time !== undefined) {
+        // Cancel existing notification if there is one
+        if (task?.notification_id) {
+          await notifee.cancelTriggerNotification(task.notification_id);
+        }
+
+        // Schedule new notification if reminder_time is provided
+        if (updates.reminder_time) {
+          const notificationId = await scheduleNotification(
+            updates.title || task?.title || '',
+            updates.description || task?.description || null,
+            new Date(updates.reminder_time)
+          );
+          updates.notification_id = notificationId;
+        } else {
+          updates.notification_id = null;
+        }
+      }
+
+      await db.updateTask(id, updates);
+      const updatedTasks = await db.getAllTasks();
+      const updatedTask = updatedTasks.find(t => t.id === id);
+      return { success: true, task: updatedTask };
     } catch (error) {
       console.error('Error updating task:', error);
       return { success: false, error: 'Failed to update task.' };
     }
-  },
-
-  getAllReminders: async () => {
-    try {
-      const reminders = await db.getAllReminders();
-      return { success: true, reminders };
-    } catch (error) {
-      console.error('Error getting reminders:', error);
-      return { success: false, error: 'Failed to get reminders.' };
-    }
-  },
-
-  addReminder: async (reminderData: Omit<LocalReminder, 'id' | 'created_at' | 'is_sent'>) => {
-    try {
-      // First schedule the notification
-      const notificationId = await scheduleNotification(
-        reminderData.title,
-        reminderData.description || null,
-        new Date(reminderData.notification_time)
-      );
-
-      // Then save to database with the notification ID
-      const reminder = await db.addReminder({
-        ...reminderData,
-        notification_id: notificationId,
-      });
-
-      return { success: true, reminder };
-    } catch (error) {
-      console.error('Error in addReminder:', error);
-      return { success: false, error: 'Failed to schedule reminder notification.' };
-    }
-  },
-
-  deleteReminder: async ({ id }: { id: string }) => {
-    try {
-      // First get the reminder to get its notification ID
-      const reminders = await db.getAllReminders();
-      const reminder = reminders.find(r => r.id === parseInt(id));
-      
-      if (reminder?.notification_id) {
-        // Cancel the notification
-        await notifee.cancelTriggerNotification(reminder.notification_id);
-      }
-
-      // Then delete from database
-      await db.deleteReminder(parseInt(id));
-      return { success: true };
-    } catch (error) {
-      console.error('Error deleting reminder:', error);
-      return { success: false, error: 'Failed to delete reminder.' };
-    }
-  },
-
-  getBusySlots: async (rangeData: { date: string }) => {
-    console.log('Getting busy slots for date:', rangeData.date);
-    const busySlots = await getBusySlots(rangeData.date);
-    return { success: true, busySlots };
   },
 };
 
