@@ -1,6 +1,4 @@
 import { initializeApp, getApp, getApps } from '@react-native-firebase/app';
-import auth from '@react-native-firebase/auth';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
 
 // Firebase configuration
 const firebaseConfig = {
@@ -15,17 +13,9 @@ const firebaseConfig = {
 export const initializeFirebase = () => {
   if (!getApps().length) {
     initializeApp(firebaseConfig);
-
-    // Configure Google Sign In
-    GoogleSignin.configure({
-      webClientId: '798027807322-q1gtt0su6gttcqrmgit6lrsl2d188oaj.apps.googleusercontent.com',
-      scopes: ['https://www.googleapis.com/auth/calendar.events.public.readonly']
-    });
-
-    console.log('Firebase initialized successfully', GoogleSignin);
+    console.log('Firebase initialized successfully');
   }
   return getApp();
 };
 
-export { auth, GoogleSignin };
 export default getApp;
