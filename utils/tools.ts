@@ -1,4 +1,3 @@
-import { getBusySlots } from './calendar';
 import notifee, {
   AndroidImportance,
   TimestampTrigger,

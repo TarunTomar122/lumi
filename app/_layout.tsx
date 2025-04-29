@@ -9,9 +9,7 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
 import { View, } from 'react-native';
-import { initializeFirebase } from '../config/firebase';
 import { db } from '../utils/database';
-import { CustomBottomNav } from './components/CustomBottomNav';
 import { Slot } from 'expo-router';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -19,11 +17,10 @@ SplashScreen.preventAutoHideAsync();
 
 function NavigatorContent() {
   return (
-    <View style={{ flex: 1, backgroundColor: '#DAD9DE'}}>
+    <View style={{ flex: 1, backgroundColor: '#2B2B2B'}}>
       {/* <Header /> */}
-      <StatusBar style="light-content" backgroundColor="#DAD9DE" />
+      <StatusBar style="light-content" backgroundColor="#2B2B2B" />
       <Slot />
-      <CustomBottomNav />
     </View>
   );
 }
