@@ -15,40 +15,126 @@ import { clientToolsSchema } from '@/utils/tools';
 import { setupNotifications, scheduleNotification } from '@/utils/tools';
 import { db } from '@/utils/database';
 import { Ionicons } from '@expo/vector-icons';
+import DisplayMessage, { DisplayMessageType } from './components/DisplayMessage';
+
+interface DisplayMessageItem {
+  text: string;
+  type: DisplayMessageType;
+  icon: string;
+}
+
+interface DisplayMessage {
+  items: DisplayMessageItem[];
+  source: string;
+}
 
 const SYSTEM_MESSAGE = {
   role: 'system',
   content: `
-            You are a lumi, a helpful productivity assistant with access to various tools that can help users with their tasks.
-            When a user asks for something that requires using a tool, always try to use the appropriate tool to help them.
-            Respond in a friendly, concise manner and focus on taking actions that help users accomplish their goals. Try to sound empathetic and supportive.
-            Your character is a very very cute fluflly pink colored pokemon type character. So you sound very cute and fluffy and helpful.
+          # Personality
+          - You are a cheerful, lightweight productivity assistant. You help users manage tasks, notes, and reminders — and gently guide them when they're unsure what to do.
+          - You don't handle backend work; you interpret user intent, call the right function (via OpenAI's function calling), and reply with a short, friendly message.
+          - Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}. You will need this information to determine the time context while saving, fetching, and displaying tasks.
 
-            Examples:
-              If a user asks you to remind them to buy groceries, you can use the "addTask" tool to add a task to their list.
-              If they also provide a time, you set the due date to that time. For other parts of the task, like priority, category, etc,
-              you can use your best judgement to set them.
-              If the user is confused about what to do and asks you to help, you can use the "getAllTasks" tool to get a list of all tasks.
-              Then you can decide based on the user's goals and the list of tasks, prioritize and decide what to do next.
+          # Note:
+          You are a productivity assistant. Stay in your lane.
+          - Tasks ✅
+          - Reminders ⏰
+          - Notes 🗒️
+          - Daily planning & prioritization 🧭
+          - Nudge-based decision-making 🪄
+          - Do not answer questions outside this scope. If the user asks you to do anything unrelated (e.g., write a 1000-word essay, generate creative writing, do deep research, etc.), politely decline and remind them of your purpose.
 
-            Note:
-              Today is ${new Date().toLocaleString('en-IN', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: 'numeric',
-                second: 'numeric',
-                timeZone: 'Asia/Kolkata',
-              })}.
-              Do not say things like you don't know how to do xyz, you are a helpful assistant, you can do anything and so based on user's prompt
-              try to be appropriate and helpful in the way you can. But if you're really confused, just ask for clarification.
-              Talk in small sentences and try to be as helpful as possible. Nobody likes long sentences.
-              Use \n to break lines. And try to break lines after 1-2 sentences.
-              Make sure to try and answer stuff in a concise manner. Don't be too verbose.
-              You can also use emojis to make your response more friendly. Keep your answer under 4-5 sentences at max.
-            `,
+          # What you do:
+            - Understand what the user wants (add, update, find, or just figure stuff out)
+            - Trigger the right function, if needed
+            - Respond clearly and helpfully
+            - If they're stuck or unsure ("What should I do now?"), look at context and gently nudge them (e.g., suggest a small task, show today's list)
+            - If there's nothing to show or do, keep it light and supportive
+          
+          # How You Talk
+            - Short, kind, playful — but not silly
+            - Use emojis to make things warm, not noisy
+            - Don't say "I'm an AI" or "I can't do that"
+            - Stay confident and helpful
+
+          # Default to Action
+            - Don't ask if the user wants to see something. Just show it.
+            - Example: If the user says "What should I do?" and there are 3 tasks — don't ask "Want me to show them?" Just respond with the list.
+            - Avoid hesitation. It's better to act and be helpful than to ask for permission.
+            - Never reply with: "Would you like me to...", "Should I...", "Want me to..."
+
+          # Response Format
+            Your response should ALWAYS be in this format:
+            1. A friendly, conversational message as the main content (don't list items here)
+            2. Put the actual content (tasks, reminders, etc.) in the display_message
+
+            Example response for tasks:
+            Here's what's on your plate today! Let me know if you need help prioritizing these. 🗓️
+            {
+              "display_message": {
+                "items": [
+                  {
+                    "text": "Design review at 2pm",
+                    "type": "info",
+                    "icon": "📋",
+                    "id": 1,
+                    "status": "todo"
+                  },
+                  {
+                    "text": "Call with Sarah",
+                    "type": "info",
+                    "icon": "📞",
+                    "id": 2,
+                    "status": "in_progress"
+                  }
+                ],
+                "source": "agent"
+              }
+            }
+
+            For tasks, ALWAYS include:
+            - The task's ID from the database
+            - The current status of the task
+            - An appropriate icon
+            - Type should be "info" for normal tasks
+
+            For other messages (confirmations, errors, etc.), use the simple format:
+            {
+              "display_message": {
+                "items": [
+                  {
+                    "text": "Task marked as done",
+                    "type": "success",
+                    "icon": "✅"
+                  }
+                ],
+                "source": "agent"
+              }
+            }
+
+            The display_message object is REQUIRED when:
+            - Showing tasks or reminders
+            - Confirming actions (task added/updated/deleted)
+            - Showing search results
+            - Reporting any errors or warnings
+
+            The type field must be one of: "info", "success", "error", "warning"
+            Always include an appropriate emoji as the icon field when it makes sense
+
+          # Style:
+            - Keep it playful, short, and human
+            - Emojis are cool, but don't overdo it
+            - If confused, ask politely ("Did you mean to save a new task?")
+            - Avoid saying "AI" or "function call"
+
+          # Don'ts:
+            - Don't explain how the function system works
+            - Don't fake actions — only confirm what actually ran
+            - Don't be too verbose
+            - Don't repeat content between chat message and display_message
+            - Don't forget to call tools if needed
+      `,
 };
 
 const MAX_HISTORY = 50;
@@ -58,7 +144,7 @@ export default function Page() {
   const { state, startRecognizing, stopRecognizing, destroyRecognizer, resetState } =
     useVoiceRecognition();
   const [isRecording, setIsRecording] = React.useState(false);
-  const [userResponse, setUserResponse] = React.useState<string>('');
+  const [userResponse, setUserResponse] = React.useState<string>('what should i do today?');
   const [assistantResponse, setAssistantResponse] = React.useState<string>(
     'Hello tarat, \nWhat is on your mind right now?'
   );
@@ -70,6 +156,7 @@ export default function Page() {
   const resultsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isThinking, setIsThinking] = React.useState(false);
+  const [displayMessage, setDisplayMessage] = React.useState<DisplayMessage | null>(null);
 
   // Watch for speech errors and update assistant response
   React.useEffect(() => {
@@ -106,7 +193,7 @@ export default function Page() {
     // const cleanedMessages = newMessages.filter(msg =>
     //   msg.content !== null &&
     //   msg.content !== '' &&
-    //   !(msg.role === 'system' && newMessages.indexOf(msg) !== 0)
+    //   !(msg.role === 'system' && newMessages.indexOfi(msg) !== 0)
     // );
 
     // // Always keep one system message at start and limit total messages
@@ -126,14 +213,14 @@ export default function Page() {
 
     try {
       setIsThinking(true);
+      setDisplayMessage(null); // Clear any existing display message
       console.log('🎤 Transcribed message:', userResponse);
 
       // Add user message to history
       const userMessage = { role: 'user', content: userResponse };
       const currentMessageHistory = [...messageHistory, userMessage];
       updateMessageHistory(currentMessageHistory);
-      setIsThinking(false);
-      console.log('🔥 currentMessageHistory:', currentMessageHistory);
+      // console.log('🔥 currentMessageHistory:', currentMessageHistory);
 
       let isModelThinking = true;
       while (isModelThinking) {
@@ -168,9 +255,28 @@ export default function Page() {
         }
 
         const responseData = await response.json();
-        // console.log('📥 OpenAI response:', JSON.stringify(responseData, null, 2));
+        console.log('📥 OpenAI response:', JSON.stringify(responseData, null, 2));
 
         const assistantMessage = responseData.choices[0].message;
+
+        // Try to parse display_message from content if it exists
+        try {
+          const contentStr = assistantMessage.content;
+          if (contentStr.includes('"display_message"')) {
+            const match = contentStr.match(/\{[\s\S]*"display_message"[\s\S]*\}/);
+            if (match) {
+              const parsed = JSON.parse(match[0]);
+              if (parsed.display_message) {
+                setDisplayMessage(parsed.display_message);
+                // Remove the display_message object from the content
+                assistantMessage.content = contentStr.replace(match[0], '').trim();
+              }
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to parse display_message:', e);
+        }
+
         currentMessageHistory.push(assistantMessage);
 
         // If the model wants to make tool calls
@@ -206,7 +312,7 @@ export default function Page() {
           // Continue the loop - model will see tool results and may make more calls
         } else {
           // Model gave a final response without tool calls
-          console.log('💬 Model provided final response');
+          console.log('💬 Model provided final response', assistantMessage.content);
           setAssistantResponse(assistantMessage.content || 'No response');
           updateMessageHistory(currentMessageHistory);
           isModelThinking = false;
@@ -217,6 +323,16 @@ export default function Page() {
     } catch (e) {
       console.error('❌ Error in handleSubmit:', e);
       setAssistantResponse('Sorry, there was an error processing your request.');
+      setDisplayMessage({
+        items: [
+          {
+            text: 'Failed to process your request',
+            type: 'error',
+            icon: '❌',
+          },
+        ],
+        source: 'system',
+      });
     } finally {
       setIsLoading(false);
     }
@@ -231,13 +347,23 @@ export default function Page() {
     };
   }, []);
 
-
   return (
     <View style={styles.container}>
+      {/* <View style={styles.headerContainer}>
+        <Text style={styles.header}>Lumi</Text>
+        <TouchableOpacity
+          onPress={() => {
+            navigation.navigate('/data');
+          }}>
+          <Ionicons name="save-outline" size={32} style={styles.headerIcon} />
+        </TouchableOpacity>
+      </View> */}
       <ScrollView style={styles.messageContainer}>
+        {isThinking && <Text style={styles.thinking}>Thinking...</Text>}
         {messageHistory
           .filter(msg => msg.role === 'user' || (msg.role === 'assistant' && !msg.tool_calls))
-          .slice(-2)
+          .slice(-1)
+          .reverse()
           .map((message, index) => (
             <Text
               key={index}
@@ -245,15 +371,14 @@ export default function Page() {
               {message.content}
             </Text>
           ))}
-        {isThinking && <Text style={styles.thinking}>Thinking...</Text>}
+        {displayMessage && <DisplayMessage items={displayMessage.items} />}
       </ScrollView>
 
       <View style={styles.inputContainer}>
         <TextInput
-          style={styles.textInput}
+          style={[styles.textInput, { color: '#F5F5F5' }]}
           placeholder="i want to..."
           placeholderTextColor="#A1887F"
-          color="#F5F5F5"
           onChangeText={setUserResponse}
           value={userResponse}
         />
@@ -286,8 +411,22 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#2B2B2B',
-    padding: 36,
+    padding: 24,
     marginTop: 84,
+  },
+  headerContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  header: {
+    color: '#F5F5F5',
+    fontSize: 28,
+    fontFamily: 'MonaSans-Regular',
+  },
+  headerIcon: {
+    color: '#795548',
   },
   messageContainer: {
     flex: 1,
@@ -295,7 +434,7 @@ const styles = StyleSheet.create({
   },
   assistantResponse: {
     color: '#F5F5F5',
-    fontSize: 28,
+    fontSize: 26,
     lineHeight: 42,
     fontFamily: 'MonaSans-Regular',
     borderLeftWidth: 1,
@@ -315,7 +454,7 @@ const styles = StyleSheet.create({
   },
   userResponse: {
     color: '#F5F5F5',
-    fontSize: 28,
+    fontSize: 26,
     lineHeight: 42,
     fontFamily: 'MonaSans-Regular',
     borderLeftWidth: 1,

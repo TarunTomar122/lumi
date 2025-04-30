@@ -34,9 +34,9 @@ const clientToolsSchema = [
           enum: ['low', 'medium', 'high'],
           description: 'Priority of the task',
         },
-        reminder_time: { 
-          type: 'string', 
-          description: 'Optional reminder time in ISO format' 
+        reminder_time: {
+          type: 'string',
+          description: 'Optional reminder time in ISO format',
         },
       },
       required: ['title', 'category', 'status', 'due_date', 'priority'],
@@ -76,9 +76,9 @@ const clientToolsSchema = [
           enum: ['low', 'medium', 'high'],
           description: 'Priority of the task',
         },
-        reminder_time: { 
-          type: 'string', 
-          description: 'Optional reminder time in ISO format' 
+        reminder_time: {
+          type: 'string',
+          description: 'Optional reminder time in ISO format',
         },
       },
       required: ['id'],
@@ -125,7 +125,7 @@ const clientTools = {
       // Get the task to check if it has a notification
       const tasks = await db.getAllTasks();
       const task = tasks.find(t => t.id === id);
-      
+
       if (task?.notification_id) {
         // Cancel the notification if it exists
         await notifee.cancelTriggerNotification(task.notification_id);
@@ -176,7 +176,7 @@ const clientTools = {
       console.error('Error updating task:', error);
       return { success: false, error: 'Failed to update task.' };
     }
-  },
+  }
 };
 
 export { clientTools, clientToolsSchema };
