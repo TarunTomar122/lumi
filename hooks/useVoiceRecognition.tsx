@@ -3,7 +3,7 @@ import Voice, {
   SpeechErrorEvent,
   SpeechResultsEvent,
 } from "@react-native-voice/voice";
-import { Platform, PermissionsAndroid } from 'react-native';
+import { Platform, PermissionsAndroid, NativeEventEmitter, NativeModules } from 'react-native';
 
 interface IState {
   recognized: string;
@@ -52,83 +52,109 @@ export const useVoiceRecognition = () => {
 
   const initializeVoice = useCallback(async () => {
     try {
-      await Voice.destroy();
-      await Voice.removeAllListeners();
-      
-      Voice.onSpeechStart = () => {
-        console.log('onSpeechStart');
-        setState((prevState) => ({
-          ...prevState,
-          started: "√",
-          isRecording: true,
-          results: [], // Clear previous results
-          partialResults: [], // Clear previous partial results
+      // First try to access the Voice module through NativeModules
+      const VoiceModule = NativeModules.Voice;
+      if (!VoiceModule) {
+        console.error("Voice native module is not available");
+        setState(prev => ({
+          ...prev,
+          error: "Voice module is not available",
+          isAvailable: false,
+          isInitialized: false
         }));
-      };
+        return false;
+      }
 
-      Voice.onSpeechRecognized = () => {
-        console.log('onSpeechRecognized');
-        setState((prevState) => ({ ...prevState, recognized: "√" }));
-      };
+      // Create event emitter for Voice module
+      const voiceEmitter = new NativeEventEmitter(VoiceModule);
 
-      Voice.onSpeechEnd = () => {
-        console.log('onSpeechEnd');
-        setState((prevState) => {
-          // Always use the most recent results we have
-          const finalResults = prevState.results.length > 0 
-            ? prevState.results 
-            : prevState.partialResults.length > 0
-              ? prevState.partialResults
-              : [];
-          
-          console.log('onSpeechEnd - using results:', finalResults);
-          return {
+      // Set up event listeners using the emitter
+      const subscriptions = [
+        voiceEmitter.addListener('onSpeechStart', () => {
+          console.log('onSpeechStart');
+          setState((prevState) => ({
             ...prevState,
-            end: "√",
+            started: "√",
+            isRecording: true,
+            results: [],
+            partialResults: [],
+          }));
+        }),
+
+        voiceEmitter.addListener('onSpeechRecognized', () => {
+          console.log('onSpeechRecognized');
+          setState((prevState) => ({ ...prevState, recognized: "√" }));
+        }),
+
+        voiceEmitter.addListener('onSpeechEnd', () => {
+          console.log('onSpeechEnd');
+          setState((prevState) => {
+            const finalResults = prevState.results.length > 0 
+              ? prevState.results 
+              : prevState.partialResults.length > 0
+                ? prevState.partialResults
+                : [];
+            
+            console.log('onSpeechEnd - using results:', finalResults);
+            return {
+              ...prevState,
+              end: "√",
+              isRecording: false,
+              results: finalResults
+            };
+          });
+        }),
+
+        voiceEmitter.addListener('onSpeechError', (e: SpeechErrorEvent) => {
+          console.log('onSpeechError:', e.error);
+          setState((prevState) => ({
+            ...prevState,
+            error: JSON.stringify(e.error),
             isRecording: false,
-            results: finalResults
-          };
-        });
-      };
-
-      Voice.onSpeechError = (e: SpeechErrorEvent) => {
-        console.log('onSpeechError:', e.error);
-        setState((prevState) => ({
-          ...prevState,
-          error: JSON.stringify(e.error),
-          isRecording: false,
-        }));
-      };
-
-      Voice.onSpeechResults = (e: SpeechResultsEvent) => {
-        console.log('onSpeechResults:', e.value);
-        if (e.value) {
-          setState((prevState) => ({ 
-            ...prevState, 
-            results: e.value!,
-            end: "√",
-            isRecording: false
           }));
-        }
-      };
+        }),
 
-      Voice.onSpeechPartialResults = (e: SpeechResultsEvent) => {
-        console.log('onSpeechPartialResults:', e.value);
-        if (e.value) {
-          setState((prevState) => ({ 
-            ...prevState, 
-            partialResults: e.value!,
-            // Only update results if we don't have final results yet
-            results: prevState.results.length === 0 ? e.value! : prevState.results
-          }));
-        }
-      };
+        voiceEmitter.addListener('onSpeechResults', (e: SpeechResultsEvent) => {
+          console.log('onSpeechResults:', e.value);
+          if (e.value) {
+            setState((prevState) => ({ 
+              ...prevState, 
+              results: e.value!,
+              end: "√",
+              isRecording: false
+            }));
+          }
+        }),
 
-      setState(prev => ({ ...prev, isInitialized: true }));
+        voiceEmitter.addListener('onSpeechPartialResults', (e: SpeechResultsEvent) => {
+          console.log('onSpeechPartialResults:', e.value);
+          if (e.value) {
+            setState((prevState) => ({ 
+              ...prevState, 
+              partialResults: e.value!,
+              results: prevState.results.length === 0 ? e.value! : prevState.results
+            }));
+          }
+        })
+      ];
+
+      // Store subscriptions for cleanup
+      setState(prev => ({ 
+        ...prev, 
+        isInitialized: true,
+        isAvailable: true,
+        error: "" 
+      }));
+
       return true;
     } catch (e) {
       console.error("Error initializing voice module:", e);
-      setState(prev => ({ ...prev, error: "Failed to initialize voice module" }));
+      setState(prev => ({ 
+        ...prev, 
+        error: "Failed to initialize voice module",
+        isInitialized: false,
+        isAvailable: false
+      }));
       return false;
     }
   }, []);
@@ -147,8 +173,9 @@ export const useVoiceRecognition = () => {
         setState(prev => ({ ...prev, hasPermission: granted }));
         return granted;
       } else {
-        // iOS permissions are handled by the Voice API itself
-        const isAvailable = await Voice.isAvailable();
+        const VoiceModule = NativeModules.Voice;
+        if (!VoiceModule) return false;
+        const isAvailable = await VoiceModule.isAvailable();
         setState(prev => ({ ...prev, isAvailable: !!isAvailable }));
         return !!isAvailable;
       }
@@ -180,7 +207,6 @@ export const useVoiceRecognition = () => {
         setState(prev => ({ ...prev, hasPermission }));
         return hasPermission;
       } else {
-        // iOS permissions are handled by the Voice API itself
         return true;
       }
     } catch (e) {
@@ -195,17 +221,30 @@ export const useVoiceRecognition = () => {
   }, []);
 
   const startRecognizing = useCallback(async () => {
-    if (!state.isInitialized) {
-      const initialized = await initializeVoice();
-      if (!initialized) return;
-    }
-
     try {
-      // First check if we have permission
+      const VoiceModule = NativeModules.Voice;
+      if (!VoiceModule) {
+        console.error("Voice module is not available");
+        setState(prev => ({
+          ...prev,
+          error: "Voice module is not available",
+          isRecording: false
+        }));
+        return;
+      }
+
+      // Make sure Voice is initialized
+      if (!state.isInitialized) {
+        const initialized = await initializeVoice();
+        if (!initialized) {
+          console.error("Failed to initialize voice recognition");
+          return;
+        }
+      }
+
+      // Check permissions
       const permissionGranted = await checkPermissions();
-      
       if (!permissionGranted) {
-        // If no permission, try to request it
         const granted = await requestPermission();
         if (!granted) {
           setState(prev => ({
@@ -217,11 +256,16 @@ export const useVoiceRecognition = () => {
       }
 
       resetState();
+      
+      // Add a small delay before starting (sometimes helps on Android)
+      await new Promise(resolve => setTimeout(resolve, 300));
+
       if (Platform.OS === 'android') {
-        await Voice.start('en_US'); // Note the underscore for Android locale
+        await VoiceModule.startSpeech('en_US', {});
       } else {
-        await Voice.start('en-US'); // Hyphen for iOS locale
+        await VoiceModule.startSpeech('en-US', {});
       }
+      
       setState(prev => ({ ...prev, isRecording: true }));
     } catch (e) {
       console.error("Error starting voice recognition:", e);
@@ -235,7 +279,9 @@ export const useVoiceRecognition = () => {
 
   const stopRecognizing = useCallback(async () => {
     try {
-      await Voice.stop();
+      const VoiceModule = NativeModules.Voice;
+      if (!VoiceModule) return;
+      await VoiceModule.stopSpeech();
     } catch (e) {
       console.error("Error stopping voice recognition", e);
       setState(prev => ({
@@ -247,7 +293,9 @@ export const useVoiceRecognition = () => {
 
   const cancelRecognizing = useCallback(async () => {
     try {
-      await Voice.cancel();
+      const VoiceModule = NativeModules.Voice;
+      if (!VoiceModule) return;
+      await VoiceModule.cancelSpeech();
     } catch (e) {
       console.error("Error canceling voice recognition", e);
       setState(prev => ({
@@ -259,7 +307,15 @@ export const useVoiceRecognition = () => {
 
   const destroyRecognizer = useCallback(async () => {
     try {
-      await Voice.destroy();
+      const VoiceModule = NativeModules.Voice;
+      if (!VoiceModule) return;
+      if (state.isInitialized) {
+        await VoiceModule.destroySpeech();
+        setState(prev => ({
+          ...prev,
+          isInitialized: false
+        }));
+      }
     } catch (e) {
       console.error("Error destroying voice recognition", e);
       setState(prev => ({
@@ -268,14 +324,27 @@ export const useVoiceRecognition = () => {
       }));
     }
     resetState();
-  }, [resetState]);
+  }, [state.isInitialized, resetState]);
 
   useEffect(() => {
-    initializeVoice();
-    return () => {
-      Voice.destroy().then(Voice.removeAllListeners);
+    let mounted = true;
+    
+    const initialize = async () => {
+      // Add a small delay before initialization
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      if (mounted) {
+        await initializeVoice();
+      }
     };
-  }, [initializeVoice]);
+
+    initialize();
+
+    return () => {
+      mounted = false;
+      destroyRecognizer();
+    };
+  }, [initializeVoice, destroyRecognizer]);
 
   return {
     state,

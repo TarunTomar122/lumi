@@ -4,8 +4,9 @@ import notifee, {
   TriggerType,
   AndroidColor,
 } from '@notifee/react-native';
-import { db } from './database';
-import type { Task } from './database';
+import { db } from '@/utils/database';
+import type { Memory, Task } from '@/utils/database';
+import { DateTime } from 'luxon';
 
 const clientToolsSchema = [
   {
@@ -22,24 +23,21 @@ const clientToolsSchema = [
       properties: {
         title: { type: 'string', description: 'Title of the task' },
         description: { type: 'string', description: 'Optional description of the task' },
-        category: { type: 'string', description: 'Category of the task' },
+        due_date: {
+          type: 'string',
+          description: 'Optional due date in ISO format',
+        },
+        reminder_date: {
+          type: 'string',
+          description: 'Optional reminder datetime in ISO format',
+        },
         status: {
           type: 'string',
-          enum: ['todo', 'in_progress', 'done'],
+          enum: ['todo', 'done'],
           description: 'Status of the task',
         },
-        due_date: { type: 'string', description: 'Due date in ISO format' },
-        priority: {
-          type: 'string',
-          enum: ['low', 'medium', 'high'],
-          description: 'Priority of the task',
-        },
-        reminder_time: {
-          type: 'string',
-          description: 'Optional reminder time in ISO format',
-        },
       },
-      required: ['title', 'category', 'status', 'due_date', 'priority'],
+      required: ['title'],
     },
   },
   {
@@ -64,22 +62,66 @@ const clientToolsSchema = [
         id: { type: 'number', description: 'ID of the task to update' },
         title: { type: 'string', description: 'Title of the task' },
         description: { type: 'string', description: 'Optional description of the task' },
-        category: { type: 'string', description: 'Category of the task' },
+        due_date: {
+          type: 'string',
+          description: 'Optional due date in ISO format',
+        },
+        reminder_date: {
+          type: 'string',
+          description: 'Optional reminder datetime in ISO format',
+        },
         status: {
           type: 'string',
-          enum: ['todo', 'in_progress', 'done'],
+          enum: ['todo', 'done'],
           description: 'Status of the task',
         },
-        due_date: { type: 'string', description: 'Due date in ISO format' },
-        priority: {
-          type: 'string',
-          enum: ['low', 'medium', 'high'],
-          description: 'Priority of the task',
-        },
-        reminder_time: {
-          type: 'string',
-          description: 'Optional reminder time in ISO format',
-        },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'addMemory',
+    description: 'Adds a memory to the local database.',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Title of the memory' },
+        description: { type: 'string', description: 'Description of the memory' },
+        date: { type: 'string', description: 'Date of the memory in ISO format' },
+        tag: { type: 'string', description: 'Tag of the memory' },
+      },
+      required: ['title', 'description', 'date', 'tag'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'deleteMemory',
+    description: 'Deletes a memory from the local database.',
+    parameters: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'ID of the memory to delete' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'getAllMemories',
+    description: 'Gets all memories from the local database.',
+  },
+  {
+    type: 'function',
+    name: 'updateMemory',
+    description: 'Updates a memory in the local database.',
+    parameters: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'ID of the memory to update' },
+        title: { type: 'string', description: 'Title of the memory' },
+        description: { type: 'string', description: 'Description of the memory' },
+        date: { type: 'string', description: 'Date of the memory in ISO format' },
       },
       required: ['id'],
     },
@@ -97,22 +139,20 @@ const clientTools = {
     }
   },
 
-  addTask: async (taskData: Omit<Task, 'id' | 'created_at'>) => {
+  addTask: async (taskData: Omit<Task, 'id'>) => {
     try {
       let notificationId = null;
-      if (taskData.reminder_time) {
+      if (taskData.reminder_date) {
+        const dt = DateTime.fromISO(taskData.reminder_date).setZone('Asia/Kolkata');
+        console.log('📅 scheduling notification for:', dt);
         notificationId = await scheduleNotification(
           taskData.title,
           taskData.description || null,
-          new Date(taskData.reminder_time)
+          dt
         );
       }
 
-      const task = await db.addTask({
-        ...taskData,
-        notification_id: notificationId,
-      });
-
+      const task = await db.addTask(taskData);
       return { success: true, task };
     } catch (error) {
       console.error('Error adding task:', error);
@@ -126,9 +166,12 @@ const clientTools = {
       const tasks = await db.getAllTasks();
       const task = tasks.find(t => t.id === id);
 
-      if (task?.notification_id) {
-        // Cancel the notification if it exists
-        await notifee.cancelTriggerNotification(task.notification_id);
+      if (task?.reminder_date) {
+        // Cancel any scheduled notification
+        const notificationId = await notifee.getTriggerNotificationIds();
+        for (const nId of notificationId) {
+          await notifee.cancelTriggerNotification(nId);
+        }
       }
 
       await db.deleteTask(id);
@@ -139,32 +182,27 @@ const clientTools = {
     }
   },
 
-  updateTask: async ({
-    id,
-    ...updates
-  }: { id: number } & Partial<Omit<Task, 'id' | 'created_at'>>) => {
+  updateTask: async ({ id, ...updates }: { id: number } & Partial<Omit<Task, 'id'>>) => {
     try {
       // Get the current task to check for notification changes
       const tasks = await db.getAllTasks();
       const task = tasks.find(t => t.id === id);
 
       // Handle notification updates
-      if (updates.reminder_time !== undefined) {
-        // Cancel existing notification if there is one
-        if (task?.notification_id) {
-          await notifee.cancelTriggerNotification(task.notification_id);
+      if (updates.reminder_date !== undefined) {
+        // Cancel existing notifications for this task
+        const notificationIds = await notifee.getTriggerNotificationIds();
+        for (const nId of notificationIds) {
+          await notifee.cancelTriggerNotification(nId);
         }
 
-        // Schedule new notification if reminder_time is provided
-        if (updates.reminder_time) {
-          const notificationId = await scheduleNotification(
+        // Schedule new notification if reminder_date is provided
+        if (updates.reminder_date) {
+          await scheduleNotification(
             updates.title || task?.title || '',
             updates.description || task?.description || null,
-            new Date(updates.reminder_time)
+            DateTime.fromISO(updates.reminder_date).toJSDate()
           );
-          updates.notification_id = notificationId;
-        } else {
-          updates.notification_id = null;
         }
       }
 
@@ -176,7 +214,45 @@ const clientTools = {
       console.error('Error updating task:', error);
       return { success: false, error: 'Failed to update task.' };
     }
-  }
+  },
+  addMemory: async (memoryData: Omit<Memory, 'id'>) => {
+    try {
+      const memory = await db.addMemory(memoryData);
+      return { success: true, memory };
+    } catch (error) {
+      console.error('Error adding memory:', error);
+      return { success: false, error: 'Failed to add memory.' };
+    }
+  },
+  getAllMemories: async () => {
+    try {
+      const memories = await db.getAllMemories();
+      return { success: true, memories };
+    } catch (error) {
+      console.error('Error fetching memories:', error);
+      return { success: false, error: 'Failed to fetch memories.' };
+    }
+  },
+
+  deleteMemory: async ({ id }: { id: number }) => {
+    try {
+      await db.deleteMemory(id);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting memory:', error);
+      return { success: false, error: 'Failed to delete memory.' };
+    }
+  },
+
+  updateMemory: async ({ id, ...updates }: { id: number } & Partial<Omit<Memory, 'id'>>) => {
+    try {
+      await db.updateMemory(id, updates);
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating memory:', error);
+      return { success: false, error: 'Failed to update memory.' };
+    }
+  },
 };
 
 export { clientTools, clientToolsSchema };
@@ -199,12 +275,51 @@ export const setupNotifications = async () => {
         vibrationPattern: [300, 500, 300, 500],
         lights: true,
         lightColor: AndroidColor.YELLOW,
-        // Add these to make notifications more prominent
-        bypassDnd: true, // Allow notification to bypass do not disturb
+        bypassDnd: true,
         vibration: true,
       });
 
-      console.log('✅ Notification channel created');
+      // console.log('✅ Notification channel created');
+
+      // // lets create a notification trigger for 20 seconds from now
+      // const trigger: TimestampTrigger = {
+      //   type: TriggerType.TIMESTAMP,
+      //   timestamp: Date.now() + 20000,
+      // };
+
+      // const notificationId = await notifee.createTriggerNotification(
+      //   {
+      //     id: Date.now().toString(),
+      //     title: 'Test Notification',
+      //     body: 'This is a test notification',
+      //     android: {
+      //       channelId: 'default',
+      //       importance: AndroidImportance.HIGH,
+      //       pressAction: {
+      //         id: 'default',
+      //       },
+      //       sound: 'default',
+      //       vibrationPattern: [300, 500, 300, 500],
+      //       lights: [AndroidColor.YELLOW, 300, 500],
+      //       smallIcon: 'ic_launcher',
+      //       showTimestamp: true,
+      //       ongoing: false,
+      //       asForegroundService: true,
+      //       autoCancel: false,
+      //       timestamp: Date.now() + 20000,
+      //       fullScreenAction: {
+      //         id: 'default',
+      //       },
+      //     },
+      //   },
+      //   trigger
+      // );
+
+      // Set up foreground handler for trigger notifications
+      notifee.onForegroundEvent(async ({ type, detail }) => {
+        const { notification, pressAction } = detail;
+        console.log('🔔 Foreground event received:', type, detail);
+      });
 
       // Set up background handler for trigger notifications
       notifee.onBackgroundEvent(async ({ type, detail }) => {
@@ -214,8 +329,6 @@ export const setupNotifications = async () => {
 
         // Handle the trigger event
         if (type === 7) {
-          // TriggerNotification
-          // Re-display the notification if needed
           if (notification) {
             await notifee.displayNotification(notification);
           }
@@ -223,42 +336,13 @@ export const setupNotifications = async () => {
 
         // Handle notification press
         if (type === 3 && pressAction) {
-          // NotificationPress
           console.log('Notification pressed:', pressAction.id);
-          // You can add specific handling for notification press here
         }
       });
-
-      // Set up foreground handler
-      notifee.onForegroundEvent(async ({ type, detail }) => {
-        const { notification, pressAction } = detail;
-
-        console.log('📱 Foreground event received:', type, detail);
-
-        // Handle the trigger event
-        if (type === 7) {
-          // TriggerNotification
-          if (notification) {
-            await notifee.displayNotification(notification);
-          }
-        }
-
-        // Handle notification press
-        if (type === 3 && pressAction) {
-          // NotificationPress
-          console.log('Notification pressed:', pressAction.id);
-          // You can add specific handling for notification press here
-        }
-      });
-
-      return true;
-    } else {
-      console.error('❌ User denied notification permissions');
-      return false;
     }
   } catch (error) {
-    console.error('❌ Error setting up notifications:', error);
-    return false;
+    console.error('Error setting up notifications:', error);
+    throw error;
   }
 };
 
@@ -266,19 +350,39 @@ export const setupNotifications = async () => {
 export const scheduleNotification = async (
   title: string,
   body: string | null,
-  scheduledTime: Date
+  scheduledTime: DateTime
 ): Promise<string> => {
   try {
-    console.log('📅 Scheduling notification for:', scheduledTime.toLocaleString());
+    // console.log('📅 Scheduled time:', scheduledTime.hour, scheduledTime.minute, scheduledTime.second);
 
+    const date = new Date();
+    date.setHours(scheduledTime.hour);
+    date.setMinutes(scheduledTime.minute);
+    date.setSeconds(scheduledTime.second);
+
+    console.log('📅 Scheduled time:', date);
     // Create a time-based trigger
     const trigger: TimestampTrigger = {
       type: TriggerType.TIMESTAMP,
-      timestamp: scheduledTime.getTime(),
+      timestamp: date.getTime(),
       alarmManager: {
-        allowWhileIdle: true, // Allow notification even when device is in low-power idle modes
+        allowWhileIdle: true,
       },
     };
+
+    const channelId = await notifee.createChannel({
+      id: 'reminder',
+      name: 'Reminder Channel',
+      importance: AndroidImportance.HIGH,
+      sound: 'default',
+      vibrationPattern: [300, 500, 300, 500],
+      lights: true,
+      lightColor: AndroidColor.YELLOW,
+      bypassDnd: true,
+      vibration: true,
+    });
+
+    console.log('📅 Channel ID:', channelId);
 
     // Create the notification
     const notificationId = await notifee.createTriggerNotification(
@@ -287,7 +391,7 @@ export const scheduleNotification = async (
         title,
         body: body || undefined,
         android: {
-          channelId: 'default',
+          channelId: channelId,
           importance: AndroidImportance.HIGH,
           pressAction: {
             id: 'default',
@@ -300,24 +404,10 @@ export const scheduleNotification = async (
           ongoing: false,
           asForegroundService: true,
           autoCancel: false,
-          timestamp: scheduledTime.getTime(),
-          // Add these to make notifications more reliable
+          timestamp: date.getTime(),
           fullScreenAction: {
             id: 'default',
           },
-        },
-        ios: {
-          sound: 'default',
-          critical: true,
-          foregroundPresentationOptions: {
-            badge: true,
-            sound: true,
-            banner: true,
-            list: true,
-          },
-          // Add these for iOS reliability
-          interruptionLevel: 'timeSensitive',
-          attachments: [],
         },
       },
       trigger
@@ -325,59 +415,9 @@ export const scheduleNotification = async (
 
     console.log('✅ Notification scheduled with ID:', notificationId);
 
-    // Verify the trigger was created
-    const triggers = await notifee.getTriggerNotifications();
-    console.log('📋 Currently scheduled notifications:', triggers.length);
-
     return notificationId;
   } catch (error) {
     console.error('❌ Error scheduling notification:', error);
     throw error;
-  }
-};
-
-// Test function to verify notifications
-export const testNotification = async () => {
-  console.log('🔔 Starting notification test...');
-
-  try {
-    // 1. Set up notifications
-    const setupResult = await setupNotifications();
-    if (!setupResult) {
-      throw new Error('Failed to set up notifications');
-    }
-
-    // 2. Schedule a test notification for 5 seconds from now
-    const testTime = new Date(Date.now() + 5 * 1000); // 5 seconds from now
-
-    const notificationId = await scheduleNotification(
-      'Test Notification',
-      'This is a test notification! If you see this, notifications are working! 🎉',
-      testTime
-    );
-
-    console.log('✅ Test notification scheduled for:', testTime.toLocaleString());
-    console.log('📝 Notification ID:', notificationId);
-    console.log('⏰ Please wait 5 seconds for the notification...');
-
-    // 3. List all scheduled notifications
-    const triggers = await notifee.getTriggerNotifications();
-    console.log('📋 Currently scheduled notifications:', triggers.length);
-
-    // 4. Add foreground handler to make sure we see the notification even if app is open
-    notifee.onForegroundEvent(({ type, detail }) => {
-      console.log('📱 Foreground event received:', type, detail);
-
-      // Display the notification again in case it was missed
-      if (type === 7 && detail.notification) {
-        // TRIGGER and notification exists
-        notifee.displayNotification(detail.notification);
-      }
-    });
-
-    return true;
-  } catch (error) {
-    console.error('❌ Notification test failed:', error);
-    return false;
   }
 };

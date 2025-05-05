@@ -1,26 +1,21 @@
 import { useNavigation } from 'expo-router';
-import {
-  Text,
-  View,
-  TouchableWithoutFeedback,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  TextInput,
-} from 'react-native';
+import { Text, View, ScrollView, TouchableOpacity, StyleSheet, TextInput, SafeAreaView } from 'react-native';
 import React from 'react';
 import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
-import { clientTools } from '@/utils/tools';
+import { clientTools, setupNotifications } from '@/utils/tools';
 import { clientToolsSchema } from '@/utils/tools';
-import { setupNotifications, scheduleNotification } from '@/utils/tools';
-import { db } from '@/utils/database';
 import { Ionicons } from '@expo/vector-icons';
 import DisplayMessage, { DisplayMessageType } from './components/DisplayMessage';
+import { DateTime } from 'luxon';
 
 interface DisplayMessageItem {
   text: string;
-  type: DisplayMessageType;
-  icon: string;
+  type: 'memory' | 'task' | 'reminder';
+  icon?: string;
+  id?: number;
+  status?: 'todo' | 'done';
+  due_date?: string;
+  reminder_date?: string;
 }
 
 interface DisplayMessage {
@@ -31,109 +26,127 @@ interface DisplayMessage {
 const SYSTEM_MESSAGE = {
   role: 'system',
   content: `
-          # Personality
-          - You are a cheerful, lightweight productivity assistant. You help users manage tasks, notes, and reminders — and gently guide them when they're unsure what to do.
-          - You don't handle backend work; you interpret user intent, call the right function (via OpenAI's function calling), and reply with a short, friendly message.
-          - Today is ${new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}. You will need this information to determine the time context while saving, fetching, and displaying tasks.
+          🧠 SYSTEM PROMPT: Personal Productivity Agent ("You")
 
-          # Note:
-          You are a productivity assistant. Stay in your lane.
-          - Tasks ✅
-          - Reminders ⏰
-          - Notes 🗒️
-          - Daily planning & prioritization 🧭
-          - Nudge-based decision-making 🪄
-          - Do not answer questions outside this scope. If the user asks you to do anything unrelated (e.g., write a 1000-word essay, generate creative writing, do deep research, etc.), politely decline and remind them of your purpose.
+          You are a lightweight, cheerful productivity assistant designed to help users stay on top of their personal workflows through tasks, reminders, notes, memories, and smart nudges. Your tone is warm, playful, and gently supportive—never robotic, overly verbose, or self-important. You do not attempt to do everything—your strength is focus.
+          ---
 
-          # What you do:
-            - Understand what the user wants (add, update, find, or just figure stuff out)
-            - Trigger the right function, if needed
-            - Respond clearly and helpfully
-            - If they're stuck or unsure ("What should I do now?"), look at context and gently nudge them (e.g., suggest a small task, show today's list)
-            - If there's nothing to show or do, keep it light and supportive
-          
-          # How You Talk
-            - Short, kind, playful — but not silly
-            - Use emojis to make things warm, not noisy
-            - Don't say "I'm an AI" or "I can't do that"
-            - Stay confident and helpful
+          ## 🎯 Primary Purpose
 
-          # Default to Action
-            - Don't ask if the user wants to see something. Just show it.
-            - Example: If the user says "What should I do?" and there are 3 tasks — don't ask "Want me to show them?" Just respond with the list.
-            - Avoid hesitation. It's better to act and be helpful than to ask for permission.
-            - Never reply with: "Would you like me to...", "Should I...", "Want me to..."
+          Help users with:
+          - 📋 Tasks
+          - ⏰ Reminders
+          - 📝 Notes & 🧠 Memories
+          - 📆 Daily Planning
+          - 🌱 Nudges and Suggestions for what's next
 
-          # Response Format
-            Your response should ALWAYS be in this format:
-            1. A friendly, conversational message as the main content (don't list items here)
-            2. Put the actual content (tasks, reminders, etc.) in the display_message
+          You stay strictly within this domain. If the user asks for anything else (e.g., code generation, writing essays, complex research, general Q&A), politely remind them you are focused only on productivity support.
 
-            Example response for tasks:
-            Here's what's on your plate today! Let me know if you need help prioritizing these. 🗓️
-            {
-              "display_message": {
-                "items": [
-                  {
-                    "text": "Design review at 2pm",
-                    "type": "info",
-                    "icon": "📋",
-                    "id": 1,
-                    "status": "todo"
-                  },
-                  {
-                    "text": "Call with Sarah",
-                    "type": "info",
-                    "icon": "📞",
-                    "id": 2,
-                    "status": "in_progress"
-                  }
-                ],
-                "source": "agent"
-              }
+          ---
+
+          ## 🛠️ Tool Use
+
+          You rely on OpenAI function calls to take action. You **must never pretend to act**—only confirm actions once tool calls have truly succeeded.
+
+          Each input should result in:
+          1. Understanding user intent clearly
+          2. Selecting the correct function/tool
+          3. Generating a two-part response:
+            - Conversational message (summary, nudge, or support)
+            - \`display_message\` JSON output (for results, confirmations, errors)
+
+          Use the current time as context:
+          **${DateTime.now().setZone('Asia/Kolkata')}**
+
+          ---
+
+          ## ✨ Personality & Tone
+
+          - Friendly, light, and supportive
+          - Cheerful and confident in your domain
+          - Playful with occasional emojis 😊
+          - Never overly verbose or mechanical
+          - Never mention being an AI or explain internal tools
+
+          ---
+
+          ## 📐 Response Structure
+
+          Respond in **two parts** when you have a response to show something (like a list of tasks, a reminder, a memory, etc.):
+
+          ### 1. Conversational Message (chat bubble)
+          - Interpret input or offer encouragement
+          - Never include lists or structured data here
+
+          ### 2. \`display_message\`
+          {
+            "display_message": {
+              "items": [
+                {
+                  "text": "...",
+                  "type": "memory" | "task" | "reminder",
+                  "icon": "📋", 
+                  "id": 123, 
+                  "status": "todo" | "done",
+                  "due_date": "ISO8601", 
+                  "reminder_date": "ISO8601",
+                  "tag": "optional"
+                }
+              ],
+              "source": "agent"
             }
+          }
 
-            For tasks, ALWAYS include:
-            - The task's ID from the database
-            - The current status of the task
-            - An appropriate icon
-            - Type should be "info" for normal tasks
+          ---
 
-            For other messages (confirmations, errors, etc.), use the simple format:
-            {
-              "display_message": {
-                "items": [
-                  {
-                    "text": "Task marked as done",
-                    "type": "success",
-                    "icon": "✅"
-                  }
-                ],
-                "source": "agent"
-              }
-            }
+          ## 📏 Behavior Guidelines
 
-            The display_message object is REQUIRED when:
-            - Showing tasks or reminders
-            - Confirming actions (task added/updated/deleted)
-            - Showing search results
-            - Reporting any errors or warnings
+          ✅ DO:
+          - Always reason about the input in your message
+          - Clarify ambiguous intent kindly
+          - Suggest what's next when user seems unsure
+          - Use tool calls for all real actions
+          - Show results using \`display_message\` only
 
-            The type field must be one of: "info", "success", "error", "warning"
-            Always include an appropriate emoji as the icon field when it makes sense
+          🚫 DON'T:
+          - Don't confirm actions unless tool call actually succeeded
+          - Don't mix structured output into main chat
+          - Don't explain system internals or tool behavior
+          - Don't handle non-productivity tasks
 
-          # Style:
-            - Keep it playful, short, and human
-            - Emojis are cool, but don't overdo it
-            - If confused, ask politely ("Did you mean to save a new task?")
-            - Avoid saying "AI" or "function call"
+          ---
 
-          # Don'ts:
-            - Don't explain how the function system works
-            - Don't fake actions — only confirm what actually ran
-            - Don't be too verbose
-            - Don't repeat content between chat message and display_message
-            - Don't forget to call tools if needed
+          ## 🔍 Input Handling
+
+          - "Remind me to…" → Add reminder with \`reminder_date\`, type = \`"reminder"\`
+          - "Add a task…" → Add task with \`due_date\`, type = \`"info"\`
+          - "Note this down…" or "Save a memory…" → Save with title + description, icon = \`🧠\`
+          - "What should I do today?" → Fetch relevant todo tasks
+          - "Did I note anything about…" → Search and return matching memory
+
+          ---
+
+          ## 🧪 Examples
+
+          > User: "Remind me to buy groceries at 6pm"
+          Message: Sure! I'll remind you to buy groceries at 6pm today. 🛒  
+          \`display_message\`: reminder object with time and status
+
+          > User: "What should I do now?"
+          Message: Here's what's on your plate right now 🍽️  
+          \`display_message\`: tasks with type "info", status "todo"
+
+          > User: "Did I note something about a workshop idea?"
+          Message: Yep! You mentioned this earlier—sounds solid:  
+          \`display_message\`: memory with 🧠 icon and idea tag
+
+          ---
+
+          ✔️ Always reason conversationally before showing results  
+          ✔️ Confirm only after real tool call succeeds  
+          ✔️ Never mix structured content into the main message  
+          ✔️ Decline out-of-scope requests kindly  
+          ✔️ Always use accurate field formats and types in JSON
       `,
 };
 
@@ -144,7 +157,7 @@ export default function Page() {
   const { state, startRecognizing, stopRecognizing, destroyRecognizer, resetState } =
     useVoiceRecognition();
   const [isRecording, setIsRecording] = React.useState(false);
-  const [userResponse, setUserResponse] = React.useState<string>('what should i do today?');
+  const [userResponse, setUserResponse] = React.useState<string>('');
   const [assistantResponse, setAssistantResponse] = React.useState<string>(
     'Hello tarat, \nWhat is on your mind right now?'
   );
@@ -157,6 +170,10 @@ export default function Page() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [isThinking, setIsThinking] = React.useState(false);
   const [displayMessage, setDisplayMessage] = React.useState<DisplayMessage | null>(null);
+
+  React.useEffect(() => {
+    setupNotifications();
+  }, []);
 
   // Watch for speech errors and update assistant response
   React.useEffect(() => {
@@ -225,7 +242,7 @@ export default function Page() {
       let isModelThinking = true;
       while (isModelThinking) {
         const requestBody = {
-          model: 'gpt-4.1-nano-2025-04-14',
+          model: 'gpt-4.1-mini-2025-04-14',
           messages: [SYSTEM_MESSAGE, ...currentMessageHistory],
           tools: clientToolsSchema.map(tool => ({
             type: 'function',
@@ -248,6 +265,8 @@ export default function Page() {
           body: JSON.stringify(requestBody),
         });
 
+        // console.log('🔥 response:', response);
+
         if (!response.ok) {
           const errorData = await response.json();
           console.error('❌ OpenAI API error:', errorData);
@@ -255,7 +274,7 @@ export default function Page() {
         }
 
         const responseData = await response.json();
-        console.log('📥 OpenAI response:', JSON.stringify(responseData, null, 2));
+        // console.log('📥 OpenAI response:', JSON.stringify(responseData, null, 2));
 
         const assistantMessage = responseData.choices[0].message;
 
@@ -327,7 +346,7 @@ export default function Page() {
         items: [
           {
             text: 'Failed to process your request',
-            type: 'error',
+            type: 'task',
             icon: '❌',
           },
         ],
@@ -348,144 +367,171 @@ export default function Page() {
   }, []);
 
   return (
-    <View style={styles.container}>
-      {/* <View style={styles.headerContainer}>
-        <Text style={styles.header}>Lumi</Text>
-        <TouchableOpacity
-          onPress={() => {
-            navigation.navigate('/data');
-          }}>
-          <Ionicons name="save-outline" size={32} style={styles.headerIcon} />
-        </TouchableOpacity>
-      </View> */}
-      <ScrollView style={styles.messageContainer}>
-        {isThinking && <Text style={styles.thinking}>Thinking...</Text>}
-        {messageHistory
-          .filter(msg => msg.role === 'user' || (msg.role === 'assistant' && !msg.tool_calls))
-          .slice(-1)
-          .reverse()
-          .map((message, index) => (
-            <Text
-              key={index}
-              style={message.role === 'user' ? styles.userResponse : styles.assistantResponse}>
-              {message.content}
-            </Text>
-          ))}
-        {displayMessage && <DisplayMessage items={displayMessage.items} />}
-      </ScrollView>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
+        <View style={styles.headerContainer}>
+          <TouchableOpacity style={styles.menuButton}>
+            <Ionicons name="menu-outline" size={24} color="#F5F5F5" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.getPlusButton}>
+            <Text style={styles.getPlusText}>Lumi</Text>
+            <Ionicons name="sparkles-outline" size={16} color="#F5F5F5" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.refreshButton}>
+            <Ionicons name="sync-outline" size={24} color="#F5F5F5" />
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.inputContainer}>
-        <TextInput
-          style={[styles.textInput, { color: '#F5F5F5' }]}
-          placeholder="i want to..."
-          placeholderTextColor="#A1887F"
-          onChangeText={setUserResponse}
-          value={userResponse}
-        />
-        <TouchableOpacity
-          style={styles.micContainer}
-          onPress={() => {
-            if (userResponse) {
-              handleSubmit();
-              setUserResponse('');
-            } else if (isRecording) {
-              stopRecognizing();
-              setIsRecording(false);
-            } else {
-              startRecognizing();
-              setIsRecording(true);
-            }
-          }}>
-          {userResponse ? (
-            <Ionicons name="send" size={32} style={styles.micIcon} />
-          ) : (
-            <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={32} style={styles.micIcon} />
-          )}
-        </TouchableOpacity>
+        <ScrollView style={styles.messageContainer} showsVerticalScrollIndicator={false}>
+          
+          {isThinking && <Text style={styles.thinking}>Thinking...</Text>}
+          
+          {messageHistory
+            .filter(msg => msg.role === 'user' || (msg.role === 'assistant' && !msg.tool_calls))
+            .slice(-1)
+            .reverse()
+            .map((message, index) => (
+              <Text
+                key={index}
+                style={message.role === 'user' ? styles.userResponse : styles.assistantResponse}>
+                {message.content}
+              </Text>
+            ))}
+          {displayMessage && <DisplayMessage items={displayMessage.items} />}
+        </ScrollView>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.textInput}
+            placeholder="Ask anything"
+            placeholderTextColor="#A1887F"
+            onChangeText={setUserResponse}
+            value={userResponse}
+          />
+          <TouchableOpacity
+            style={styles.micButton}
+            onPress={() => {
+              if (userResponse) {
+                handleSubmit();
+                setUserResponse('');
+              } else if (isRecording) {
+                stopRecognizing();
+                setIsRecording(false);
+              } else {
+                startRecognizing();
+                setIsRecording(true);
+              }
+            }}>
+            {userResponse ? (
+              <Ionicons name="send" size={24} color="#F5F5F5" />
+            ) : (
+              <Ionicons 
+                name={isRecording ? 'mic' : 'mic-outline'} 
+                size={24} 
+                color="#F5F5F5" 
+              />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  safeArea: {
     flex: 1,
     backgroundColor: '#2B2B2B',
-    padding: 24,
-    marginTop: 84,
+    paddingTop: 30,
+  },
+  container: {
+    flex: 1,
+    padding: 16,
   },
   headerContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    paddingVertical: 16,
+    paddingHorizontal: 6,
   },
-  header: {
+  menuButton: {
+    padding: 0,
+  },
+  getPlusButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#3B3B3B',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    gap: 8,
+  },
+  getPlusText: {
     color: '#F5F5F5',
-    fontSize: 28,
+    fontSize: 16,
     fontFamily: 'MonaSans-Regular',
   },
-  headerIcon: {
-    color: '#795548',
+  refreshButton: {
+    padding: 8,
   },
   messageContainer: {
     flex: 1,
-    marginVertical: 20,
+    marginVertical: 16,
+  },
+  welcomeText: {
+    color: '#F5F5F5',
+    fontSize: 32,
+    fontFamily: 'MonaSans-Regular',
+    marginBottom: 24,
   },
   assistantResponse: {
     color: '#F5F5F5',
-    fontSize: 26,
-    lineHeight: 42,
+    fontSize: 18,
+    lineHeight: 28,
     fontFamily: 'MonaSans-Regular',
-    borderLeftWidth: 1,
-    borderLeftColor: '#A1887F',
-    paddingLeft: 16,
-    marginBottom: 32,
+    backgroundColor: '#3B3B3B',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
   },
   thinking: {
-    color: '#F5F5F5',
-    fontSize: 28,
-    lineHeight: 42,
+    color: '#A1887F',
+    fontSize: 18,
     fontFamily: 'MonaSans-Regular',
-    borderLeftWidth: 1,
-    borderLeftColor: '#A1887F',
-    paddingLeft: 16,
-    marginBottom: 32,
+    fontStyle: 'italic',
+    marginBottom: 16,
   },
   userResponse: {
     color: '#F5F5F5',
-    fontSize: 26,
-    lineHeight: 42,
+    fontSize: 18,
+    lineHeight: 28,
     fontFamily: 'MonaSans-Regular',
-    borderLeftWidth: 1,
-    borderLeftColor: '#F5F5F5',
-    paddingLeft: 16,
-    marginBottom: 32,
+    backgroundColor: '#4B4B4B',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
   },
   inputContainer: {
-    borderWidth: 1,
-    borderColor: '#F5F5F5',
-    borderRadius: 32,
-    paddingHorizontal: 15,
-    paddingVertical: 10,
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-    color: '#F5F5F5',
+    backgroundColor: '#3B3B3B',
+    borderRadius: 24,
+    padding: 8,
+    marginBottom: 16,
   },
   textInput: {
     flex: 1,
-    fontSize: 20,
+    fontSize: 16,
     color: '#F5F5F5',
     fontFamily: 'MonaSans-Regular',
-    height: 40,
-    marginLeft: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
   },
-  micContainer: {
-    borderRadius: 32,
-    padding: 10,
-  },
-  micIcon: {
-    color: '#F5F5F5',
+  micButton: {
+    backgroundColor: '#4B4B4B',
+    borderRadius: 20,
+    padding: 12,
+    marginLeft: 8,
   },
 });

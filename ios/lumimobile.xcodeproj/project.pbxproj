@@ -392,6 +392,7 @@
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VERSIONING_SYSTEM = "apple-generic";
+				ENABLE_BITCODE = NO;
 			};
 			name = Release;
 		};
@@ -455,6 +456,7 @@
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) DEBUG";
 				USE_HERMES = true;
+				ENABLE_BITCODE = NO;
 			};
 			name = Debug;
 		};
@@ -510,6 +512,7 @@
 				SDKROOT = iphoneos;
 				USE_HERMES = true;
 				VALIDATE_PRODUCT = YES;
+				ENABLE_BITCODE = NO;
 			};
 			name = Release;
 		};
