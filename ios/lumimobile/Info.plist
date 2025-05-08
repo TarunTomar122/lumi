@@ -54,9 +54,9 @@
     <key>NSCameraUsageDescription</key>
     <string>Allow $(PRODUCT_NAME) to access your camera</string>
     <key>NSMicrophoneUsageDescription</key>
-    <string>CUSTOM: Allow $(PRODUCT_NAME) to access the microphone</string>
+    <string>Allow $(PRODUCT_NAME) to access your microphone</string>
     <key>NSSpeechRecognitionUsageDescription</key>
-    <string>CUSTOM: Allow $(PRODUCT_NAME) to securely recognize user speech</string>
+    <string>This app needs access to speech recognition to transcribe your voice input.</string>
     <key>UILaunchStoryboardName</key>
     <string>SplashScreen</string>
     <key>UIRequiredDeviceCapabilities</key>

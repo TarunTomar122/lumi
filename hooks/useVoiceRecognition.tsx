@@ -1,13 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
-import Voice, {
-  SpeechErrorEvent,
-  SpeechResultsEvent,
-} from "@react-native-voice/voice";
-import { Platform, PermissionsAndroid, NativeEventEmitter, NativeModules } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+  ExpoSpeechRecognitionModule,
+  useSpeechRecognitionEvent,
+  SpeechRecognitionErrorEvent,
+  SpeechRecognitionResultEvent
+} from 'expo-speech-recognition';
 
 interface IState {
   recognized: string;
-  pitch: string;
   error: string;
   end: string;
   started: string;
@@ -16,335 +16,186 @@ interface IState {
   isRecording: boolean;
   hasPermission: boolean;
   isAvailable: boolean;
-  isInitialized: boolean;
 }
 
 export const useVoiceRecognition = () => {
   const [state, setState] = useState<IState>({
-    recognized: "",
-    pitch: "",
-    error: "",
-    end: "",
-    started: "",
+    recognized: '',
+    error: '',
+    end: '',
+    started: '',
     results: [],
     partialResults: [],
     isRecording: false,
     hasPermission: false,
     isAvailable: false,
-    isInitialized: false
   });
 
   const resetState = useCallback(() => {
-    setState((prevState) => ({
-      recognized: "",
-      pitch: "",
-      error: "",
-      started: "",
+    setState((prevState: IState) => ({
+      recognized: '',
+      error: '',
+      started: '',
       results: [],
       partialResults: [],
-      end: "",
+      end: '',
       isRecording: false,
       hasPermission: prevState.hasPermission,
       isAvailable: prevState.isAvailable,
-      isInitialized: prevState.isInitialized
     }));
   }, []);
 
-  const initializeVoice = useCallback(async () => {
-    try {
-      // First try to access the Voice module through NativeModules
-      const VoiceModule = NativeModules.Voice;
-      if (!VoiceModule) {
-        console.error("Voice native module is not available");
-        setState(prev => ({
-          ...prev,
-          error: "Voice module is not available",
-          isAvailable: false,
-          isInitialized: false
-        }));
-        return false;
-      }
+  // Set up event listeners
+  useSpeechRecognitionEvent('start', () => {
+    console.log('onSpeechStart');
+    setState((prevState: IState) => ({
+      ...prevState,
+      started: '√',
+      isRecording: true,
+      results: [],
+      partialResults: [],
+    }));
+  });
 
-      // Create event emitter for Voice module
-      const voiceEmitter = new NativeEventEmitter(VoiceModule);
+  useSpeechRecognitionEvent('end', () => {
+    console.log('onSpeechEnd');
+    setState((prevState: IState) => {
+      const finalResults = prevState.results.length > 0 
+        ? prevState.results 
+        : prevState.partialResults.length > 0
+          ? prevState.partialResults
+          : [];
+      
+      console.log('onSpeechEnd - using results:', finalResults);
+      return {
+        ...prevState,
+        end: '√',
+        isRecording: false,
+        results: finalResults
+      };
+    });
+  });
 
-      // Set up event listeners using the emitter
-      const subscriptions = [
-        voiceEmitter.addListener('onSpeechStart', () => {
-          console.log('onSpeechStart');
-          setState((prevState) => ({
-            ...prevState,
-            started: "√",
-            isRecording: true,
-            results: [],
-            partialResults: [],
-          }));
-        }),
+  useSpeechRecognitionEvent('error', (event: SpeechRecognitionErrorEvent) => {
+    console.log('onSpeechError:', event.error);
+    setState((prevState: IState) => ({
+      ...prevState,
+      error: event.message,
+      isRecording: false,
+    }));
+  });
 
-        voiceEmitter.addListener('onSpeechRecognized', () => {
-          console.log('onSpeechRecognized');
-          setState((prevState) => ({ ...prevState, recognized: "√" }));
-        }),
-
-        voiceEmitter.addListener('onSpeechEnd', () => {
-          console.log('onSpeechEnd');
-          setState((prevState) => {
-            const finalResults = prevState.results.length > 0 
-              ? prevState.results 
-              : prevState.partialResults.length > 0
-                ? prevState.partialResults
-                : [];
-            
-            console.log('onSpeechEnd - using results:', finalResults);
-            return {
-              ...prevState,
-              end: "√",
-              isRecording: false,
-              results: finalResults
-            };
-          });
-        }),
-
-        voiceEmitter.addListener('onSpeechError', (e: SpeechErrorEvent) => {
-          console.log('onSpeechError:', e.error);
-          setState((prevState) => ({
-            ...prevState,
-            error: JSON.stringify(e.error),
-            isRecording: false,
-          }));
-        }),
-
-        voiceEmitter.addListener('onSpeechResults', (e: SpeechResultsEvent) => {
-          console.log('onSpeechResults:', e.value);
-          if (e.value) {
-            setState((prevState) => ({ 
-              ...prevState, 
-              results: e.value!,
-              end: "√",
-              isRecording: false
-            }));
-          }
-        }),
-
-        voiceEmitter.addListener('onSpeechPartialResults', (e: SpeechResultsEvent) => {
-          console.log('onSpeechPartialResults:', e.value);
-          if (e.value) {
-            setState((prevState) => ({ 
-              ...prevState, 
-              partialResults: e.value!,
-              results: prevState.results.length === 0 ? e.value! : prevState.results
-            }));
-          }
-        })
-      ];
-
-      // Store subscriptions for cleanup
-      setState(prev => ({ 
-        ...prev, 
-        isInitialized: true,
-        isAvailable: true,
-        error: "" 
+  useSpeechRecognitionEvent('result', (event: SpeechRecognitionResultEvent) => {
+    console.log('onSpeechResults:', event.results);
+    if (event.results) {
+      const results = event.results.map(result => result.transcript);
+      setState((prevState: IState) => ({ 
+        ...prevState, 
+        results,
+        end: event.isFinal ? '√' : prevState.end,
+        isRecording: !event.isFinal
       }));
+    }
+  });
 
-      return true;
-    } catch (e) {
-      console.error("Error initializing voice module:", e);
+  const checkPermissions = useCallback(async (): Promise<boolean> => {
+    try {
+      const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
+      const isAvailable = await ExpoSpeechRecognitionModule.isRecognitionAvailable();
+      
       setState(prev => ({ 
         ...prev, 
-        error: "Failed to initialize voice module",
-        isInitialized: false,
+        hasPermission: result.granted,
+        isAvailable: isAvailable
+      }));
+      
+      return result.granted && isAvailable;
+    } catch (e) {
+      console.error('Error checking speech recognition permissions:', e);
+      setState(prev => ({ 
+        ...prev, 
+        error: 'Error checking permissions',
+        hasPermission: false,
         isAvailable: false
       }));
       return false;
     }
   }, []);
 
-  const checkPermissions = useCallback(async () => {
-    if (!state.isInitialized) {
-      const initialized = await initializeVoice();
-      if (!initialized) return false;
-    }
-
+  const startRecognizing = useCallback(async (): Promise<void> => {
     try {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.check(
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
-        );
-        setState(prev => ({ ...prev, hasPermission: granted }));
-        return granted;
-      } else {
-        const VoiceModule = NativeModules.Voice;
-        if (!VoiceModule) return false;
-        const isAvailable = await VoiceModule.isAvailable();
-        setState(prev => ({ ...prev, isAvailable: !!isAvailable }));
-        return !!isAvailable;
-      }
-    } catch (e) {
-      console.error("Error checking voice recognition permissions:", e);
-      setState(prev => ({ 
-        ...prev, 
-        error: "Error checking permissions",
-        hasPermission: false 
-      }));
-      return false;
-    }
-  }, [state.isInitialized, initializeVoice]);
-
-  const requestPermission = useCallback(async () => {
-    try {
-      if (Platform.OS === 'android') {
-        const granted = await PermissionsAndroid.request(
-          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
-          {
-            title: "Microphone Permission",
-            message: "This app needs access to your microphone to record your voice.",
-            buttonNeutral: "Ask Me Later",
-            buttonNegative: "Cancel",
-            buttonPositive: "OK"
-          }
-        );
-        const hasPermission = granted === PermissionsAndroid.RESULTS.GRANTED;
-        setState(prev => ({ ...prev, hasPermission }));
-        return hasPermission;
-      } else {
-        return true;
-      }
-    } catch (e) {
-      console.error("Error requesting voice recognition permission:", e);
-      setState(prev => ({ 
-        ...prev, 
-        error: "Error requesting permission",
-        hasPermission: false 
-      }));
-      return false;
-    }
-  }, []);
-
-  const startRecognizing = useCallback(async () => {
-    try {
-      const VoiceModule = NativeModules.Voice;
-      if (!VoiceModule) {
-        console.error("Voice module is not available");
+      // Check permissions first
+      const permissionGranted = await checkPermissions();
+      if (!permissionGranted) {
         setState(prev => ({
           ...prev,
-          error: "Voice module is not available",
-          isRecording: false
+          error: 'Permission denied for speech recognition'
         }));
         return;
       }
 
-      // Make sure Voice is initialized
-      if (!state.isInitialized) {
-        const initialized = await initializeVoice();
-        if (!initialized) {
-          console.error("Failed to initialize voice recognition");
-          return;
-        }
-      }
-
-      // Check permissions
-      const permissionGranted = await checkPermissions();
-      if (!permissionGranted) {
-        const granted = await requestPermission();
-        if (!granted) {
-          setState(prev => ({
-            ...prev,
-            error: "Permission denied for voice recognition"
-          }));
-          return;
-        }
-      }
-
       resetState();
       
-      // Add a small delay before starting (sometimes helps on Android)
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Start speech recognition
+      await ExpoSpeechRecognitionModule.start({
+        lang: 'en-US',
+        interimResults: false,
+        continuous: true,
+        androidIntentOptions: {
+          EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 10000,
+        },
+        androidRecognitionServicePackage: "com.google.android.tts",
+      });
 
-      if (Platform.OS === 'android') {
-        await VoiceModule.startSpeech('en_US', {});
-      } else {
-        await VoiceModule.startSpeech('en-US', {});
-      }
+      console.log('startRecognizing');
       
       setState(prev => ({ ...prev, isRecording: true }));
     } catch (e) {
-      console.error("Error starting voice recognition:", e);
+      console.error('Error starting speech recognition:', e);
       setState(prev => ({
         ...prev,
-        error: "Error starting voice recognition",
+        error: 'Error starting speech recognition',
         isRecording: false
       }));
     }
-  }, [state.isInitialized, checkPermissions, requestPermission, resetState, initializeVoice]);
+  }, [checkPermissions, resetState]);
 
-  const stopRecognizing = useCallback(async () => {
+  const stopRecognizing = useCallback(async (): Promise<void> => {
     try {
-      const VoiceModule = NativeModules.Voice;
-      if (!VoiceModule) return;
-      await VoiceModule.stopSpeech();
+      await ExpoSpeechRecognitionModule.stop();
+      console.log('stopRecognizing');
     } catch (e) {
-      console.error("Error stopping voice recognition", e);
+      console.error('Error stopping speech recognition', e);
       setState(prev => ({
         ...prev,
-        error: "Error stopping voice recognition"
+        error: 'Error stopping speech recognition'
       }));
     }
   }, []);
 
-  const cancelRecognizing = useCallback(async () => {
+  const cancelRecognizing = useCallback(async (): Promise<void> => {
     try {
-      const VoiceModule = NativeModules.Voice;
-      if (!VoiceModule) return;
-      await VoiceModule.cancelSpeech();
+      console.log('cancelRecognizing');
+      await ExpoSpeechRecognitionModule.abort();
     } catch (e) {
-      console.error("Error canceling voice recognition", e);
+      console.error('Error canceling speech recognition', e);
       setState(prev => ({
         ...prev,
-        error: "Error canceling voice recognition"
+        error: 'Error canceling speech recognition'
       }));
     }
   }, []);
-
-  const destroyRecognizer = useCallback(async () => {
-    try {
-      const VoiceModule = NativeModules.Voice;
-      if (!VoiceModule) return;
-      if (state.isInitialized) {
-        await VoiceModule.destroySpeech();
-        setState(prev => ({
-          ...prev,
-          isInitialized: false
-        }));
-      }
-    } catch (e) {
-      console.error("Error destroying voice recognition", e);
-      setState(prev => ({
-        ...prev,
-        error: "Error destroying voice recognition"
-      }));
-    }
-    resetState();
-  }, [state.isInitialized, resetState]);
 
   useEffect(() => {
-    let mounted = true;
+    checkPermissions();
     
-    const initialize = async () => {
-      // Add a small delay before initialization
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      if (mounted) {
-        await initializeVoice();
+    return () => {
+      // Cleanup
+      if (state.isRecording) {
+        cancelRecognizing();
       }
     };
-
-    initialize();
-
-    return () => {
-      mounted = false;
-      destroyRecognizer();
-    };
-  }, [initializeVoice, destroyRecognizer]);
+  }, []);
 
   return {
     state,
@@ -353,8 +204,6 @@ export const useVoiceRecognition = () => {
     startRecognizing,
     stopRecognizing,
     cancelRecognizing,
-    destroyRecognizer,
     checkPermissions,
-    requestPermission,
   };
 };

@@ -5,8 +5,11 @@ import notifee, {
   AndroidColor,
 } from '@notifee/react-native';
 import { db } from '@/utils/database';
-import type { Memory, Task } from '@/utils/database';
+import type { Task } from '@/utils/database';
 import { DateTime } from 'luxon';
+
+// Add API base URL
+const API_BASE_URL = 'http://10.0.2.2:3001/api';
 
 const clientToolsSchema = [
   {
@@ -82,26 +85,29 @@ const clientToolsSchema = [
   {
     type: 'function',
     name: 'addMemory',
-    description: 'Adds a memory to the local database.',
+    description: 'Adds a memory to the weaviate database.',
     parameters: {
       type: 'object',
       properties: {
         title: { type: 'string', description: 'Title of the memory' },
-        description: { type: 'string', description: 'Description of the memory' },
-        date: { type: 'string', description: 'Date of the memory in ISO format' },
-        tag: { type: 'string', description: 'Tag of the memory' },
+        text: { type: 'string', description: 'Text content of the memory' },
+        tags: { 
+          type: 'array', 
+          items: { type: 'string' },
+          description: 'Array of tags for the memory'
+        }
       },
-      required: ['title', 'description', 'date', 'tag'],
+      required: ['title', 'text'],
     },
   },
   {
     type: 'function',
     name: 'deleteMemory',
-    description: 'Deletes a memory from the local database.',
+    description: 'Deletes a memory from the weaviate database.',
     parameters: {
       type: 'object',
       properties: {
-        id: { type: 'number', description: 'ID of the memory to delete' },
+        id: { type: 'string', description: 'ID of the memory to delete' },
       },
       required: ['id'],
     },
@@ -109,21 +115,37 @@ const clientToolsSchema = [
   {
     type: 'function',
     name: 'getAllMemories',
-    description: 'Gets all memories from the local database.',
+    description: 'Gets all memories from the weaviate database.',
   },
   {
     type: 'function',
     name: 'updateMemory',
-    description: 'Updates a memory in the local database.',
+    description: 'Updates a memory in the weaviate database.',
     parameters: {
       type: 'object',
       properties: {
-        id: { type: 'number', description: 'ID of the memory to update' },
+        id: { type: 'string', description: 'ID of the memory to update' },
         title: { type: 'string', description: 'Title of the memory' },
-        description: { type: 'string', description: 'Description of the memory' },
-        date: { type: 'string', description: 'Date of the memory in ISO format' },
+        text: { type: 'string', description: 'Text content of the memory' },
+        tags: { 
+          type: 'array', 
+          items: { type: 'string' },
+          description: 'Array of tags for the memory'
+        }
       },
       required: ['id'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'searchMemories',
+    description: 'Searches memories in the weaviate database.',
+    parameters: {
+      type: 'object',
+      properties: {
+        q: { type: 'string', description: 'Query to search for memories' },
+      },
+      required: ['q'],
     },
   },
 ];
@@ -215,28 +237,45 @@ const clientTools = {
       return { success: false, error: 'Failed to update task.' };
     }
   },
-  addMemory: async (memoryData: Omit<Memory, 'id'>) => {
+  
+  addMemory: async ({ title, text, tags }: { title: string; text: string; tags: string[] }) => {
     try {
-      const memory = await db.addMemory(memoryData);
-      return { success: true, memory };
+      const response = await fetch(`${API_BASE_URL}/memories`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          text,
+          tags,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create memory');
+      }
+
+      const data = await response.json();
+      return { success: true, id: data.id };
     } catch (error) {
       console.error('Error adding memory:', error);
       return { success: false, error: 'Failed to add memory.' };
     }
   },
-  getAllMemories: async () => {
-    try {
-      const memories = await db.getAllMemories();
-      return { success: true, memories };
-    } catch (error) {
-      console.error('Error fetching memories:', error);
-      return { success: false, error: 'Failed to fetch memories.' };
-    }
-  },
 
-  deleteMemory: async ({ id }: { id: number }) => {
+  deleteMemory: async ({ id }: { id: string }) => {
     try {
-      await db.deleteMemory(id);
+      const response = await fetch(`${API_BASE_URL}/memories/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok && response.status !== 204) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to delete memory');
+      }
+
       return { success: true };
     } catch (error) {
       console.error('Error deleting memory:', error);
@@ -244,13 +283,64 @@ const clientTools = {
     }
   },
 
-  updateMemory: async ({ id, ...updates }: { id: number } & Partial<Omit<Memory, 'id'>>) => {
+  getAllMemories: async () => {
     try {
-      await db.updateMemory(id, updates);
-      return { success: true };
+      const response = await fetch(`${API_BASE_URL}/memories`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to fetch memories');
+      }
+
+      const data = await response.json();
+      return { success: true, memories: data.memories, totalResults: data.totalResults };
+    } catch (error) {
+      console.error('Error fetching memories:', error);
+      return { success: false, error: 'Failed to fetch memories.' };
+    }
+  },
+
+  updateMemory: async ({ id, title, text, tags }: { id: string; title?: string; text?: string; tags?: string[] }) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/memories/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title,
+          text,
+          tags,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to update memory');
+      }
+
+      const data = await response.json();
+      return { success: true, memory: data };
     } catch (error) {
       console.error('Error updating memory:', error);
       return { success: false, error: 'Failed to update memory.' };
+    }
+  },
+
+  searchMemories: async ({ q }: { q: string }) => {
+    try {
+      const response = await fetch(`${API_BASE_URL}/memories/search?q=${encodeURIComponent(q)}`);
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to search memories');
+      }
+
+      const data = await response.json();
+      return { success: true, memories: data.memories, totalResults: data.totalResults };
+    } catch (error) {
+      console.error('Error searching memories:', error);
+      return { success: false, error: 'Failed to search memories.' };
     }
   },
 };

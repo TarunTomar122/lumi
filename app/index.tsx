@@ -154,7 +154,7 @@ const MAX_HISTORY = 50;
 
 export default function Page() {
   const navigation = useNavigation();
-  const { state, startRecognizing, stopRecognizing, destroyRecognizer, resetState } =
+  const { state, startRecognizing, stopRecognizing, resetState } =
     useVoiceRecognition();
   const [isRecording, setIsRecording] = React.useState(false);
   const [userResponse, setUserResponse] = React.useState<string>('');
@@ -191,16 +191,17 @@ export default function Page() {
   // Watch for transcription results when we're waiting for them
   React.useEffect(() => {
     console.log('Recording results:', state.results);
-    if (state.results[0]) {
+    if (state.results[0] && !isRecording) {  // Only process results when stopping recording
       // Check if we've already processed this result
       const resultString = state.results[0];
       if (!processedResultsRef.current.has(resultString)) {
         processedResultsRef.current.add(resultString);
-        setUserResponse(resultString);
-        handleSubmit();
+
+        // remove any leading or trailing whitespace
+        setUserResponse(resultString.trim());
       }
     }
-  }, [state.results]);
+  }, [state.results, isRecording]);
 
   const updateMessageHistory = (newMessages: Array<any>) => {
     // Filter out:
@@ -403,10 +404,12 @@ export default function Page() {
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.textInput}
-            placeholder="Ask anything"
+            placeholder={isRecording ? 'Listening...' : 'Ask anything'}
             placeholderTextColor="#A1887F"
             onChangeText={setUserResponse}
             value={userResponse}
+            multiline={true}
+            numberOfLines={4}
           />
           <TouchableOpacity
             style={styles.micButton}
@@ -417,9 +420,12 @@ export default function Page() {
               } else if (isRecording) {
                 stopRecognizing();
                 setIsRecording(false);
+                // Don't automatically submit - let user review and send manually
               } else {
                 startRecognizing();
                 setIsRecording(true);
+                // Clear any previous results when starting new recording
+                processedResultsRef.current.clear();
               }
             }}>
             {userResponse ? (
@@ -526,7 +532,7 @@ const styles = StyleSheet.create({
     color: '#F5F5F5',
     fontFamily: 'MonaSans-Regular',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 2,
   },
   micButton: {
     backgroundColor: '#4B4B4B',
