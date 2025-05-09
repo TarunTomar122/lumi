@@ -1,7 +1,6 @@
 import { useNavigation } from 'expo-router';
 import { Text, View, ScrollView, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
 import React from 'react';
-import { setupNotifications } from '@/utils/tools';
 import { Ionicons } from '@expo/vector-icons';
 import Message from './components/Message';
 import { talkToAgent } from '@/utils/agent';
@@ -24,10 +23,6 @@ export default function Page() {
   const [isLoading, setIsLoading] = React.useState(false);
   const [isThinking, setIsThinking] = React.useState(false);
   const scrollViewRef = React.useRef<ScrollView>(null);
-
-  React.useEffect(() => {
-    setupNotifications();
-  }, []);
 
   React.useEffect(() => {
     navigation.setOptions({ headerShown: false });

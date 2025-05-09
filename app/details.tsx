@@ -1,15 +1,59 @@
 import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, TouchableOpacity } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  SafeAreaView,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+} from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { formatDate } from '@/utils/commons';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
+import InputContainer from './components/inputContainer';
+import { clientTools } from '@/utils/tools';
 
 const DetailsPage = () => {
   const router = useRouter();
   const { item: itemString } = useLocalSearchParams();
   const item = JSON.parse(itemString as string);
-  console.log(item);
+
+  const [userResponse, setUserResponse] = React.useState<string>('');
+  const [isRecording, setIsRecording] = React.useState<boolean>(false);
+  const [isThinking, setIsThinking] = React.useState<boolean>(false);
+  const [isLoading, setIsLoading] = React.useState<boolean>(false);
+
+  const [textContent, setTextContent] = React.useState<string>(item.text);
+  const [hasEdited, setHasEdited] = React.useState<boolean>(false);
+
+  const handleTextChange = (text: string) => {
+    setTextContent(text);
+    setHasEdited(true);
+  };
+
+  const handleSave = () => {
+    console.log('Updating memory:', textContent);
+    setIsLoading(true);
+    console.log('Updating memory:', textContent, item.id);
+    clientTools
+      .updateMemory({
+        id: item.id,
+        text: textContent,
+        title: item.title,
+        tags: item.tags || [],
+      })
+      .then(() => {
+        setHasEdited(false);
+        setIsLoading(false);
+      })
+      .catch((e: any) => {
+        console.error('Error updating memory:', e);
+        setIsLoading(false);
+      });
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -18,9 +62,21 @@ const DetailsPage = () => {
             <Ionicons name="arrow-back" size={24} color="#F5F5F5" />
           </TouchableOpacity>
           <Text style={styles.title}>Memory</Text>
-          <TouchableOpacity style={styles.deleteButton} onPress={() => router.back()}>
-            <Ionicons name="trash" size={24} color="#F5F5F5" />
-          </TouchableOpacity>
+          {isLoading ? (
+            <ActivityIndicator size="large" color="#F5F5F5" />
+          ) : (
+            <>
+              {hasEdited ? (
+                <TouchableOpacity style={styles.deleteButton} onPress={() => handleSave()}>
+                  <Ionicons name="checkmark" size={24} color="#F5F5F5" />
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity style={styles.deleteButton} onPress={() => router.back()}>
+                  <Ionicons name="trash" size={24} color="#F5F5F5" />
+                </TouchableOpacity>
+              )}
+            </>
+          )}
         </View>
         <View style={styles.titleContainer}>
           <Text style={styles.title}>{item.title}</Text>
@@ -29,8 +85,23 @@ const DetailsPage = () => {
           </Text>
         </View>
         <View style={styles.content}>
-          <Text style={styles.text}>{item.text}</Text>
+          <TextInput
+            style={styles.text}
+            multiline={true}
+            value={textContent}
+            onChangeText={handleTextChange}
+          />
         </View>
+        {isThinking && <Text style={styles.thinking}>Thinking...</Text>}
+      </View>
+      <View style={styles.inputContainer}>
+        <InputContainer
+          userResponse={userResponse}
+          setUserResponse={setUserResponse}
+          handleSubmit={() => {}}
+          isRecording={isRecording}
+          setIsRecording={setIsRecording}
+        />
       </View>
     </SafeAreaView>
   );
@@ -68,7 +139,7 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   deleteButton: {
-    padding: 0,
+    padding: 6,
   },
   date: {
     fontSize: 12,
@@ -84,6 +155,15 @@ const styles = StyleSheet.create({
     color: '#F5F5F5',
     fontFamily: 'MonaSans-Regular',
     lineHeight: 28,
+  },
+  thinking: {
+    color: '#A1887F',
+    fontSize: 18,
+    fontFamily: 'MonaSans-Regular',
+    fontStyle: 'italic',
+  },
+  inputContainer: {
+    padding: 16,
   },
 });
 

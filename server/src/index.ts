@@ -29,7 +29,7 @@ app.get('/api/memories', async (_req: Request, res: Response) => {
 app.post('/api/memories', async (req: Request, res: Response) => {
   try {
     const { title, text, tags } = req.body;
-    
+
     if (!title || !text) {
       return res.status(400).json({ error: 'Title and text are required' });
     }
@@ -82,6 +82,17 @@ app.delete('/api/memories/:id', async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error deleting memory:', error);
     res.status(500).json({ error: 'Failed to delete memory' });
+  }
+});
+
+app.put('/api/memories/:id', async (req: Request, res: Response) => {
+  try {
+    const { title, text, tags } = req.body;
+    await memoryService.updateMemory(req.params.id, { title, text, tags });
+    res.status(204).send();
+  } catch (error) {
+    console.error('Error updating memory:', error);
+    res.status(500).json({ error: 'Failed to update memory' });
   }
 });
 
@@ -151,4 +162,4 @@ app.delete('/api/behaviors/:id', async (req: Request, res: Response) => {
 
 app.listen(port, () => {
   console.log(`Server running at http://localhost:${port}`);
-}); 
+});

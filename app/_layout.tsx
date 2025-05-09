@@ -1,14 +1,9 @@
-import {
-  DarkTheme,
-  DefaultTheme,
-  NavigationContainer,
-  ThemeProvider,
-} from '@react-navigation/native';
+import { setupNotifications } from '@/utils/tools';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-import { View, } from 'react-native';
+import { View } from 'react-native';
 import { db } from '../utils/database';
 import { Slot } from 'expo-router';
 
@@ -17,7 +12,7 @@ SplashScreen.preventAutoHideAsync();
 
 function NavigatorContent() {
   return (
-    <View style={{ flex: 1, backgroundColor: '#2B2B2B'}}>
+    <View style={{ flex: 1, backgroundColor: '#2B2B2B' }}>
       <StatusBar style="light-content" backgroundColor="#2B2B2B" />
       <Slot />
     </View>
@@ -35,11 +30,9 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Initialize Firebase
-        // initializeFirebase();
-        // Initialize SQLite database
+        setupNotifications();
         await db.init();
-        console.log('✅ Database initialized');
+        console.log('✅ Database initialized & notifications setup');
       } catch (error) {
         console.error('❌ Error initializing:', error);
       }
@@ -56,7 +49,5 @@ export default function RootLayout() {
     return null;
   }
 
-  return (
-    <NavigatorContent />
-  );
+  return <NavigatorContent />;
 }

@@ -8,8 +8,8 @@ import { db } from '@/utils/database';
 import type { Task } from '@/utils/database';
 import { DateTime } from 'luxon';
 
-// const API_BASE_URL = 'http://10.0.2.2:3001/api';
-const API_BASE_URL = 'https://lumi-server-iixq.onrender.com/api';
+const API_BASE_URL = 'http://10.161.88.145:3001/api';
+// const API_BASE_URL = 'https://lumi-server-iixq.onrender.com/api';
 
 const clientToolsSchema = [
   {
@@ -91,11 +91,11 @@ const clientToolsSchema = [
       properties: {
         title: { type: 'string', description: 'Title of the memory' },
         text: { type: 'string', description: 'Text content of the memory' },
-        tags: { 
-          type: 'array', 
+        tags: {
+          type: 'array',
           items: { type: 'string' },
-          description: 'Array of tags for the memory'
-        }
+          description: 'Array of tags for the memory',
+        },
       },
       required: ['title', 'text'],
     },
@@ -127,11 +127,11 @@ const clientToolsSchema = [
         id: { type: 'string', description: 'ID of the memory to update' },
         title: { type: 'string', description: 'Title of the memory' },
         text: { type: 'string', description: 'Text content of the memory' },
-        tags: { 
-          type: 'array', 
+        tags: {
+          type: 'array',
           items: { type: 'string' },
-          description: 'Array of tags for the memory'
-        }
+          description: 'Array of tags for the memory',
+        },
       },
       required: ['id'],
     },
@@ -237,7 +237,7 @@ const clientTools = {
       return { success: false, error: 'Failed to update task.' };
     }
   },
-  
+
   addMemory: async ({ title, text, tags }: { title: string; text: string; tags: string[] }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/memories`, {
@@ -286,7 +286,7 @@ const clientTools = {
   getAllMemories: async () => {
     try {
       const response = await fetch(`${API_BASE_URL}/memories`);
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to fetch memories');
@@ -300,7 +300,17 @@ const clientTools = {
     }
   },
 
-  updateMemory: async ({ id, title, text, tags }: { id: string; title?: string; text?: string; tags?: string[] }) => {
+  updateMemory: async ({
+    id,
+    title,
+    text,
+    tags,
+  }: {
+    id: string;
+    title?: string;
+    text?: string;
+    tags?: string[];
+  }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/memories/${id}`, {
         method: 'PUT',
@@ -319,8 +329,7 @@ const clientTools = {
         throw new Error(error.error || 'Failed to update memory');
       }
 
-      const data = await response.json();
-      return { success: true, memory: data };
+      return { success: true };
     } catch (error) {
       console.error('Error updating memory:', error);
       return { success: false, error: 'Failed to update memory.' };
@@ -330,7 +339,7 @@ const clientTools = {
   searchMemories: async ({ q }: { q: string }) => {
     try {
       const response = await fetch(`${API_BASE_URL}/memories/search?q=${encodeURIComponent(q)}`);
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.error || 'Failed to search memories');

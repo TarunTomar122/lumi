@@ -26,6 +26,25 @@ export class MemoryService {
     }
   }
 
+  async updateMemory(id: string, memory: Memory): Promise<void> {
+    try {
+      await client.data
+        .updater()
+        .withClassName(MEMORY_CLASS_NAME)
+        .withId(id)
+        .withProperties({
+          title: memory.title,
+          text: memory.text,
+          date: memory.date,
+          tags: memory.tags,
+        })
+        .do();
+    } catch (error) {
+      console.error('Error updating memory:', error);
+      throw error;
+    }
+  }
+
   async getMemory(id: string): Promise<Memory | null> {
     try {
       const result = await client.data
@@ -79,11 +98,7 @@ export class MemoryService {
 
   async deleteMemory(id: string): Promise<void> {
     try {
-      await client.data
-        .deleter()
-        .withClassName(MEMORY_CLASS_NAME)
-        .withId(id)
-        .do();
+      await client.data.deleter().withClassName(MEMORY_CLASS_NAME).withId(id).do();
     } catch (error) {
       console.error('Error deleting memory:', error);
       throw error;
@@ -113,4 +128,4 @@ export class MemoryService {
       throw error;
     }
   }
-} 
+}
