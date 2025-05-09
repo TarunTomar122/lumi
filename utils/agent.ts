@@ -1,15 +1,22 @@
 import { SYSTEM_MESSAGE } from './system-message';
 import { clientTools, clientToolsSchema } from './tools';
 
+interface Message {
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  tool_calls?: any[];
+  tool_call_id?: string;
+}
+
 export const talkToAgent = async (
   userResponse: string,
-  updateHistory: (messages: any[]) => void,
-  messageHistory: any[],
+  updateHistory: (messages: Message[]) => void,
+  messageHistory: Message[],
   setAssistantResponse: (response: string) => void,
   setIsThinking: (thinking: boolean) => void,
   setIsLoading: (loading: boolean) => void
 ) => {
-  const userMessage = { role: 'user', content: userResponse };
+  const userMessage: Message = { role: 'user', content: userResponse };
   const currentMessageHistory = [...messageHistory, userMessage];
   updateHistory(currentMessageHistory);
   try {
@@ -48,7 +55,7 @@ export const talkToAgent = async (
       const responseData = await response.json();
 
       const assistantMessage = responseData.choices[0].message;
-      currentMessageHistory.push(assistantMessage);
+      currentMessageHistory.push(assistantMessage as Message);
 
       // If the model wants to make tool calls
       if (assistantMessage.tool_calls) {
@@ -72,7 +79,7 @@ export const talkToAgent = async (
                 role: 'tool',
                 tool_call_id: toolCall.id,
                 content: JSON.stringify(result),
-              });
+              } as Message);
             } catch (error) {
               console.error(`❌ Tool call failed for ${toolCall.function.name}:`, error);
             }

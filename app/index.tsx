@@ -4,21 +4,18 @@ import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import Message from './components/Message';
 import { talkToAgent } from '@/utils/agent';
-import { SYSTEM_MESSAGE } from '@/utils/system-message';
 import InputContainer from './components/inputContainer';
+import { useMessageStore } from './store/messageStore';
 const MAX_HISTORY = 50;
 
 export default function Page() {
   const navigation = useNavigation();
   const [isRecording, setIsRecording] = React.useState(false);
-  const [userResponse, setUserResponse] = React.useState<string>('');
+  const [userResponse, setUserResponse] = React.useState<string>('show me all my notes');
   const [assistantResponse, setAssistantResponse] = React.useState<string>(
     'Hello tarat, \nWhat is on your mind right now?'
   );
-  const [messageHistory, setMessageHistory] = React.useState<Array<any>>([
-    SYSTEM_MESSAGE,
-    { role: 'assistant', content: assistantResponse },
-  ]);
+  const { messageHistory, updateMessageHistory, clearMessageHistory } = useMessageStore();
   const resultsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isThinking, setIsThinking] = React.useState(false);
@@ -27,10 +24,6 @@ export default function Page() {
   React.useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
-
-  const updateMessageHistory = (newMessages: Array<any>) => {
-    setMessageHistory(newMessages);
-  };
 
   const handleSubmit = async () => {
     if (!userResponse) {
@@ -84,10 +77,7 @@ export default function Page() {
             onPress={() => {
               setUserResponse('');
               setAssistantResponse('Hello tarat, \nWhat is on your mind right now?');
-              setMessageHistory([
-                SYSTEM_MESSAGE,
-                { role: 'assistant', content: assistantResponse },
-              ]);
+              clearMessageHistory();
             }}>
             <Ionicons name="sync-outline" size={24} color="#F5F5F5" />
           </TouchableOpacity>
@@ -106,6 +96,7 @@ export default function Page() {
             ))}
           {isThinking && <Text style={styles.thinking}>Thinking...</Text>}
         </ScrollView>
+
         <InputContainer
           userResponse={userResponse}
           setUserResponse={setUserResponse}

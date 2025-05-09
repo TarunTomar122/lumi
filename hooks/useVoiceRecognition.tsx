@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
-  SpeechRecognitionErrorEvent,
-  SpeechRecognitionResultEvent
+  ExpoSpeechRecognitionErrorEvent,
+  ExpoSpeechRecognitionResultEvent
 } from 'expo-speech-recognition';
 
 interface IState {
@@ -76,7 +76,7 @@ export const useVoiceRecognition = () => {
     });
   });
 
-  useSpeechRecognitionEvent('error', (event: SpeechRecognitionErrorEvent) => {
+  useSpeechRecognitionEvent('error', (event: ExpoSpeechRecognitionErrorEvent) => {
     console.log('onSpeechError:', event.error);
     setState((prevState: IState) => ({
       ...prevState,
@@ -85,7 +85,7 @@ export const useVoiceRecognition = () => {
     }));
   });
 
-  useSpeechRecognitionEvent('result', (event: SpeechRecognitionResultEvent) => {
+  useSpeechRecognitionEvent('result', (event: ExpoSpeechRecognitionResultEvent) => {
     console.log('onSpeechResults:', event.results);
     if (event.results) {
       const results = event.results.map(result => result.transcript);

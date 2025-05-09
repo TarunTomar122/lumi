@@ -21,14 +21,14 @@ export default function InputContainer({
 
   React.useEffect(() => {
     if (state.error) {
-      setUserResponse("I couldn't quite understand you. Could you please try speaking again?");
-      // Clear the error state after displaying the message
+      console.log('Error:', state.error);
       resetState();
+      setIsRecording(false);
     }
   }, [state.error]);
 
   React.useEffect(() => {
-    console.log('Recording results:', state.results);
+    // console.log('Recording results:', state.results, isRecording);
     if (state.results[0] && !isRecording) {
       // Only process results when stopping recording
       // Check if we've already processed this result

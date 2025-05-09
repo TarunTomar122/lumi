@@ -8,8 +8,8 @@ import { db } from '@/utils/database';
 import type { Task } from '@/utils/database';
 import { DateTime } from 'luxon';
 
-const API_BASE_URL = 'http://10.161.88.145:3001/api';
-// const API_BASE_URL = 'https://lumi-server-iixq.onrender.com/api';
+// const API_BASE_URL = 'http://10.161.88.145:3001/api';
+const API_BASE_URL = 'https://lumi-server-iixq.onrender.com/api';
 
 const clientToolsSchema = [
   {

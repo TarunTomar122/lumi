@@ -88,7 +88,12 @@ app.delete('/api/memories/:id', async (req: Request, res: Response) => {
 app.put('/api/memories/:id', async (req: Request, res: Response) => {
   try {
     const { title, text, tags } = req.body;
-    await memoryService.updateMemory(req.params.id, { title, text, tags });
+    await memoryService.updateMemory(req.params.id, {
+      title,
+      text,
+      tags,
+      date: new Date().toISOString(),
+    });
     res.status(204).send();
   } catch (error) {
     console.error('Error updating memory:', error);

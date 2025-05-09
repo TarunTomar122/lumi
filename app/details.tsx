@@ -34,9 +34,7 @@ const DetailsPage = () => {
   };
 
   const handleSave = () => {
-    console.log('Updating memory:', textContent);
     setIsLoading(true);
-    console.log('Updating memory:', textContent, item.id);
     clientTools
       .updateMemory({
         id: item.id,
@@ -128,7 +126,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   backButton: {
-    padding: 0,
+    padding: 6,
   },
   title: {
     fontSize: 18,
