@@ -121,12 +121,10 @@ export const SYSTEM_MESSAGE = {
             \`display_message\`: memory with 🧠 icon and idea tag
   
             ---
-  
             ✔️ Always reason conversationally before showing results  
             ✔️ Confirm only after real tool call succeeds  
             ✔️ Never mix structured content into the main message  
             ✔️ Decline out-of-scope requests kindly  
             ✔️ Always use accurate field formats and types in JSON
-            ✔️ Don't show past tasks or reminders. Filter them out in your response.
         `,
 };

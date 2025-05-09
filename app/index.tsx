@@ -11,7 +11,7 @@ const MAX_HISTORY = 50;
 export default function Page() {
   const navigation = useNavigation();
   const [isRecording, setIsRecording] = React.useState(false);
-  const [userResponse, setUserResponse] = React.useState<string>('show me all my notes');
+  const [userResponse, setUserResponse] = React.useState<string>('');
   const [assistantResponse, setAssistantResponse] = React.useState<string>(
     'Hello tarat, \nWhat is on your mind right now?'
   );

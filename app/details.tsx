@@ -12,26 +12,18 @@ import { useLocalSearchParams } from 'expo-router';
 import { formatDate } from '@/utils/commons';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import InputContainer from './components/inputContainer';
 import { clientTools } from '@/utils/tools';
-
+import { useMessageStore } from './store/messageStore';
 const DetailsPage = () => {
   const router = useRouter();
   const { item: itemString } = useLocalSearchParams();
   const item = JSON.parse(itemString as string);
-
-  const [userResponse, setUserResponse] = React.useState<string>('');
-  const [isRecording, setIsRecording] = React.useState<boolean>(false);
-  const [isThinking, setIsThinking] = React.useState<boolean>(false);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
-
+  const { clearMessageHistory } = useMessageStore();
+  const [title, setTitle] = React.useState<string>(item.title);
   const [textContent, setTextContent] = React.useState<string>(item.text);
-  const [hasEdited, setHasEdited] = React.useState<boolean>(false);
 
-  const handleTextChange = (text: string) => {
-    setTextContent(text);
-    setHasEdited(true);
-  };
+  const [hasEdited, setHasEdited] = React.useState<boolean>(false);
 
   const handleSave = () => {
     setIsLoading(true);
@@ -39,7 +31,7 @@ const DetailsPage = () => {
       .updateMemory({
         id: item.id,
         text: textContent,
-        title: item.title,
+        title: title,
         tags: item.tags || [],
       })
       .then(() => {
@@ -52,11 +44,21 @@ const DetailsPage = () => {
       });
   };
 
+  const handleDelete = () => {
+    clientTools.deleteMemory({ id: item.id });
+    router.back();
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => {
+              clearMessageHistory();
+              router.back();
+            }}>
             <Ionicons name="arrow-back" size={24} color="#F5F5F5" />
           </TouchableOpacity>
           <Text style={styles.title}>Memory</Text>
@@ -69,7 +71,7 @@ const DetailsPage = () => {
                   <Ionicons name="checkmark" size={24} color="#F5F5F5" />
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={styles.deleteButton} onPress={() => router.back()}>
+                <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete()}>
                   <Ionicons name="trash" size={24} color="#F5F5F5" />
                 </TouchableOpacity>
               )}
@@ -77,9 +79,17 @@ const DetailsPage = () => {
           )}
         </View>
         <View style={styles.titleContainer}>
-          <Text style={styles.title}>{item.title}</Text>
+          <TextInput
+            style={styles.title}
+            value={title}
+            multiline={true}
+            onChangeText={text => {
+              setTitle(text);
+              setHasEdited(true);
+            }}
+          />
           <Text style={styles.date}>
-            {formatDate(item.due_date || item.reminder_date || item.date)}
+            last updated: {formatDate(item.due_date || item.reminder_date || item.date)}
           </Text>
         </View>
         <View style={styles.content}>
@@ -87,19 +97,12 @@ const DetailsPage = () => {
             style={styles.text}
             multiline={true}
             value={textContent}
-            onChangeText={handleTextChange}
+            onChangeText={text => {
+              setTextContent(text);
+              setHasEdited(true);
+            }}
           />
         </View>
-        {isThinking && <Text style={styles.thinking}>Thinking...</Text>}
-      </View>
-      <View style={styles.inputContainer}>
-        <InputContainer
-          userResponse={userResponse}
-          setUserResponse={setUserResponse}
-          handleSubmit={() => {}}
-          isRecording={isRecording}
-          setIsRecording={setIsRecording}
-        />
       </View>
     </SafeAreaView>
   );

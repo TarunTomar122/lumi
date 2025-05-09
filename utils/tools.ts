@@ -19,6 +19,11 @@ const clientToolsSchema = [
   },
   {
     type: 'function',
+    name: 'getReminders',
+    description: 'Gets all reminders from the local database.',
+  },
+  {
+    type: 'function',
     name: 'addTask',
     description: 'Adds a task to the local database.',
     parameters: {
@@ -97,7 +102,7 @@ const clientToolsSchema = [
           description: 'Array of tags for the memory',
         },
       },
-      required: ['title', 'text'],
+      required: ['title', 'text', 'tags'],
     },
   },
   {
@@ -154,13 +159,24 @@ const clientTools = {
   getAllTasks: async () => {
     try {
       const tasks = await db.getAllTasks();
-      return { success: true, tasks };
+      // Filter out done tasks
+      const filteredTasks = tasks.filter(task => task.status !== 'done');
+      return { success: true, tasks: filteredTasks };
     } catch (error) {
       console.error('Error fetching tasks:', error);
       return { success: false, error: 'Failed to fetch tasks.' };
     }
   },
-
+  getReminders: async () => {
+    const tasks = await db.getAllTasks();
+    // filter out past reminders
+    const reminders = tasks.filter(
+      task =>
+        task.reminder_date &&
+        DateTime.fromISO(task.reminder_date).setZone('Asia/Kolkata').diffNow().toMillis() > 0
+    );
+    return { success: true, reminders };
+  },
   addTask: async (taskData: Omit<Task, 'id'>) => {
     try {
       let notificationId = null;
@@ -223,7 +239,7 @@ const clientTools = {
           await scheduleNotification(
             updates.title || task?.title || '',
             updates.description || task?.description || null,
-            DateTime.fromISO(updates.reminder_date).toJSDate()
+            DateTime.fromISO(updates.reminder_date).setZone('Asia/Kolkata')
           );
         }
       }
@@ -416,14 +432,14 @@ export const scheduleNotification = async (
   scheduledTime: DateTime
 ): Promise<string> => {
   try {
-    // console.log('📅 Scheduled time:', scheduledTime.hour, scheduledTime.minute, scheduledTime.second);
-
     const date = new Date();
     date.setHours(scheduledTime.hour);
     date.setMinutes(scheduledTime.minute);
     date.setSeconds(scheduledTime.second);
+    date.setDate(scheduledTime.day);
+    date.setMonth(scheduledTime.month - 1);
+    date.setFullYear(scheduledTime.year);
 
-    console.log('📅 Scheduled time:', date);
     // Create a time-based trigger
     const trigger: TimestampTrigger = {
       type: TriggerType.TIMESTAMP,

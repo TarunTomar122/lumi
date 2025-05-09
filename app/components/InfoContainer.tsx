@@ -24,9 +24,10 @@ export interface InfoMessageProps {
 
 const InfoContainer: React.FC<InfoMessageProps> = ({ items }) => {
   const router = useRouter();
-
   // Keep track of task statuses with a Map to store both completed and uncompleted states
-  const [taskStatuses, setTaskStatuses] = useState<Map<string | number, 'done' | 'todo'>>(new Map());
+  const [taskStatuses, setTaskStatuses] = useState<Map<string | number, 'done' | 'todo'>>(
+    new Map()
+  );
   // Keep track of deleted items to filter them out from the UI
   const [deletedItems, setDeletedItems] = useState<Set<string | number>>(new Set());
 
@@ -72,7 +73,8 @@ const InfoContainer: React.FC<InfoMessageProps> = ({ items }) => {
         .filter(item => !deletedItems.has(item.id!))
         .map((item, index) => {
           // Check both the original status and our local state
-          const currentStatus = item.type === 'task' ? (taskStatuses.get(item.id!) || item.status) : undefined;
+          const currentStatus =
+            item.type === 'task' ? taskStatuses.get(item.id!) || item.status : undefined;
           const isCompleted = item.type === 'task' && item.id ? currentStatus === 'done' : false;
 
           return (
@@ -81,12 +83,12 @@ const InfoContainer: React.FC<InfoMessageProps> = ({ items }) => {
               style={[styles.itemContainer, { backgroundColor: 'rgba(213, 213, 213, 0)' }]}>
               <View style={styles.contentContainer}>
                 {item.type === 'memory' ? (
-                  <TouchableOpacity 
-                    style={styles.textContainer} 
+                  <TouchableOpacity
+                    style={styles.textContainer}
                     onPress={() => {
                       router.push({
                         pathname: '/details',
-                        params: { item: JSON.stringify(item) }
+                        params: { item: JSON.stringify(item) },
                       });
                     }}>
                     <Text style={[styles.text, isCompleted && styles.completedText]}>
