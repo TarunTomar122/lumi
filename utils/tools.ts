@@ -8,8 +8,8 @@ import { db } from '@/utils/database';
 import type { Task } from '@/utils/database';
 import { DateTime } from 'luxon';
 
-// Add API base URL
-const API_BASE_URL = 'http://10.0.2.2:3001/api';
+// const API_BASE_URL = 'http://10.0.2.2:3001/api';
+const API_BASE_URL = 'https://lumi-server-iixq.onrender.com/api';
 
 const clientToolsSchema = [
   {
@@ -368,42 +368,6 @@ export const setupNotifications = async () => {
         bypassDnd: true,
         vibration: true,
       });
-
-      // console.log('✅ Notification channel created');
-
-      // // lets create a notification trigger for 20 seconds from now
-      // const trigger: TimestampTrigger = {
-      //   type: TriggerType.TIMESTAMP,
-      //   timestamp: Date.now() + 20000,
-      // };
-
-      // const notificationId = await notifee.createTriggerNotification(
-      //   {
-      //     id: Date.now().toString(),
-      //     title: 'Test Notification',
-      //     body: 'This is a test notification',
-      //     android: {
-      //       channelId: 'default',
-      //       importance: AndroidImportance.HIGH,
-      //       pressAction: {
-      //         id: 'default',
-      //       },
-      //       sound: 'default',
-      //       vibrationPattern: [300, 500, 300, 500],
-      //       lights: [AndroidColor.YELLOW, 300, 500],
-      //       smallIcon: 'ic_launcher',
-      //       showTimestamp: true,
-      //       ongoing: false,
-      //       asForegroundService: true,
-      //       autoCancel: false,
-      //       timestamp: Date.now() + 20000,
-      //       fullScreenAction: {
-      //         id: 'default',
-      //       },
-      //     },
-      //   },
-      //   trigger
-      // );
 
       // Set up foreground handler for trigger notifications
       notifee.onForegroundEvent(async ({ type, detail }) => {

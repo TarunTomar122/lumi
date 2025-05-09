@@ -14,13 +14,6 @@ export interface Task {
   status: 'todo' | 'done';
 }
 
-export interface Memory {
-  id?: number;
-  title: string;
-  description?: string | null;
-  date: string;
-}
-
 class DatabaseManager {
   private database: SQLite.SQLiteDatabase | null = null;
   private static instance: DatabaseManager;
@@ -55,7 +48,6 @@ class DatabaseManager {
     try {
       // Drop existing table if it exists
       await this.database.executeSql('DROP TABLE IF EXISTS tasks;');
-      await this.database.executeSql('DROP TABLE IF EXISTS memories;');
 
       // Create new simplified table with updated schema
       await this.database.executeSql(`
@@ -66,17 +58,6 @@ class DatabaseManager {
           due_date TEXT,
           reminder_date TEXT,
           status TEXT NOT NULL DEFAULT 'todo'
-        );
-      `);
-
-      // Create another table to store memories
-      await this.database.executeSql(`
-        CREATE TABLE IF NOT EXISTS memories (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          title TEXT NOT NULL,
-          description TEXT,
-          tag TEXT,
-          date TEXT NOT NULL
         );
       `);
 
@@ -158,74 +139,6 @@ class DatabaseManager {
       await this.database.executeSql('DELETE FROM tasks WHERE id = ?;', [id]);
     } catch (error) {
       console.error('Error deleting task:', error);
-      throw error;
-    }
-  }
-
-  // Memories CRUD operations
-  async getAllMemories(): Promise<Memory[]> {
-    if (!this.database) throw new Error('Database not initialized');
-
-    try {
-      const [results] = await this.database.executeSql(
-        'SELECT * FROM memories ORDER BY date DESC;'
-      );
-      const memories: Memory[] = [];
-      for (let i = 0; i < results.rows.length; i++) {
-        memories.push(results.rows.item(i));
-      }
-      return memories;
-    } catch (error) {
-      console.error('Error getting memories:', error);
-      throw error;
-    }
-  }
-
-  async addMemory(memory: Omit<Memory, 'id'>): Promise<Memory> {
-    if (!this.database) throw new Error('Database not initialized');
-
-    try {
-      const [result] = await this.database.executeSql(
-        `INSERT INTO memories (title, description, date) VALUES (?, ?, ?);`,
-        [memory.title, memory.description || null, memory.date]
-      );
-
-      return {
-        id: result.insertId,
-        ...memory,
-      };
-    } catch (error) {
-      console.error('Error adding memory:', error);
-      throw error;
-    }
-  }
-
-  async deleteMemory(id: number): Promise<void> {
-    if (!this.database) throw new Error('Database not initialized');
-
-    try {
-      await this.database.executeSql('DELETE FROM memories WHERE id = ?;', [id]);
-    } catch (error) {
-      console.error('Error deleting memory:', error);
-      throw error;
-    }
-  }
-
-  async updateMemory(id: number, updates: Partial<Omit<Memory, 'id'>>): Promise<void> {
-    if (!this.database) throw new Error('Database not initialized');
-
-    const updateFields = Object.keys(updates)
-      .map(key => `${key} = ?`)
-      .join(', ');
-    const values = Object.values(updates);
-
-    try {
-      await this.database.executeSql(`UPDATE memories SET ${updateFields} WHERE id = ?;`, [
-        ...values,
-        id,
-      ]);
-    } catch (error) {
-      console.error('Error updating memory:', error);
       throw error;
     }
   }
