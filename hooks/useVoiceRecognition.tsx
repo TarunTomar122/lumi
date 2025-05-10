@@ -3,7 +3,7 @@ import {
   ExpoSpeechRecognitionModule,
   useSpeechRecognitionEvent,
   ExpoSpeechRecognitionErrorEvent,
-  ExpoSpeechRecognitionResultEvent
+  ExpoSpeechRecognitionResultEvent,
 } from 'expo-speech-recognition';
 
 interface IState {
@@ -60,18 +60,19 @@ export const useVoiceRecognition = () => {
   useSpeechRecognitionEvent('end', () => {
     console.log('onSpeechEnd');
     setState((prevState: IState) => {
-      const finalResults = prevState.results.length > 0 
-        ? prevState.results 
-        : prevState.partialResults.length > 0
-          ? prevState.partialResults
-          : [];
-      
+      const finalResults =
+        prevState.results.length > 0
+          ? prevState.results
+          : prevState.partialResults.length > 0
+            ? prevState.partialResults
+            : [];
+
       console.log('onSpeechEnd - using results:', finalResults);
       return {
         ...prevState,
         end: '√',
         isRecording: false,
-        results: finalResults
+        results: finalResults,
       };
     });
   });
@@ -89,34 +90,40 @@ export const useVoiceRecognition = () => {
     console.log('onSpeechResults:', event.results);
     if (event.results) {
       const results = event.results.map(result => result.transcript);
-      setState((prevState: IState) => ({ 
-        ...prevState, 
+      setState((prevState: IState) => ({
+        ...prevState,
         results,
         end: event.isFinal ? '√' : prevState.end,
-        isRecording: !event.isFinal
+        isRecording: !event.isFinal,
       }));
     }
   });
 
   const checkPermissions = useCallback(async (): Promise<boolean> => {
     try {
+      console.log('requesting permissions');
       const result = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
-      const isAvailable = await ExpoSpeechRecognitionModule.isRecognitionAvailable();
-      
-      setState(prev => ({ 
-        ...prev, 
+      console.log('result', result);
+      const isAvailable = ExpoSpeechRecognitionModule.isRecognitionAvailable();
+      console.log('isAvailable', isAvailable);
+
+      // save the result in the database
+      // await db.saveSpeechRecognitionPermissions(result.granted);
+
+      setState(prev => ({
+        ...prev,
         hasPermission: result.granted,
-        isAvailable: isAvailable
+        isAvailable: isAvailable,
       }));
-      
+
       return result.granted && isAvailable;
     } catch (e) {
       console.error('Error checking speech recognition permissions:', e);
-      setState(prev => ({ 
-        ...prev, 
+      setState(prev => ({
+        ...prev,
         error: 'Error checking permissions',
         hasPermission: false,
-        isAvailable: false
+        isAvailable: false,
       }));
       return false;
     }
@@ -124,38 +131,28 @@ export const useVoiceRecognition = () => {
 
   const startRecognizing = useCallback(async (): Promise<void> => {
     try {
-      // Check permissions first
-      const permissionGranted = await checkPermissions();
-      if (!permissionGranted) {
-        setState(prev => ({
-          ...prev,
-          error: 'Permission denied for speech recognition'
-        }));
-        return;
-      }
-
       resetState();
-      
+
       // Start speech recognition
-      await ExpoSpeechRecognitionModule.start({
+      ExpoSpeechRecognitionModule.start({
         lang: 'en-US',
         interimResults: false,
         continuous: true,
         androidIntentOptions: {
           EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS: 10000,
         },
-        androidRecognitionServicePackage: "com.google.android.tts",
+        androidRecognitionServicePackage: 'com.google.android.tts',
       });
 
       console.log('startRecognizing');
-      
+
       setState(prev => ({ ...prev, isRecording: true }));
     } catch (e) {
       console.error('Error starting speech recognition:', e);
       setState(prev => ({
         ...prev,
         error: 'Error starting speech recognition',
-        isRecording: false
+        isRecording: false,
       }));
     }
   }, [checkPermissions, resetState]);
@@ -168,7 +165,7 @@ export const useVoiceRecognition = () => {
       console.error('Error stopping speech recognition', e);
       setState(prev => ({
         ...prev,
-        error: 'Error stopping speech recognition'
+        error: 'Error stopping speech recognition',
       }));
     }
   }, []);
@@ -181,14 +178,14 @@ export const useVoiceRecognition = () => {
       console.error('Error canceling speech recognition', e);
       setState(prev => ({
         ...prev,
-        error: 'Error canceling speech recognition'
+        error: 'Error canceling speech recognition',
       }));
     }
   }, []);
 
   useEffect(() => {
     checkPermissions();
-    
+
     return () => {
       // Cleanup
       if (state.isRecording) {

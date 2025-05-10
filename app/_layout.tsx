@@ -6,6 +6,7 @@ import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import { db } from '../utils/database';
 import { Slot } from 'expo-router';
+import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -20,6 +21,7 @@ function NavigatorContent() {
 }
 
 export default function RootLayout() {
+  const { checkPermissions } = useVoiceRecognition();
   const [loaded] = useFonts({
     'MonaSans-Regular': require('../assets/fonts/MonaSans-Regular.ttf'),
     'MonaSans-Medium': require('../assets/fonts/MonaSans-Medium.ttf'),
@@ -30,7 +32,13 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
+        // warm up the server
+        fetch('https://lumi-server-iixq.onrender.com/api/test');
+        // check for audio permissions
+        await checkPermissions();
+        // setup notifications
         setupNotifications();
+        // initialize the database
         await db.init();
         console.log('✅ Database initialized & notifications setup');
       } catch (error) {

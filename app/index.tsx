@@ -25,13 +25,13 @@ export default function Page() {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  const handleSubmit = async () => {
-    if (!userResponse) {
+  const handleSubmit = async (quickAction?: string) => {
+    if (!userResponse && !quickAction) {
       console.log('No results to send');
       return;
     }
     talkToAgent(
-      userResponse,
+      userResponse + (quickAction || ''),
       updateMessageHistory,
       messageHistory,
       setAssistantResponse,
@@ -55,6 +55,18 @@ export default function Page() {
     }
   };
 
+  const handleAddTaskQuickAction = () => {
+    setUserResponse('Add a task:');
+  };
+
+  const handleGetNotesQuickAction = () => {
+    handleSubmit('Get notes');
+  };
+
+  const handleGetTasksQuickAction = () => {
+    handleSubmit('List tasks');
+  };
+
   // Add effect to scroll when messages change
   React.useEffect(() => {
     // Small delay to ensure the new message is rendered
@@ -68,10 +80,10 @@ export default function Page() {
           <TouchableOpacity style={styles.menuButton}>
             <Ionicons name="menu-outline" size={24} color="#F5F5F5" />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.appTitle}>
+          <View style={styles.appTitle}>
             <Text style={styles.appTitleText}>Lumi</Text>
             <Ionicons name="sparkles-outline" size={16} color="#F5F5F5" />
-          </TouchableOpacity>
+          </View>
           <TouchableOpacity
             style={styles.refreshButton}
             onPress={() => {
@@ -96,7 +108,23 @@ export default function Page() {
             ))}
           {isThinking && <Text style={styles.thinking}>Thinking...</Text>}
         </ScrollView>
-
+        <View style={styles.quickActionsContainer}>
+          <TouchableOpacity style={styles.quickActionButton}>
+            <Text style={styles.quickActionButtonText} onPress={handleAddTaskQuickAction}>
+              Add Task
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickActionButton}>
+            <Text style={styles.quickActionButtonText} onPress={handleGetTasksQuickAction}>
+              List Tasks
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.quickActionButton}>
+            <Text style={styles.quickActionButtonText} onPress={handleGetNotesQuickAction}>
+              Get Notes
+            </Text>
+          </TouchableOpacity>
+        </View>
         <InputContainer
           userResponse={userResponse}
           setUserResponse={setUserResponse}
@@ -170,5 +198,22 @@ const styles = StyleSheet.create({
     fontFamily: 'MonaSans-Regular',
     fontStyle: 'italic',
     marginBottom: 16,
+  },
+  quickActionsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    marginBottom: 16,
+    gap: 16,
+  },
+  quickActionButton: {
+    backgroundColor: '#333',
+    padding: 8,
+    borderRadius: 8,
+  },
+  quickActionButtonText: {
+    color: '#F5F5F5',
+    fontSize: 10,
+    fontFamily: 'MonaSans-Regular',
   },
 });

@@ -43,13 +43,12 @@ class DatabaseManager {
   }
 
   private async createTables(): Promise<void> {
-    if (!this.database) throw new Error('Database not initialized');
-    return;
+    if (!this.database) {
+      console.error('Database not initialized');
+      return;
+    }
     try {
-      // Drop existing table if it exists
-      await this.database.executeSql('DROP TABLE IF EXISTS tasks;');
-
-      // Create new simplified table with updated schema
+      // Create table if it doesn't exist
       await this.database.executeSql(`
         CREATE TABLE IF NOT EXISTS tasks (
           id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -16,6 +16,112 @@ export const talkToAgent = async (
   setIsThinking: (thinking: boolean) => void,
   setIsLoading: (loading: boolean) => void
 ) => {
+  if (userResponse.includes('Add a task:')) {
+    setIsThinking(true);
+    const task = userResponse.split('Add a task:')[1].trim();
+    const taskData = {
+      title: task,
+      description: '',
+      due_date: '',
+      reminder_date: '',
+      status: 'todo' as 'todo' | 'done',
+    };
+    await clientTools.addTask(taskData);
+
+    const userMessage: Message = { role: 'user', content: userResponse };
+    const currentMessageHistory = [...messageHistory, userMessage];
+    updateHistory(currentMessageHistory);
+
+    const assistantMessage: Message = {
+      role: 'assistant',
+      content: 'Task added successfully',
+    };
+    const assistantMessageHistory = [...currentMessageHistory, assistantMessage];
+    updateHistory(assistantMessageHistory);
+
+    setAssistantResponse('Task added successfully');
+    setIsThinking(false);
+    return;
+  }
+
+  if (userResponse.includes('List tasks')) {
+    const userMessage: Message = { role: 'user', content: userResponse };
+    const currentMessageHistory = [...messageHistory, userMessage];
+    updateHistory(currentMessageHistory);
+    // set message to thinking
+    setIsThinking(true);
+    const tasks = await clientTools.getAllTasks();
+    const responseWithDisplayMessage = `Here are the tasks from the database: 
+            {
+              "display_message": { 
+                "items": 
+                  ${JSON.stringify(
+                    tasks.tasks?.map((task: any) => ({
+                      title: task.title,
+                      text: task.description,
+                      type: 'task',
+                      icon: '📝',
+                      id: task.id,
+                      status: task.status,
+                      due_date: task.due_date,
+                      reminder_date: task.reminder_date,
+                      date: task.date,
+                      tag: task.tag,
+                    }))
+                  )},
+                "source": "agent"
+              }
+            }`;
+    // add message to history
+    const assistantMessage: Message = {
+      role: 'assistant',
+      content: responseWithDisplayMessage,
+    };
+    const assistantMessageHistory = [...currentMessageHistory, assistantMessage];
+    updateHistory(assistantMessageHistory);
+    // set message to not thinking
+    setIsThinking(false);
+    return;
+  }
+  if (userResponse.includes('Get notes')) {
+    const userMessage: Message = { role: 'user', content: userResponse };
+    const currentMessageHistory = [...messageHistory, userMessage];
+    updateHistory(currentMessageHistory);
+    // set message to thinking
+    setIsThinking(true);
+    const notes = await clientTools.getAllMemories();
+    const responseWithDisplayMessage = `Here are the notes from the database: 
+            {
+              "display_message": { 
+                "items": 
+                  ${JSON.stringify(
+                    notes.memories.map((memory: any) => ({
+                      title: memory.title,
+                      text: memory.text,
+                      type: 'memory',
+                      icon: '📝',
+                      id: memory.id,
+                      status: memory.status,
+                      due_date: memory.due_date,
+                      reminder_date: memory.reminder_date,
+                      date: memory.date,
+                      tag: memory.tag,
+                    }))
+                  )}
+              }
+            }`;
+    // add message to history
+    const assistantMessage: Message = {
+      role: 'assistant',
+      content: responseWithDisplayMessage,
+    };
+    const assistantMessageHistory = [...currentMessageHistory, assistantMessage];
+    updateHistory(assistantMessageHistory);
+    // set message to not thinking
+    setIsThinking(false);
+    return;
+  }
+
   const userMessage: Message = { role: 'user', content: userResponse };
   const currentMessageHistory = [...messageHistory, userMessage];
   updateHistory(currentMessageHistory);

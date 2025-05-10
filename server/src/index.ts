@@ -15,6 +15,10 @@ app.use(express.json());
 // Initialize Weaviate schema
 initializeSchema().catch(console.error);
 
+app.get('/api/test', async (_req: Request, res: Response) => {
+  res.json({ message: 'Hello, world!' });
+});
+
 // Memory endpoints
 app.get('/api/memories', async (_req: Request, res: Response) => {
   try {
