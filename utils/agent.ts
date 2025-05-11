@@ -51,6 +51,16 @@ export const talkToAgent = async (
     // set message to thinking
     setIsThinking(true);
     const tasks = await clientTools.getAllTasks();
+    if (tasks.tasks?.length === 0) {
+      const assistantMessage: Message = {
+        role: 'assistant',
+        content: 'All tasks are done!',
+      };
+      const assistantMessageHistory = [...currentMessageHistory, assistantMessage];
+      updateHistory(assistantMessageHistory);
+      setIsThinking(false);
+      return;
+    }
     const responseWithDisplayMessage = `Here are the tasks from the database: 
             {
               "display_message": { 

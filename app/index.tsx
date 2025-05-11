@@ -213,7 +213,7 @@ const styles = StyleSheet.create({
   },
   quickActionButtonText: {
     color: '#F5F5F5',
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: 'MonaSans-Regular',
   },
 });
