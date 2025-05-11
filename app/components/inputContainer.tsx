@@ -9,27 +9,17 @@ export default function InputContainer({
   handleSubmit,
   isRecording,
   setIsRecording,
-  isLoading,
 }: {
   userResponse: string;
   setUserResponse: (text: string) => void;
   handleSubmit: () => void;
   isRecording: boolean;
   setIsRecording: (recording: boolean) => void;
-  isLoading: boolean;
 }) {
   const processedResultsRef = React.useRef<Set<string>>(new Set());
   const { state, startRecognizing, stopRecognizing, resetState } = useVoiceRecognition();
 
   const [loading, setLoading] = React.useState(false);
-
-  React.useEffect(() => {
-    if (isLoading) {
-      setLoading(true);
-    } else {
-      setLoading(false);
-    }
-  }, [isLoading]);
 
   React.useEffect(() => {
     if (state.error) {

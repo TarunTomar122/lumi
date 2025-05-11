@@ -1,7 +1,9 @@
 import { SYSTEM_MESSAGE } from './system-message';
 import { clientTools, clientToolsSchema } from './tools';
+import { useTaskStore } from '@/app/store/taskStore';
+import { useMemoryStore } from '@/app/store/memoryStore';
 
-interface Message {
+export interface Message {
   role: 'user' | 'assistant' | 'tool';
   content: string;
   tool_calls?: any[];
@@ -16,122 +18,6 @@ export const talkToAgent = async (
   setIsThinking: (thinking: boolean) => void,
   setIsLoading: (loading: boolean) => void
 ) => {
-  if (userResponse.includes('Add a task:')) {
-    setIsThinking(true);
-    const task = userResponse.split('Add a task:')[1].trim();
-    const taskData = {
-      title: task,
-      description: '',
-      due_date: '',
-      reminder_date: '',
-      status: 'todo' as 'todo' | 'done',
-    };
-    await clientTools.addTask(taskData);
-
-    const userMessage: Message = { role: 'user', content: userResponse };
-    const currentMessageHistory = [...messageHistory, userMessage];
-    updateHistory(currentMessageHistory);
-
-    const assistantMessage: Message = {
-      role: 'assistant',
-      content: 'Task added successfully',
-    };
-    const assistantMessageHistory = [...currentMessageHistory, assistantMessage];
-    updateHistory(assistantMessageHistory);
-
-    setAssistantResponse('Task added successfully');
-    setIsThinking(false);
-    return;
-  }
-
-  if (userResponse.includes('List tasks')) {
-    const userMessage: Message = { role: 'user', content: userResponse };
-    const currentMessageHistory = [...messageHistory, userMessage];
-    updateHistory(currentMessageHistory);
-    // set message to thinking
-    setIsThinking(true);
-    const tasks = await clientTools.getAllTasks();
-    if (tasks.tasks?.length === 0) {
-      const assistantMessage: Message = {
-        role: 'assistant',
-        content: 'All tasks are done!',
-      };
-      const assistantMessageHistory = [...currentMessageHistory, assistantMessage];
-      updateHistory(assistantMessageHistory);
-      setIsThinking(false);
-      return;
-    }
-    const responseWithDisplayMessage = `Here are the tasks from the database: 
-            {
-              "display_message": { 
-                "items": 
-                  ${JSON.stringify(
-                    tasks.tasks?.map((task: any) => ({
-                      title: task.title,
-                      text: task.description,
-                      type: 'task',
-                      icon: '📝',
-                      id: task.id,
-                      status: task.status,
-                      due_date: task.due_date,
-                      reminder_date: task.reminder_date,
-                      date: task.date,
-                      tag: task.tag,
-                    }))
-                  )},
-                "source": "agent"
-              }
-            }`;
-    // add message to history
-    const assistantMessage: Message = {
-      role: 'assistant',
-      content: responseWithDisplayMessage,
-    };
-    const assistantMessageHistory = [...currentMessageHistory, assistantMessage];
-    updateHistory(assistantMessageHistory);
-    // set message to not thinking
-    setIsThinking(false);
-    return;
-  }
-  if (userResponse.includes('Get notes')) {
-    const userMessage: Message = { role: 'user', content: userResponse };
-    const currentMessageHistory = [...messageHistory, userMessage];
-    updateHistory(currentMessageHistory);
-    // set message to thinking
-    setIsThinking(true);
-    const notes = await clientTools.getAllMemories();
-    const responseWithDisplayMessage = `Here are the notes from the database: 
-            {
-              "display_message": { 
-                "items": 
-                  ${JSON.stringify(
-                    notes.memories.map((memory: any) => ({
-                      title: memory.title,
-                      text: memory.text,
-                      type: 'memory',
-                      icon: '📝',
-                      id: memory.id,
-                      status: memory.status,
-                      due_date: memory.due_date,
-                      reminder_date: memory.reminder_date,
-                      date: memory.date,
-                      tag: memory.tag,
-                    }))
-                  )}
-              }
-            }`;
-    // add message to history
-    const assistantMessage: Message = {
-      role: 'assistant',
-      content: responseWithDisplayMessage,
-    };
-    const assistantMessageHistory = [...currentMessageHistory, assistantMessage];
-    updateHistory(assistantMessageHistory);
-    // set message to not thinking
-    setIsThinking(false);
-    return;
-  }
-
   const userMessage: Message = { role: 'user', content: userResponse };
   const currentMessageHistory = [...messageHistory, userMessage];
   updateHistory(currentMessageHistory);
@@ -181,14 +67,28 @@ export const talkToAgent = async (
 
         // Execute each tool call sequentially and add results to message history
         for (const toolCall of toolCalls) {
-          const tool = clientTools[toolCall.function.name as keyof typeof clientTools];
+          const functionName = toolCall.function.name as keyof typeof clientTools;
+          const tool = clientTools[functionName];
           if (tool) {
             try {
-              console.log(`🔨 Executing tool: ${toolCall.function.name}`);
+              console.log(`🔨 Executing tool: ${functionName}`);
               const args = JSON.parse(toolCall.function.arguments);
               console.log('📝 Tool arguments:', args);
               const result = await tool(args);
               console.log('✅ Tool result:', result);
+
+              // Update stores based on the tool call
+              if (result.success) {
+                if (functionName === 'addMemory' || functionName === 'updateMemory' || 
+                    functionName === 'deleteMemory' || functionName === 'getAllMemories') {
+                  const memoryStore = useMemoryStore.getState();
+                  await memoryStore.refreshMemories();
+                } else if (functionName === 'addTask' || functionName === 'updateTask' || 
+                         functionName === 'deleteTask' || functionName === 'getAllTasks') {
+                  const taskStore = useTaskStore.getState();
+                  await taskStore.refreshTasks();
+                }
+              }
 
               // Add tool result to message history
               currentMessageHistory.push({
@@ -197,10 +97,10 @@ export const talkToAgent = async (
                 content: JSON.stringify(result),
               } as Message);
             } catch (error) {
-              console.error(`❌ Tool call failed for ${toolCall.function.name}:`, error);
+              console.error(`❌ Tool call failed for ${functionName}:`, error);
             }
           } else {
-            console.warn(`⚠️ Tool not found: ${toolCall.function.name}`);
+            console.warn(`⚠️ Tool not found: ${functionName}`);
           }
         }
         // Continue the loop - model will see tool results and may make more calls

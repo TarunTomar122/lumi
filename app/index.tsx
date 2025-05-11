@@ -15,7 +15,8 @@ import Message from './components/Message';
 import { talkToAgent } from '@/utils/agent';
 import InputContainer from './components/inputContainer';
 import { useMessageStore } from './store/messageStore';
-import { clientTools } from '@/utils/tools';
+import { useTaskStore } from './store/taskStore';
+import { useMemoryStore } from './store/memoryStore';
 import InfoContainer from './components/InfoContainer';
 const MAX_HISTORY = 50;
 
@@ -27,24 +28,19 @@ export default function Page() {
     'Hello tarat, \nWhat is on your mind right now?'
   );
   const { messageHistory, updateMessageHistory, clearMessageHistory } = useMessageStore();
+  const { tasks, refreshTasks } = useTaskStore();
+  const { memories, refreshMemories } = useMemoryStore();
   const resultsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isThinking, setIsThinking] = React.useState(false);
   const scrollViewRef = React.useRef<ScrollView>(null);
-  const [tasks, setTasks] = React.useState<any[]>([]);
   const [refreshing, setRefreshing] = React.useState(false);
 
-  const [activeContent, setActiveContent] = React.useState<string>('tasks');
+  const [activeContent, setActiveContent] = React.useState<string>('chat');
 
   React.useEffect(() => {
-    const fetchTasks = async () => {
-      const tasks = await clientTools.getAllTasks();
-      // set type to be task on all tasks
-      const tasksWithType = tasks?.tasks?.map(task => ({ ...task, type: 'task' }));
-      setTasks(tasksWithType || []);
-      console.log(tasks);
-    };
-    fetchTasks();
+    refreshTasks();
+    refreshMemories();
   }, []);
 
   React.useEffect(() => {
@@ -95,15 +91,13 @@ export default function Page() {
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    try {
-      const tasks = await clientTools.getAllTasks();
-      const tasksWithType = tasks?.tasks?.map(task => ({ ...task, type: 'task' }));
-      setTasks(tasksWithType || []);
-    } catch (error) {
-      console.error('Error refreshing tasks:', error);
+    if (activeContent === 'tasks') {
+      await refreshTasks();
+    } else if (activeContent === 'memories') {
+      await refreshMemories();
     }
     setRefreshing(false);
-  }, []);
+  }, [activeContent]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -142,7 +136,10 @@ export default function Page() {
                 ? styles.ContentHeaderButtonActive
                 : styles.ContentHeaderButton
             }
-            onPress={() => setActiveContent('tasks')}>
+            onPress={() => {
+              setActiveContent('tasks');
+              refreshTasks();
+            }}>
             <Text
               style={
                 activeContent === 'tasks'
@@ -154,14 +151,17 @@ export default function Page() {
           </TouchableOpacity>
           <TouchableOpacity
             style={
-              activeContent === 'notes'
+              activeContent === 'memories'
                 ? styles.ContentHeaderButtonActive
                 : styles.ContentHeaderButton
             }
-            onPress={() => setActiveContent('notes')}>
+            onPress={() => {
+              setActiveContent('memories');
+              refreshMemories();
+            }}>
             <Text
               style={
-                activeContent === 'notes'
+                activeContent === 'memories'
                   ? styles.ContentHeaderTextActive
                   : styles.ContentHeaderText
               }>
@@ -198,17 +198,26 @@ export default function Page() {
             <InfoContainer items={tasks} />
           </ScrollView>
         )}
+        {activeContent === 'memories' && (
+          <ScrollView
+            style={styles.TasksListContainer}
+            showsVerticalScrollIndicator={false}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}>
+            <InfoContainer items={memories} />
+          </ScrollView>
+        )}
       </View>
-      <View style={styles.inputContainer}>
-        <InputContainer
-          userResponse={userResponse}
-          setUserResponse={setUserResponse}
-          handleSubmit={handleSubmit}
-          isRecording={isRecording}
-          setIsRecording={setIsRecording}
-          isLoading={isLoading}
-        />
-      </View>
+      {activeContent === 'chat' && (
+        <View style={styles.inputContainer}>
+          <InputContainer
+            userResponse={userResponse}
+            setUserResponse={setUserResponse}
+            handleSubmit={handleSubmit}
+            isRecording={isRecording}
+            setIsRecording={setIsRecording}
+          />
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -324,6 +333,6 @@ const styles = StyleSheet.create({
   TasksListContainer: {
     flex: 1,
     paddingHorizontal: 32,
-    marginBottom: 128,
+    marginBottom: 16,
   },
 });
