@@ -9,7 +9,7 @@ export type InfoMessageType = 'info' | 'success' | 'error' | 'warning';
 export interface InfoMessageItem {
   title: string;
   text: string;
-  type: 'memory' | 'task' | 'reminder';
+  type: 'memory' | 'task';
   icon?: string;
   id?: string | number;
   status?: 'todo' | 'done';
@@ -52,11 +52,11 @@ const InfoContainer: React.FC<InfoMessageProps> = ({ items }) => {
     }
   };
 
-  const handleDelete = async (id: string | number, type: 'memory' | 'reminder') => {
+  const handleDelete = async (id: string | number, type: 'memory' | 'task') => {
     try {
       if (type === 'memory') {
         await clientTools.deleteMemory({ id: id as string });
-      } else if (type === 'reminder') {
+      } else if (type === 'task') {
         await clientTools.deleteTask({ id: id as number });
       }
 
@@ -78,9 +78,7 @@ const InfoContainer: React.FC<InfoMessageProps> = ({ items }) => {
           const isCompleted = item.type === 'task' && item.id ? currentStatus === 'done' : false;
 
           return (
-            <View
-              key={index}
-              style={[styles.itemContainer, { backgroundColor: 'rgba(213, 213, 213, 0)' }]}>
+            <View key={index} style={[styles.itemContainer]}>
               <View style={styles.contentContainer}>
                 {item.type === 'memory' ? (
                   <TouchableOpacity
@@ -150,15 +148,15 @@ const InfoContainer: React.FC<InfoMessageProps> = ({ items }) => {
                         }>
                         <Ionicons
                           name={isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
-                          size={24}
-                          color="#F5F5F5"
+                          size={32}
+                          color="#000000"
                         />
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity
                         style={styles.actionButton}
-                        onPress={() => handleDelete(item.id!, item.type as 'memory' | 'reminder')}>
-                        <Ionicons name="trash-outline" size={20} color="#F5F5F5" />
+                        onPress={() => handleDelete(item.id!, item.type as 'memory' | 'task')}>
+                        <Ionicons name="trash-outline" size={32} color="#000000" />
                       </TouchableOpacity>
                     )}
                   </View>
@@ -176,25 +174,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   itemContainer: {
-    padding: 16,
     borderRadius: 16,
-    marginBottom: 12,
-    borderLeftWidth: 2,
-    borderLeftColor: '#4B4B4B',
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   contentContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
   },
   textContainer: {
     flex: 1,
     marginRight: 12,
   },
   text: {
-    color: '#F5F5F5',
     fontSize: 18,
-    fontFamily: 'MonaSans-Regular',
+    fontFamily: 'MonaSans-Medium',
+    color: '#000000',
     marginBottom: 4,
     lineHeight: 24,
   },

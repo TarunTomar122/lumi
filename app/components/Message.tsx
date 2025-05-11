@@ -58,11 +58,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   assistantResponse: {
-    color: '#F5F5F5',
+    color: '#000000',
     fontSize: 18,
     lineHeight: 28,
     fontFamily: 'MonaSans-Regular',
-    backgroundColor: 'rgba(145, 145, 145, 0.5)',
+    backgroundColor: '#FFFCE3',
     padding: 16,
     borderRadius: 16,
     marginBottom: 16,

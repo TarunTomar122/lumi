@@ -56,7 +56,7 @@ class DatabaseManager {
           description TEXT,
           due_date TEXT,
           reminder_date TEXT,
-          status TEXT NOT NULL DEFAULT 'todo'
+          status TEXT NOT NULL DEFAULT 'todo','
         );
       `);
 

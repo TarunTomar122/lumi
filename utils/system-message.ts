@@ -62,8 +62,7 @@ export const SYSTEM_MESSAGE = {
                   {
                     "title": "...",
                     "text": "...",
-                    "type": "memory" | "task" | "reminder",
-                    "icon": "📋", 
+                    "type": "memory" | "task",
                     "id": 123, 
                     "status": "todo" | "done",
                     "due_date": "ISO8601", 
