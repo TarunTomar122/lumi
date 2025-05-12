@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
-  FlatList,
   RefreshControl,
 } from 'react-native';
 import React from 'react';
@@ -20,12 +19,14 @@ import { useMemoryStore } from './store/memoryStore';
 import InfoContainer from './components/InfoContainer';
 const MAX_HISTORY = 50;
 
+import { getLastDayUsageStats, checkUsagePermission } from '@/utils/usageStats';
+
 export default function Page() {
   const navigation = useNavigation();
   const [isRecording, setIsRecording] = React.useState(false);
   const [userResponse, setUserResponse] = React.useState<string>('');
   const [assistantResponse, setAssistantResponse] = React.useState<string>(
-    'Hello tarat, \nWhat is on your mind right now?'
+    ''
   );
   const { messageHistory, updateMessageHistory, clearMessageHistory } = useMessageStore();
   const { tasks, refreshTasks } = useTaskStore();
@@ -41,6 +42,33 @@ export default function Page() {
   React.useEffect(() => {
     refreshTasks();
     refreshMemories();
+
+    const fetchUsageStats = async () => {
+      const hasPermission = await checkUsagePermission();
+      console.log('hasPermission:', hasPermission);
+      if (!hasPermission) {
+        return;
+      }
+      const usageStats = await getLastDayUsageStats();
+
+      // send the usageStats to the model and get a response
+      const promptForModel = `
+        App Usage Stats:
+        The user has used the following apps today: ${JSON.stringify(usageStats)}.
+        Please analyze the usage stats and provide a response to the user that might be helpful to them. But keep it short and concise.
+        Not more than 50 words. And include the time spent (in minutes) in the top app if that could be helpful. Don't give a display_message for this message.
+      `;
+
+      await talkToAgent(
+        promptForModel,
+        updateMessageHistory,
+        messageHistory,
+        setAssistantResponse,
+        setIsThinking,
+        setIsLoading
+      );
+    };
+    // fetchUsageStats();
   }, []);
 
   React.useEffect(() => {

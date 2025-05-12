@@ -61,20 +61,20 @@ const DetailsPage = () => {
               clearMessageHistory();
               router.back();
             }}>
-            <Ionicons name="arrow-back" size={24} color="#F5F5F5" />
+            <Ionicons name="arrow-back" size={24} color="#000000" />
           </TouchableOpacity>
-          <Text style={styles.title}>Memory</Text>
+          <Text style={styles.title}>Notes</Text>
           {isLoading ? (
-            <ActivityIndicator size="large" color="#F5F5F5" />
+            <ActivityIndicator size="large" color="#000000" />
           ) : (
             <>
               {hasEdited ? (
                 <TouchableOpacity style={styles.deleteButton} onPress={() => handleSave()}>
-                  <Ionicons name="checkmark" size={24} color="#F5F5F5" />
+                  <Ionicons name="checkmark" size={24} color="#000000" />
                 </TouchableOpacity>
               ) : (
                 <TouchableOpacity style={styles.deleteButton} onPress={() => handleDelete()}>
-                  <Ionicons name="trash" size={24} color="#F5F5F5" />
+                  <Ionicons name="trash" size={24} color="#000000" />
                 </TouchableOpacity>
               )}
             </>
@@ -113,12 +113,12 @@ const DetailsPage = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#2B2B2B',
+    backgroundColor: '#FAFAFA',
     paddingTop: 30,
   },
   container: {
     flex: 1,
-    backgroundColor: '#2B2B2B',
+    backgroundColor: '#FAFAFA',
     padding: 16,
   },
   header: {
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontFamily: 'MonaSans-Bold',
-    color: '#F5F5F5',
+    color: '#000000',
   },
   titleContainer: {
     padding: 16,
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   },
   text: {
     fontSize: 18,
-    color: '#F5F5F5',
+    color: '#000000',
     fontFamily: 'MonaSans-Regular',
     lineHeight: 28,
   },
@@ -167,6 +167,7 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     padding: 16,
+
   },
 });
 

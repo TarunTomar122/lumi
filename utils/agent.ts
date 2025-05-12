@@ -16,11 +16,10 @@ export const talkToAgent = async (
   messageHistory: Message[],
   setAssistantResponse: (response: string) => void,
   setIsThinking: (thinking: boolean) => void,
-  setIsLoading: (loading: boolean) => void
+  setIsLoading: (loading: boolean) => void,
 ) => {
   const userMessage: Message = { role: 'user', content: userResponse };
   const currentMessageHistory = [...messageHistory, userMessage];
-  updateHistory(currentMessageHistory);
   try {
     setIsThinking(true);
     let isModelThinking = true;
@@ -79,12 +78,20 @@ export const talkToAgent = async (
 
               // Update stores based on the tool call
               if (result.success) {
-                if (functionName === 'addMemory' || functionName === 'updateMemory' || 
-                    functionName === 'deleteMemory' || functionName === 'getAllMemories') {
+                if (
+                  functionName === 'addMemory' ||
+                  functionName === 'updateMemory' ||
+                  functionName === 'deleteMemory' ||
+                  functionName === 'getAllMemories'
+                ) {
                   const memoryStore = useMemoryStore.getState();
                   await memoryStore.refreshMemories();
-                } else if (functionName === 'addTask' || functionName === 'updateTask' || 
-                         functionName === 'deleteTask' || functionName === 'getAllTasks') {
+                } else if (
+                  functionName === 'addTask' ||
+                  functionName === 'updateTask' ||
+                  functionName === 'deleteTask' ||
+                  functionName === 'getAllTasks'
+                ) {
                   const taskStore = useTaskStore.getState();
                   await taskStore.refreshTasks();
                 }

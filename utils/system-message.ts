@@ -102,6 +102,7 @@ export const SYSTEM_MESSAGE = {
             - "Note this down…" or "Save a memory…" → Save with title + description, icon = \`🧠\`
             - "What should I do today?" → Fetch relevant todo tasks
             - "Did I note anything about…" → Search and return matching memory
+            - User gave usage stats, analyze it and provide a response to the user that might be helpful to them. But keep it short and concise.
   
             ---
   

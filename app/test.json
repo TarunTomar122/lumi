@@ -1,0 +1,236 @@
+{
+  "com.android.chrome": {
+    "appName": "Chrome",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019371447,
+    "lastTimeUsed": 1747016815408,
+    "packageName": "com.android.chrome",
+    "totalTimeInForeground": 1
+  },
+  "com.android.intentresolver": {
+    "appName": "IntentResolver",
+    "firstTimeStamp": 1746889143324,
+    "isSystem": false,
+    "lastTimeStamp": 1746975543323,
+    "lastTimeUsed": 1746950415941,
+    "packageName": "com.android.intentresolver",
+    "totalTimeInForeground": 3
+  },
+  "com.android.settings": {
+    "appName": "Settings",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019371447,
+    "lastTimeUsed": 1747018188561,
+    "packageName": "com.android.settings",
+    "totalTimeInForeground": 8
+  },
+  "com.dreamplug.androidapp": {
+    "appName": "com.dreamplug.androidapp",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019371447,
+    "lastTimeUsed": 1747018282452,
+    "packageName": "com.dreamplug.androidapp",
+    "totalTimeInForeground": 38
+  },
+  "com.google.android.GoogleCamera": {
+    "appName": "com.google.android.GoogleCamera",
+    "firstTimeStamp": 1746889143324,
+    "isSystem": false,
+    "lastTimeStamp": 1746975543323,
+    "lastTimeUsed": 1746972724981,
+    "packageName": "com.google.android.GoogleCamera",
+    "totalTimeInForeground": 402
+  },
+  "com.google.android.apps.fitness": {
+    "appName": "com.google.android.apps.fitness",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019371447,
+    "lastTimeUsed": 1746977744102,
+    "packageName": "com.google.android.apps.fitness",
+    "totalTimeInForeground": 25
+  },
+  "com.google.android.apps.maps": {
+    "appName": "com.google.android.apps.maps",
+    "firstTimeStamp": 1746889143324,
+    "isSystem": false,
+    "lastTimeStamp": 1746975543323,
+    "lastTimeUsed": 1746894204793,
+    "packageName": "com.google.android.apps.maps",
+    "totalTimeInForeground": 17
+  },
+  "com.google.android.apps.nbu.paisa.user": {
+    "appName": "Google Pay",
+    "firstTimeStamp": 1746889143324,
+    "isSystem": false,
+    "lastTimeStamp": 1746975543323,
+    "lastTimeUsed": 1746946867403,
+    "packageName": "com.google.android.apps.nbu.paisa.user",
+    "totalTimeInForeground": 402
+  },
+  "com.google.android.apps.nexuslauncher": {
+    "appName": "com.google.android.apps.nexuslauncher",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019662440,
+    "lastTimeUsed": 1747019662440,
+    "packageName": "com.google.android.apps.nexuslauncher",
+    "totalTimeInForeground": 476
+  },
+  "com.google.android.apps.photos": {
+    "appName": "Google Photos",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019371447,
+    "lastTimeUsed": 1746977462740,
+    "packageName": "com.google.android.apps.photos",
+    "totalTimeInForeground": 13
+  },
+  "com.google.android.apps.youtube.creator": {
+    "appName": "com.google.android.apps.youtube.creator",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019371447,
+    "lastTimeUsed": 1746977398562,
+    "packageName": "com.google.android.apps.youtube.creator",
+    "totalTimeInForeground": 6
+  },
+  "com.google.android.captiveportallogin": {
+    "appName": "com.google.android.captiveportallogin",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019371447,
+    "lastTimeUsed": 1747018208551,
+    "packageName": "com.google.android.captiveportallogin",
+    "totalTimeInForeground": 10
+  },
+  "com.google.android.deskclock": {
+    "appName": "com.google.android.deskclock",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019371447,
+    "lastTimeUsed": 1747012207611,
+    "packageName": "com.google.android.deskclock",
+    "totalTimeInForeground": 10
+  },
+  "com.google.android.dialer": {
+    "appName": "com.google.android.dialer",
+    "firstTimeStamp": 1746889143324,
+    "isSystem": false,
+    "lastTimeStamp": 1746975543323,
+    "lastTimeUsed": 1746974553007,
+    "packageName": "com.google.android.dialer",
+    "totalTimeInForeground": 201
+  },
+  "com.google.android.gm": {
+    "appName": "Gmail",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019371447,
+    "lastTimeUsed": 1746975833435,
+    "packageName": "com.google.android.gm",
+    "totalTimeInForeground": 9
+  },
+  "com.google.android.googlequicksearchbox": {
+    "appName": "Google",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019661240,
+    "lastTimeUsed": 1746981782872,
+    "packageName": "com.google.android.googlequicksearchbox",
+    "totalTimeInForeground": 38
+  },
+  "com.google.android.permissioncontroller": {
+    "appName": "Permission controller",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019475393,
+    "lastTimeUsed": 1747019475374,
+    "packageName": "com.google.android.permissioncontroller",
+    "totalTimeInForeground": 0
+  },
+  "com.google.android.youtube": {
+    "appName": "YouTube",
+    "firstTimeStamp": 1746889143324,
+    "isSystem": false,
+    "lastTimeStamp": 1746975543323,
+    "lastTimeUsed": 1746894577000,
+    "packageName": "com.google.android.youtube",
+    "totalTimeInForeground": 121
+  },
+  "com.grofers.customerapp": {
+    "appName": "com.grofers.customerapp",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019371447,
+    "lastTimeUsed": 1747017126704,
+    "packageName": "com.grofers.customerapp",
+    "totalTimeInForeground": 80
+  },
+  "com.instagram.android": {
+    "appName": "Instagram",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019545488,
+    "lastTimeUsed": 1747018301493,
+    "packageName": "com.instagram.android",
+    "totalTimeInForeground": 3642
+  },
+  "com.lumi.mobile": {
+    "appName": "lumi-mobile",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019662444,
+    "lastTimeUsed": 1747019662444,
+    "packageName": "com.lumi.mobile",
+    "totalTimeInForeground": 233
+  },
+  "com.openai.chatgpt": {
+    "appName": "com.openai.chatgpt",
+    "firstTimeStamp": 1746889143324,
+    "isSystem": false,
+    "lastTimeStamp": 1746975543323,
+    "lastTimeUsed": 1746967736945,
+    "packageName": "com.openai.chatgpt",
+    "totalTimeInForeground": 464
+  },
+  "com.reddit.frontpage": {
+    "appName": "com.reddit.frontpage",
+    "firstTimeStamp": 1746889143324,
+    "isSystem": false,
+    "lastTimeStamp": 1746975543323,
+    "lastTimeUsed": 1746893581123,
+    "packageName": "com.reddit.frontpage",
+    "totalTimeInForeground": 230
+  },
+  "com.spotify.music": {
+    "appName": "Spotify",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019371447,
+    "lastTimeUsed": 1747017987223,
+    "packageName": "com.spotify.music",
+    "totalTimeInForeground": 75
+  },
+  "com.twitter.android": {
+    "appName": "Twitter",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019371447,
+    "lastTimeUsed": 1746984323225,
+    "packageName": "com.twitter.android",
+    "totalTimeInForeground": 524
+  },
+  "com.whatsapp": {
+    "appName": "WhatsApp",
+    "firstTimeStamp": 1746975555951,
+    "isSystem": false,
+    "lastTimeStamp": 1747019371447,
+    "lastTimeUsed": 1747019176579,
+    "packageName": "com.whatsapp",
+    "totalTimeInForeground": 835
+  }
+}

@@ -14,6 +14,7 @@
     "preset": "jest-expo"
   },
   "dependencies": {
+    "@brighthustle/react-native-usage-stats-manager": "^0.1.5",
     "@config-plugins/react-native-webrtc": "^10.0.0",
     "@expo/vector-icons": "^14.1.0",
     "@notifee/react-native": "^9.1.8",
