@@ -17,11 +17,14 @@ export const talkToAgent = async (
   setAssistantResponse: (response: string) => void,
   setIsThinking: (thinking: boolean) => void,
   setIsLoading: (loading: boolean) => void,
+  setActiveContent: (content: string) => void
 ) => {
   const userMessage: Message = { role: 'user', content: userResponse };
   const currentMessageHistory = [...messageHistory, userMessage];
+  updateHistory(currentMessageHistory);
   try {
     setIsThinking(true);
+    setActiveContent('chat');
     let isModelThinking = true;
     while (isModelThinking) {
       const requestBody = {

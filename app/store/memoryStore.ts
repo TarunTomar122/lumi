@@ -19,56 +19,57 @@ interface MemoryState {
   refreshMemories: () => Promise<void>;
 }
 
-export const useMemoryStore = create<MemoryState>((set) => ({
+export const useMemoryStore = create<MemoryState>(set => ({
   memories: [],
-  
-  setMemories: (memories) => set({ memories }),
-  
-  addMemory: async (memoryData) => {
+
+  setMemories: memories => set({ memories }),
+
+  addMemory: async memoryData => {
     const result = await clientTools.addMemory(memoryData);
     if (result.success && result.id) {
       const newMemory = {
         id: result.id,
         ...memoryData,
         date: new Date().toISOString(),
-        type: 'memory' as const
+        type: 'memory' as const,
       };
-      set((state) => ({
-        memories: [...state.memories, newMemory]
+      set(state => ({
+        memories: [...state.memories, newMemory],
       }));
     }
   },
-  
+
   updateMemory: async (id, updates) => {
     const result = await clientTools.updateMemory({ id, ...updates });
     if (result.success) {
-      set((state) => ({
-        memories: state.memories.map(memory => 
-          memory.id === id 
-            ? { ...memory, ...updates, date: new Date().toISOString() }
-            : memory
-        )
+      set(state => ({
+        memories: state.memories.map(memory =>
+          memory.id === id ? { ...memory, ...updates, date: new Date().toISOString() } : memory
+        ),
       }));
     }
   },
-  
-  deleteMemory: async (id) => {
+
+  deleteMemory: async id => {
     const result = await clientTools.deleteMemory({ id });
     if (result.success) {
-      set((state) => ({
-        memories: state.memories.filter(memory => memory.id !== id)
+      set(state => ({
+        memories: state.memories.filter(memory => memory.id !== id),
       }));
     }
   },
-  
+
   refreshMemories: async () => {
     const result = await clientTools.getAllMemories();
     if (result.success && result.memories) {
-      const memoriesWithType = result.memories.map((memory: { id: string; title: string; text: string; date: string; tags: string[] }) => ({ 
-        ...memory, 
-        type: 'memory' as const 
-      }));
-      set({ memories: memoriesWithType });
+      // newest first should be at the top
+      const memoriesWithType = result.memories.map(
+        (memory: { id: string; title: string; text: string; date: string; tags: string[] }) => ({
+          ...memory,
+          type: 'memory' as const,
+        })
+      );
+      set({ memories: memoriesWithType.reverse() });
     }
-  }
-})); 
+  },
+}));

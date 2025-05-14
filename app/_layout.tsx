@@ -14,7 +14,7 @@ SplashScreen.preventAutoHideAsync();
 function NavigatorContent() {
   return (
     <View style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-      <StatusBar style="light-content" backgroundColor="#FAFAFA" />
+      <StatusBar style="light" backgroundColor="#FAFAFA" />
       <Slot />
     </View>
   );

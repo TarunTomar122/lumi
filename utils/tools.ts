@@ -43,7 +43,7 @@ const clientToolsSchema = [
           type: 'string',
           enum: ['todo', 'done'],
           description: 'Status of the task',
-        }
+        },
       },
       required: ['title'],
     },
@@ -99,7 +99,7 @@ const clientToolsSchema = [
         tags: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Array of tags for the memory',
+          description: 'Array of tags for the memory. Should always only contain 1 tag.',
         },
       },
       required: ['title', 'text', 'tags'],

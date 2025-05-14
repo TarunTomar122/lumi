@@ -40,9 +40,7 @@ const Message: React.FC<MessageProps> = ({ message }) => {
       console.warn('Failed to parse display_message:', e);
     }
   }, [message]);
-  if (messageContent === '') {
-    return null;
-  }
+
   return (
     <View>
       <Text style={message.role === 'user' ? styles.userResponse : styles.assistantResponse}>
@@ -56,7 +54,7 @@ const Message: React.FC<MessageProps> = ({ message }) => {
 const styles = StyleSheet.create({
   userResponse: {
     color: '#F5F5F5',
-    fontSize: 18,
+    fontSize: 24,
     lineHeight: 28,
     fontFamily: 'MonaSans-Regular',
     backgroundColor: '#3B3B3B',
@@ -68,7 +66,7 @@ const styles = StyleSheet.create({
   },
   assistantResponse: {
     color: '#000000',
-    fontSize: 18,
+    fontSize: 24,
     lineHeight: 28,
     fontFamily: 'MonaSans-Regular',
     backgroundColor: '#FFFCE3',

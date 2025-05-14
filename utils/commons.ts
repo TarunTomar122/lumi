@@ -1,4 +1,8 @@
 export const formatDate = (dateString: string) => {
+  if (!dateString) {
+    return ;
+  }
+
   const date = new Date(dateString);
   const today = new Date();
   const tomorrow = new Date(today);

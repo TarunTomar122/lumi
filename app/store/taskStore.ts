@@ -15,45 +15,48 @@ interface TaskState {
   refreshTasks: () => Promise<void>;
 }
 
-export const useTaskStore = create<TaskState>((set) => ({
+export const useTaskStore = create<TaskState>(set => ({
   tasks: [],
-  
-  setTasks: (tasks) => set({ tasks }),
-  
-  addTask: async (taskData) => {
+
+  setTasks: tasks => set({ tasks }),
+
+  addTask: async taskData => {
     const result = await clientTools.addTask(taskData);
     if (result.success && result.task) {
-      set((state) => ({
-        tasks: [...state.tasks, { ...result.task, type: 'task' } as TaskWithType]
+      set(state => ({
+        tasks: [...state.tasks, { ...result.task, type: 'task' } as TaskWithType],
       }));
     }
   },
-  
+
   updateTask: async (id, updates) => {
     const result = await clientTools.updateTask({ id, ...updates });
     if (result.success && result.task) {
-      set((state) => ({
-        tasks: state.tasks.map(task => 
-          task.id === id ? { ...result.task, type: 'task' } as TaskWithType : task
-        )
+      set(state => ({
+        tasks: state.tasks.map(task =>
+          task.id === id ? ({ ...result.task, type: 'task' } as TaskWithType) : task
+        ),
       }));
     }
   },
-  
-  deleteTask: async (id) => {
+
+  deleteTask: async id => {
     const result = await clientTools.deleteTask({ id });
     if (result.success) {
-      set((state) => ({
-        tasks: state.tasks.filter(task => task.id !== id)
+      set(state => ({
+        tasks: state.tasks.filter(task => task.id !== id),
       }));
     }
   },
-  
+
   refreshTasks: async () => {
     const result = await clientTools.getAllTasks();
     if (result.success && result.tasks) {
-      const tasksWithType = result.tasks.map(task => ({ ...task, type: 'task' as const })) as TaskWithType[];
+      const tasksWithType = result.tasks.map(task => ({
+        ...task,
+        type: 'task' as const,
+      })) as TaskWithType[];
       set({ tasks: tasksWithType });
     }
-  }
-})); 
+  },
+}));
