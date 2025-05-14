@@ -1,15 +1,18 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { clientTools } from '@/utils/tools';
 import { useRouter } from 'expo-router';
 import { formatDate } from '@/utils/commons';
+import { useTaskStore } from '../store/taskStore';
+import { useMemoryStore } from '../store/memoryStore';
+import type { Task } from '@/utils/database';
+
 export type InfoMessageType = 'info' | 'success' | 'error' | 'warning';
 
 export interface InfoMessageItem {
   title: string;
-  text: string;
-  type: 'memory' | 'task' | 'reminder';
+  text?: string;
+  type: 'memory' | 'task';
   icon?: string;
   id?: string | number;
   status?: 'todo' | 'done';
@@ -19,11 +22,13 @@ export interface InfoMessageItem {
 }
 
 export interface InfoMessageProps {
-  items: InfoMessageItem[];
+  items: (InfoMessageItem | Task)[];
 }
 
 const InfoContainer: React.FC<InfoMessageProps> = ({ items }) => {
   const router = useRouter();
+  const { updateTask, deleteTask } = useTaskStore();
+  const { deleteMemory } = useMemoryStore();
   // Keep track of task statuses with a Map to store both completed and uncompleted states
   const [taskStatuses, setTaskStatuses] = useState<Map<string | number, 'done' | 'todo'>>(
     new Map()
@@ -36,10 +41,7 @@ const InfoContainer: React.FC<InfoMessageProps> = ({ items }) => {
       // Determine the new status
       const newStatus = currentStatus === 'done' ? 'todo' : 'done';
 
-      await clientTools.updateTask({
-        id,
-        status: newStatus,
-      });
+      await updateTask(id, { status: newStatus });
 
       // Update UI immediately
       setTaskStatuses(prev => {
@@ -52,12 +54,12 @@ const InfoContainer: React.FC<InfoMessageProps> = ({ items }) => {
     }
   };
 
-  const handleDelete = async (id: string | number, type: 'memory' | 'reminder') => {
+  const handleDelete = async (id: string | number, type: 'memory' | 'task') => {
     try {
       if (type === 'memory') {
-        await clientTools.deleteMemory({ id: id as string });
-      } else if (type === 'reminder') {
-        await clientTools.deleteTask({ id: id as number });
+        await deleteMemory(id as string);
+      } else if (type === 'task') {
+        await deleteTask(id as number);
       }
 
       // Update UI immediately
@@ -74,15 +76,13 @@ const InfoContainer: React.FC<InfoMessageProps> = ({ items }) => {
         .map((item, index) => {
           // Check both the original status and our local state
           const currentStatus =
-            item.type === 'task' ? taskStatuses.get(item.id!) || item.status : undefined;
-          const isCompleted = item.type === 'task' && item.id ? currentStatus === 'done' : false;
+            'type' in item && item.type === 'task' ? taskStatuses.get(item.id!) || item.status : undefined;
+          const isCompleted = 'type' in item && item.type === 'task' && item.id ? currentStatus === 'done' : false;
 
           return (
-            <View
-              key={index}
-              style={[styles.itemContainer, { backgroundColor: 'rgba(213, 213, 213, 0)' }]}>
+            <View key={index} style={[styles.itemContainer]}>
               <View style={styles.contentContainer}>
-                {item.type === 'memory' ? (
+                {'type' in item && item.type === 'memory' ? (
                   <TouchableOpacity
                     style={styles.textContainer}
                     onPress={() => {
@@ -142,7 +142,7 @@ const InfoContainer: React.FC<InfoMessageProps> = ({ items }) => {
                 )}
                 {item.id && (
                   <View style={styles.actionsContainer}>
-                    {item.type === 'task' ? (
+                    {'type' in item && item.type === 'task' ? (
                       <TouchableOpacity
                         style={styles.actionButton}
                         onPress={() =>
@@ -150,15 +150,15 @@ const InfoContainer: React.FC<InfoMessageProps> = ({ items }) => {
                         }>
                         <Ionicons
                           name={isCompleted ? 'checkmark-circle' : 'ellipse-outline'}
-                          size={24}
-                          color="#F5F5F5"
+                          size={32}
+                          color="#000000"
                         />
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity
                         style={styles.actionButton}
-                        onPress={() => handleDelete(item.id!, item.type as 'memory' | 'reminder')}>
-                        <Ionicons name="trash-outline" size={20} color="#F5F5F5" />
+                        onPress={() => handleDelete(item.id!, ('type' in item ? item.type : 'task') as 'memory' | 'task')}>
+                        <Ionicons name="trash-outline" size={32} color="#000000" />
                       </TouchableOpacity>
                     )}
                   </View>
@@ -176,25 +176,27 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   itemContainer: {
-    padding: 16,
     borderRadius: 16,
-    marginBottom: 12,
-    borderLeftWidth: 2,
-    borderLeftColor: '#4B4B4B',
+    marginBottom: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   contentContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+    backgroundColor: '#ffffff',
+    borderRadius: 16,
+    padding: 16,
   },
   textContainer: {
     flex: 1,
     marginRight: 12,
   },
   text: {
-    color: '#F5F5F5',
     fontSize: 18,
-    fontFamily: 'MonaSans-Regular',
+    fontFamily: 'MonaSans-Medium',
+    color: '#000000',
     marginBottom: 4,
     lineHeight: 24,
   },

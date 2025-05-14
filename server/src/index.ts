@@ -92,10 +92,15 @@ app.delete('/api/memories/:id', async (req: Request, res: Response) => {
 app.put('/api/memories/:id', async (req: Request, res: Response) => {
   try {
     const { title, text, tags } = req.body;
+    // only update the part that is not null
+    const memory = await memoryService.getMemory(req.params.id);
+    if (!memory) {
+      return res.status(404).json({ error: 'Memory not found' });
+    }
     await memoryService.updateMemory(req.params.id, {
-      title,
-      text,
-      tags,
+      title: title || memory.title,
+      text: text || memory.text,
+      tags: tags || memory.tags,
       date: new Date().toISOString(),
     });
     res.status(204).send();

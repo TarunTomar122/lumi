@@ -1,4 +1,4 @@
-import { TextInput, View, StyleSheet, TouchableOpacity } from 'react-native';
+import { TextInput, View, StyleSheet, TouchableOpacity, ActivityIndicator } from 'react-native';
 import React from 'react';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +18,8 @@ export default function InputContainer({
 }) {
   const processedResultsRef = React.useRef<Set<string>>(new Set());
   const { state, startRecognizing, stopRecognizing, resetState } = useVoiceRecognition();
+
+  const [loading, setLoading] = React.useState(false);
 
   React.useEffect(() => {
     if (state.error) {
@@ -70,10 +72,12 @@ export default function InputContainer({
             processedResultsRef.current.clear();
           }
         }}>
-        {userResponse ? (
-          <Ionicons name="send" size={24} color="#F5F5F5" />
+        {loading ? (
+          <ActivityIndicator size="small" color="#000000" />
+        ) : userResponse ? (
+          <Ionicons name="send" size={26} color="#000000" />
         ) : (
-          <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={24} color="#F5F5F5" />
+          <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={26} color="#000000" />
         )}
       </TouchableOpacity>
     </View>
@@ -84,21 +88,20 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#3B3B3B',
-    borderRadius: 24,
+    backgroundColor: '#EAEAEA',
+    borderRadius: 48,
     padding: 8,
     marginBottom: 16,
   },
   textInput: {
     flex: 1,
     fontSize: 16,
-    color: '#F5F5F5',
-    fontFamily: 'MonaSans-Regular',
+    color: '#000000',
+    fontFamily: 'MonaSans-Medium',
     paddingHorizontal: 16,
     paddingVertical: 2,
   },
   micButton: {
-    backgroundColor: '#4B4B4B',
     borderRadius: 20,
     padding: 12,
     marginLeft: 8,

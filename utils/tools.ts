@@ -43,7 +43,7 @@ const clientToolsSchema = [
           type: 'string',
           enum: ['todo', 'done'],
           description: 'Status of the task',
-        },
+        }
       },
       required: ['title'],
     },

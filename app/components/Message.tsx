@@ -14,7 +14,7 @@ interface MessageProps {
 
 const Message: React.FC<MessageProps> = ({ message }) => {
   const [messageContent, setMessageContent] = useState<string>(message.content);
-  const [infoMessage, setInfoMessage] = useState<InfoMessageProps>({items: []});
+  const [infoMessage, setInfoMessage] = useState<InfoMessageProps>({ items: [] });
 
   useEffect(() => {
     try {
@@ -30,10 +30,19 @@ const Message: React.FC<MessageProps> = ({ message }) => {
           }
         }
       }
+
+      // if the message contains "App Usage Stats:"
+      if (contentStr.includes('App Usage Stats:')) {
+        setMessageContent('');
+        setInfoMessage({ items: [] });
+      }
     } catch (e) {
       console.warn('Failed to parse display_message:', e);
     }
   }, [message]);
+  if (messageContent === '') {
+    return null;
+  }
   return (
     <View>
       <Text style={message.role === 'user' ? styles.userResponse : styles.assistantResponse}>
@@ -58,11 +67,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   assistantResponse: {
-    color: '#F5F5F5',
+    color: '#000000',
     fontSize: 18,
     lineHeight: 28,
     fontFamily: 'MonaSans-Regular',
-    backgroundColor: 'rgba(145, 145, 145, 0.5)',
+    backgroundColor: '#FFFCE3',
     padding: 16,
     borderRadius: 16,
     marginBottom: 16,

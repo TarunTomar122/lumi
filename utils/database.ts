@@ -57,7 +57,7 @@ class DatabaseManager {
           due_date TEXT,
           reminder_date TEXT,
           status TEXT NOT NULL DEFAULT 'todo'
-        );
+        )
       `);
 
       console.log('Tables created successfully');
