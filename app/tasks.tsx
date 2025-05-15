@@ -6,6 +6,7 @@ import {
   ScrollView,
   SafeAreaView,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import React from 'react';
 import { useRouter } from 'expo-router';
@@ -47,14 +48,14 @@ export default function Tasks() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={28} color="#000000" />
+          <Text style={styles.backText}>Tasks</Text>
+        </TouchableOpacity>
+      </View>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>tasks</Text>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="close" size={32} color="#000000" />
-          </TouchableOpacity>
-        </View>
-
         <ScrollView
           style={styles.taskList}
           showsVerticalScrollIndicator={false}
@@ -79,14 +80,6 @@ export default function Tasks() {
             </View>
           ))}
         </ScrollView>
-
-        <InputContainer
-          userResponse={userResponse}
-          setUserResponse={setUserResponse}
-          handleSubmit={handleSubmit}
-          isRecording={isRecording}
-          setIsRecording={setIsRecording}
-        />
       </View>
     </SafeAreaView>
   );
@@ -96,18 +89,33 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#fafafa',
-    paddingTop: 30,
+    paddingTop: 42,
   },
   container: {
     flex: 1,
-    padding: 32,
+    padding: 24,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
     paddingTop: 20,
-    paddingBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 12,
+  },
+  backText: {
+    fontSize: 24,
+    fontFamily: 'MonaSans-Medium',
+    color: '#000000',
+    marginBottom: 3,
   },
   title: {
     fontSize: 32,
@@ -116,6 +124,7 @@ const styles = StyleSheet.create({
   },
   taskList: {
     flex: 1,
+    paddingRight: 8,
   },
   taskItem: {
     flexDirection: 'row',

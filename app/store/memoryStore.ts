@@ -1,21 +1,18 @@
 import { create } from 'zustand';
 import { clientTools } from '@/utils/tools';
+import type { Memory as DatabaseMemory } from '@/utils/database';
 
-export interface Memory {
-  id: string;
-  title: string;
-  text: string;
-  date: string;
-  tags: string[];
+export interface Memory extends Omit<DatabaseMemory, 'id'> {
+  id: number;
   type: 'memory';
 }
 
 interface MemoryState {
   memories: Memory[];
   setMemories: (memories: Memory[]) => void;
-  addMemory: (memory: Omit<Memory, 'id' | 'date' | 'type'>) => Promise<void>;
-  updateMemory: (id: string, updates: Partial<Omit<Memory, 'id' | 'type'>>) => Promise<void>;
-  deleteMemory: (id: string) => Promise<void>;
+  addMemory: (memory: Omit<DatabaseMemory, 'id' | 'date'>) => Promise<void>;
+  updateMemory: (id: number, updates: Partial<Omit<DatabaseMemory, 'id'>>) => Promise<void>;
+  deleteMemory: (id: number) => Promise<void>;
   refreshMemories: () => Promise<void>;
 }
 
@@ -40,7 +37,7 @@ export const useMemoryStore = create<MemoryState>(set => ({
   },
 
   updateMemory: async (id, updates) => {
-    const result = await clientTools.updateMemory({ id, ...updates });
+    const result = await clientTools.updateMemory({ id: id.toString(), ...updates });
     if (result.success) {
       set(state => ({
         memories: state.memories.map(memory =>
@@ -51,7 +48,7 @@ export const useMemoryStore = create<MemoryState>(set => ({
   },
 
   deleteMemory: async id => {
-    const result = await clientTools.deleteMemory({ id });
+    const result = await clientTools.deleteMemory({ id: id.toString() });
     if (result.success) {
       set(state => ({
         memories: state.memories.filter(memory => memory.id !== id),
@@ -63,13 +60,12 @@ export const useMemoryStore = create<MemoryState>(set => ({
     const result = await clientTools.getAllMemories();
     if (result.success && result.memories) {
       // newest first should be at the top
-      const memoriesWithType = result.memories.map(
-        (memory: { id: string; title: string; text: string; date: string; tags: string[] }) => ({
-          ...memory,
-          type: 'memory' as const,
-        })
-      );
-      set({ memories: memoriesWithType.reverse() });
+      const memoriesWithType = result.memories.map(memory => ({
+        ...memory,
+        id: memory.id!, // We know id exists since it's from the database
+        type: 'memory' as const,
+      }));
+      set({ memories: memoriesWithType });
     }
   },
 }));

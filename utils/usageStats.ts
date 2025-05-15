@@ -6,15 +6,19 @@ import {
 } from '@brighthustle/react-native-usage-stats-manager';
 import { Platform } from 'react-native';
 
-export interface AppUsageStats {
+export interface AppUsageInfo {
+  appName: string;
+  firstTimeStamp: number;
+  isSystem: boolean;
+  lastTimeStamp: number;
+  lastTimeUsed: number;
   packageName: string;
   totalTimeInForeground: number;
-  lastTimeUsed: number;
 }
 
 export const checkUsagePermission = async (): Promise<boolean> => {
   if (Platform.OS !== 'android') return false;
-  
+
   const hasPermission = await checkForPermission();
   if (!hasPermission) {
     showUsageAccessSettings('');
@@ -26,15 +30,11 @@ export const checkUsagePermission = async (): Promise<boolean> => {
 export const getAppUsageStats = async (
   startTime: number,
   endTime: number
-): Promise<AppUsageStats[]> => {
+): Promise<AppUsageInfo[]> => {
   if (Platform.OS !== 'android') return [];
 
   try {
-    const stats = await queryUsageStats(
-      EventFrequency.INTERVAL_DAILY,
-      startTime,
-      endTime
-    );
+    const stats = await queryUsageStats(EventFrequency.INTERVAL_DAILY, startTime, endTime);
     return stats || [];
   } catch (error) {
     console.error('Error fetching usage stats:', error);
@@ -42,14 +42,14 @@ export const getAppUsageStats = async (
   }
 };
 
-export const getLastDayUsageStats = async (): Promise<AppUsageStats[]> => {
+export const getLastDayUsageStats = async (): Promise<AppUsageInfo[]> => {
   const endTime = Date.now();
-  const startTime = endTime - (24 * 60 * 60 * 1000); // 24 hours ago
+  const startTime = endTime - 24 * 60 * 60 * 1000; // 24 hours ago
   return getAppUsageStats(startTime, endTime);
 };
 
-export const getLastWeekUsageStats = async (): Promise<AppUsageStats[]> => {
+export const getLastWeekUsageStats = async (): Promise<AppUsageInfo[]> => {
   const endTime = Date.now();
-  const startTime = endTime - (7 * 24 * 60 * 60 * 1000); // 7 days ago
+  const startTime = endTime - 7 * 24 * 60 * 60 * 1000; // 7 days ago
   return getAppUsageStats(startTime, endTime);
-}; 
+};

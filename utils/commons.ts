@@ -1,6 +1,6 @@
 export const formatDate = (dateString: string) => {
   if (!dateString) {
-    return ;
+    return;
   }
 
   const date = new Date(dateString);

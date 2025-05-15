@@ -7,7 +7,7 @@ import notifee, {
 import { db } from '@/utils/database';
 import type { Task } from '@/utils/database';
 import { DateTime } from 'luxon';
-
+import { checkUsagePermission, getLastDayUsageStats } from '@/utils/usageStats';
 // const API_BASE_URL = 'http://10.161.88.145:3001/api';
 const API_BASE_URL = 'https://lumi-server-iixq.onrender.com/api';
 
@@ -95,14 +95,14 @@ const clientToolsSchema = [
       type: 'object',
       properties: {
         title: { type: 'string', description: 'Title of the memory' },
-        text: { type: 'string', description: 'Text content of the memory' },
+        content: { type: 'string', description: 'Content of the memory' },
         tags: {
           type: 'array',
           items: { type: 'string' },
           description: 'Array of tags for the memory. Should always only contain 1 tag.',
         },
       },
-      required: ['title', 'text', 'tags'],
+      required: ['title', 'content', 'tags'],
     },
   },
   {
@@ -131,7 +131,7 @@ const clientToolsSchema = [
       properties: {
         id: { type: 'string', description: 'ID of the memory to update' },
         title: { type: 'string', description: 'Title of the memory' },
-        text: { type: 'string', description: 'Text content of the memory' },
+        content: { type: 'string', description: 'Content of the memory' },
         tags: {
           type: 'array',
           items: { type: 'string' },
@@ -151,6 +151,16 @@ const clientToolsSchema = [
         q: { type: 'string', description: 'Query to search for memories' },
       },
       required: ['q'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'getUsageStats',
+    description: 'Gets the usage stats of different apps on the device.',
+    parameters: {
+      type: 'object',
+      properties: {},
+      required: [],
     },
   },
 ];
@@ -254,27 +264,15 @@ const clientTools = {
     }
   },
 
-  addMemory: async ({ title, text, tags }: { title: string; text: string; tags: string[] }) => {
+  addMemory: async ({ title, content, tags }: { title: string; content: string; tags: string[] }) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/memories`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title,
-          text,
-          tags,
-        }),
+      const memory = await db.addMemory({
+        title,
+        content,
+        date: new Date().toISOString(),
+        tags,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create memory');
-      }
-
-      const data = await response.json();
-      return { success: true, id: data.id };
+      return { success: true, id: memory.id };
     } catch (error) {
       console.error('Error adding memory:', error);
       return { success: false, error: 'Failed to add memory.' };
@@ -283,15 +281,7 @@ const clientTools = {
 
   deleteMemory: async ({ id }: { id: string }) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/memories/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok && response.status !== 204) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to delete memory');
-      }
-
+      await db.deleteMemory(Number(id));
       return { success: true };
     } catch (error) {
       console.error('Error deleting memory:', error);
@@ -301,15 +291,8 @@ const clientTools = {
 
   getAllMemories: async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/memories`);
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to fetch memories');
-      }
-
-      const data = await response.json();
-      return { success: true, memories: data.memories, totalResults: data.totalResults };
+      const memories = await db.getAllMemories();
+      return { success: true, memories, totalResults: memories.length };
     } catch (error) {
       console.error('Error fetching memories:', error);
       return { success: false, error: 'Failed to fetch memories.' };
@@ -319,32 +302,20 @@ const clientTools = {
   updateMemory: async ({
     id,
     title,
-    text,
+    content,
     tags,
   }: {
     id: string;
     title?: string;
-    text?: string;
+    content?: string;
     tags?: string[];
   }) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/memories/${id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title,
-          text,
-          tags,
-        }),
+      await db.updateMemory(Number(id), {
+        title,
+        content,
+        tags,
       });
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to update memory');
-      }
-
       return { success: true };
     } catch (error) {
       console.error('Error updating memory:', error);
@@ -354,19 +325,30 @@ const clientTools = {
 
   searchMemories: async ({ q }: { q: string }) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/memories/search?q=${encodeURIComponent(q)}`);
-
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to search memories');
-      }
-
-      const data = await response.json();
-      return { success: true, memories: data.memories, totalResults: data.totalResults };
+      // For now, we'll do a simple title/content search in the local database
+      // In the future, we can implement more sophisticated search if needed
+      const allMemories = await db.getAllMemories();
+      const searchTerm = q.toLowerCase();
+      const memories = allMemories.filter(memory => 
+        memory.title.toLowerCase().includes(searchTerm) ||
+        memory.content.toLowerCase().includes(searchTerm) ||
+        memory.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+      );
+      return { success: true, memories, totalResults: memories.length };
     } catch (error) {
       console.error('Error searching memories:', error);
       return { success: false, error: 'Failed to search memories.' };
     }
+  },
+  getUsageStats: async () => {
+    const permission = await checkUsagePermission();
+    console.log('Permission:', permission);
+    if (!permission) {
+      console.log('No permission to get usage stats');
+      return { success: false, error: 'Failed to get usage stats.' };
+    }
+    const appUsageStats = await getLastDayUsageStats();
+    return { success: true, appUsageStats };
   },
 };
 
@@ -499,4 +481,26 @@ export const scheduleNotification = async (
     console.error('❌ Error scheduling notification:', error);
     throw error;
   }
+};
+
+// Send an instant notification
+export const sendInstantNotification = async (title: string, body: string) => {
+  const channelId = await notifee.createChannel({
+    id: 'default',
+    name: 'Default Channel',
+    importance: AndroidImportance.HIGH,
+    sound: 'default',
+    vibrationPattern: [300, 500, 300, 500],
+    lights: true,
+    lightColor: AndroidColor.YELLOW,
+    bypassDnd: true,
+    vibration: true,
+  });
+  await notifee.displayNotification({
+    title,
+    body,
+    android: {
+      channelId,
+    },
+  });
 };

@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useCallback } from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -9,26 +9,27 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Keyboard,
+  StatusBar,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { formatDate } from '@/utils/commons';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemoryStore } from './store/memoryStore';
-
-import { Dimensions, NativeSyntheticEvent, TextInputSelectionChangeEventData } from 'react-native';
+import { Dimensions } from 'react-native';
 
 const DetailsPage = () => {
   const router = useRouter();
   const { item: itemString } = useLocalSearchParams();
   const item = JSON.parse(itemString as string);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
-  const { updateMemory } = useMemoryStore();
+  const { updateMemory, deleteMemory } = useMemoryStore();
   const [title, setTitle] = React.useState<string>(item.title);
-  const [textContent, setTextContent] = React.useState<string>(item.text);
+  const [textContent, setTextContent] = React.useState<string>(item.content);
   const [hasEdited, setHasEdited] = React.useState<boolean>(false);
   const [keyboardHeight, setKeyboardHeight] = React.useState(Dimensions.get('window').height);
   const scrollViewRef = React.useRef<ScrollView>(null);
+  const saveTimeoutRef = useRef<NodeJS.Timeout>();
 
   React.useEffect(() => {
     Keyboard.addListener('keyboardDidShow', () => {
@@ -37,13 +38,20 @@ const DetailsPage = () => {
     Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardHeight(Dimensions.get('window').height);
     });
+
+    // Clean up timeout on unmount
+    return () => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+    };
   }, []);
 
   const handleSave = async () => {
     setIsLoading(true);
     try {
       await updateMemory(item.id, {
-        text: textContent,
+        content: textContent,
         title: title,
         tags: item.tags || [],
       });
@@ -55,8 +63,62 @@ const DetailsPage = () => {
     }
   };
 
+  const handleDelete = async () => {
+    await deleteMemory(item.id);
+    router.back();
+  };
+
+  // Debounced auto-save function
+  const debouncedSave = useCallback(
+    (newTitle: string, newContent: string) => {
+      if (saveTimeoutRef.current) {
+        clearTimeout(saveTimeoutRef.current);
+      }
+
+      saveTimeoutRef.current = setTimeout(async () => {
+        setIsLoading(true);
+        try {
+          await updateMemory(item.id, {
+            content: newContent,
+            title: newTitle,
+            tags: item.tags || [],
+          });
+          setHasEdited(false);
+        } catch (error) {
+          console.error('Error auto-saving memory:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      }, 300);
+    },
+    [item.id, item.tags, updateMemory]
+  );
+
+  const handleTextChange = (text: string) => {
+    setTextContent(text);
+    setHasEdited(true);
+    debouncedSave(title, text);
+  };
+
+  const handleTitleChange = (text: string) => {
+    setTitle(text);
+    setHasEdited(true);
+    debouncedSave(text, textContent);
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={28} color="#000000" />
+          <Text style={styles.backText}>Notes</Text>
+        </TouchableOpacity>
+        {isLoading && <ActivityIndicator size="small" color="#000000" style={styles.loader} />}
+        <TouchableOpacity onPress={handleDelete}>
+          <Ionicons name="trash-outline" size={24} color="#000000" />
+        </TouchableOpacity>
+      </View>
       <View style={styles.contentContainer}>
         <View style={styles.titleContainer}>
           <View style={styles.titleWrapper}>
@@ -64,37 +126,12 @@ const DetailsPage = () => {
               style={styles.title}
               value={title}
               multiline={true}
-              onChangeText={text => {
-                setTitle(text);
-                setHasEdited(true);
-              }}
+              onChangeText={handleTitleChange}
             />
             <Text style={styles.date}>
               last updated: {formatDate(item.due_date || item.reminder_date || item.date)}
             </Text>
-            <View style={styles.tagsContainer}>
-              {item.tags.map((tag: string) => (
-                <Text style={styles.tag} key={tag}>
-                  {tag}
-                </Text>
-              ))}
-            </View>
           </View>
-          {isLoading ? (
-            <ActivityIndicator size="large" color="#000000" />
-          ) : (
-            <>
-              {hasEdited ? (
-                <TouchableOpacity style={styles.deleteButton} onPress={() => handleSave()}>
-                  <Ionicons name="checkmark" size={32} color="#000000" />
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={styles.deleteButton} onPress={() => router.back()}>
-                  <Ionicons name="close" size={32} color="#000000" />
-                </TouchableOpacity>
-              )}
-            </>
-          )}
         </View>
         <ScrollView
           ref={scrollViewRef}
@@ -104,10 +141,7 @@ const DetailsPage = () => {
             style={styles.text}
             multiline={true}
             value={textContent}
-            onChangeText={text => {
-              setTextContent(text);
-              setHasEdited(true);
-            }}
+            onChangeText={handleTextChange}
           />
         </ScrollView>
       </View>
@@ -121,11 +155,33 @@ const styles = StyleSheet.create({
     backgroundColor: '#FAFAFA',
     paddingTop: 42,
   },
-  container: {
-    flex: 1,
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 12,
+  },
+  backText: {
+    fontSize: 24,
+    fontFamily: 'MonaSans-Medium',
+    color: '#000000',
+    marginBottom: 3,
+  },
+  loader: {
+    marginRight: 12,
   },
   contentContainer: {
-    padding: 32,
+    padding: 24,
     minHeight: Dimensions.get('window').height,
   },
   title: {
@@ -134,7 +190,7 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
   titleContainer: {
-    marginVertical: 20,
+    marginBottom: 20,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
@@ -144,19 +200,6 @@ const styles = StyleSheet.create({
   },
   titleWrapper: {
     flex: 1,
-  },
-  tag: {
-    fontSize: 12,
-    color: '#000000',
-    fontFamily: 'MonaSans-Regular',
-    marginTop: 8,
-  },
-  tagsContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  deleteButton: {
-    padding: 6,
   },
   date: {
     fontSize: 12,

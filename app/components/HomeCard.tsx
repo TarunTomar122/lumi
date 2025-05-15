@@ -8,12 +8,19 @@ type HomeCardProps = {
   disabled?: boolean;
 };
 
+const getSubtitle = (title: string) => {
+  if (title === 'Tasks') return 'For all your todos and reminders';
+  if (title === 'Notes') return 'For your thoughts and ideas';
+  if (title === 'Habits') return 'For your habits and routines';
+  if (title === 'Reflections') return 'For your reflections and insights';
+};
+
 export default function HomeCard({ title, icon, onPress, disabled }: HomeCardProps) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress} disabled={disabled}>
       <Ionicons name={icon} size={24} color="#000000" />
       <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>Great for those{'\n'}looking to mingle.</Text>
+      <Text style={styles.subtitle}>{getSubtitle(title)}</Text>
     </TouchableOpacity>
   );
 }
@@ -23,7 +30,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#E0E0E0',
     alignItems: 'flex-start',
@@ -41,4 +47,4 @@ const styles = StyleSheet.create({
     color: '#666666',
     lineHeight: 20,
   },
-}); 
+});

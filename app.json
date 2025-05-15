@@ -44,7 +44,8 @@
           "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
         }
       ],
-      "./plugins/notifee/withNotifee"
+      "./plugins/notifee/withNotifee",
+      "react-native-background-fetch"
     ],
     "experiments": {
       "typedRoutes": true

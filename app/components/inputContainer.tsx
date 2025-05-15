@@ -9,6 +9,7 @@ export default function InputContainer({
   handleSubmit,
   isRecording,
   setIsRecording,
+  isThinking,
 }: {
   userResponse: string;
   setUserResponse: (text: string) => void;
@@ -45,7 +46,7 @@ export default function InputContainer({
   }, [state.results, isRecording]);
 
   return (
-    <View style={styles.inputContainer}>
+    <View style={[styles.inputContainer]}>
       <TextInput
         style={styles.textInput}
         placeholder={isRecording ? 'Listening...' : 'Ask anything'}
@@ -88,8 +89,9 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#EAEAEA',
-    borderRadius: 48,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: '#FFFFFF',
     padding: 8,
     marginBottom: 16,
   },

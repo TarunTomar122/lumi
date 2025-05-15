@@ -6,11 +6,11 @@ import {
   ScrollView,
   SafeAreaView,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import React from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import InputContainer from './components/inputContainer';
 import { useMemoryStore } from './store/memoryStore';
 
 export default function Notes() {
@@ -55,14 +55,15 @@ export default function Notes() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={28} color="#000000" />
+          <Text style={styles.backText}>Notes</Text>
+        </TouchableOpacity>
+      </View>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>notes</Text>
-          <TouchableOpacity onPress={() => router.push({ pathname: '/' })}>
-            <Ionicons name="close" size={32} color="#000000" />
-          </TouchableOpacity>
-        </View>
-        <View style={styles.tagsList}>
+        <ScrollView horizontal style={styles.tagsList} showsHorizontalScrollIndicator={false}>
           {uniqueTags.map((currTag, index) => (
             <TouchableOpacity
               style={[styles.tagContainer, tag === currTag && styles.activeTagContainer]}
@@ -82,7 +83,7 @@ export default function Notes() {
               <Text style={styles.tag}>{currTag}</Text>
             </TouchableOpacity>
           ))}
-        </View>
+        </ScrollView>
         <ScrollView
           style={styles.notesList}
           showsVerticalScrollIndicator={false}
@@ -101,19 +102,11 @@ export default function Notes() {
               }}>
               <Text style={styles.noteTitle}>{note.title}</Text>
               <Text style={styles.noteText} numberOfLines={1}>
-                {note.text}
+                {note.content}
               </Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
-
-        <InputContainer
-          userResponse={userResponse}
-          setUserResponse={setUserResponse}
-          handleSubmit={handleSubmit}
-          isRecording={isRecording}
-          setIsRecording={setIsRecording}
-        />
       </View>
     </SafeAreaView>
   );
@@ -123,18 +116,33 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#fafafa',
-    paddingTop: 30,
-  },
-  container: {
-    flex: 1,
-    padding: 32,
+    paddingTop: 42,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
     paddingTop: 20,
-    paddingBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 12,
+  },
+  backText: {
+    fontSize: 24,
+    fontFamily: 'MonaSans-Medium',
+    color: '#000000',
+    marginBottom: 3,
+  },
+  container: {
+    flex: 1,
+    padding: 24,
   },
   title: {
     fontSize: 32,
@@ -142,12 +150,13 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
   tagsList: {
-    flexDirection: 'row',
-    gap: 8,
     marginBottom: 12,
+    paddingRight: 12,
+    maxHeight: 40,
   },
   tagContainer: {
     marginTop: 2,
+    marginRight: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 16,
