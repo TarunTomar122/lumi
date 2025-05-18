@@ -2,6 +2,8 @@ import { SYSTEM_MESSAGE } from './system-message';
 import { clientTools, clientToolsSchema } from './tools';
 import { useTaskStore } from '@/app/store/taskStore';
 import { useMemoryStore } from '@/app/store/memoryStore';
+import { useHabitStore } from '@/app/store/habitStore';
+import { useReflectionStore } from '@/app/store/reflectionStore';
 export interface Message {
   role: 'user' | 'assistant' | 'tool';
   content: string;
@@ -76,7 +78,7 @@ export const talkToAgent = async (
           const tool = clientTools[functionName];
           if (tool) {
             try {
-              // console.log(`🔨 Executing tool: ${functionName}`);
+              console.log(`🔨 Executing tool: ${functionName}`);
               const args = JSON.parse(toolCall.function.arguments);
               // console.log('📝 Tool arguments:', args);
               const result = await tool(args);
@@ -104,6 +106,26 @@ export const talkToAgent = async (
                   await taskStore.refreshTasks();
                   navigateTo('tasks');
                   alreadyNavigated = true;
+                } else if (
+                  functionName === 'addHabit' ||
+                  functionName === 'updateHabit' ||
+                  functionName === 'deleteHabit' ||
+                  functionName === 'getAllHabits'
+                ) {
+                  const habitStore = useHabitStore.getState();
+                  await habitStore.refreshHabits();
+                  navigateTo('habits');
+                  alreadyNavigated = true;
+                } else if (
+                  functionName === 'addReflection' ||
+                  functionName === 'updateReflection' ||
+                  functionName === 'deleteReflection' ||
+                  functionName === 'getAllReflections'
+                ) {
+                  const reflectionStore = useReflectionStore.getState();
+                  await reflectionStore.refreshReflections();
+                  navigateTo('reflections');
+                  alreadyNavigated = true;
                 }
               }
 
@@ -126,7 +148,7 @@ export const talkToAgent = async (
           navigateTo('');
         }
         // Model gave a final response without tool calls
-        // console.log('💬 Model provided final response', assistantMessage.content);
+        console.log('💬 Model provided final response', assistantMessage.content);
         setAssistantResponse(assistantMessage.content || 'No response');
         updateHistory(currentMessageHistory);
         isModelThinking = false;

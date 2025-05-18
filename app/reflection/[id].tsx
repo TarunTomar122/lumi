@@ -11,29 +11,24 @@ import {
   Keyboard,
   StatusBar,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useMemoryStore } from './store/memoryStore';
+import { useReflectionStore } from '../store/reflectionStore';
 import { Dimensions } from 'react-native';
-import InputContainer from './components/inputContainer';
+import { DateTime } from 'luxon';
 
-const DetailsPage = () => {
+const ReflectionDetails = () => {
   const router = useRouter();
-  const { item: itemString } = useLocalSearchParams();
-  const item = JSON.parse(itemString as string);
-  const [isLoading, setIsLoading] = React.useState<boolean>(false);
-  const { updateMemory, deleteMemory } = useMemoryStore();
-  const [title, setTitle] = React.useState<string>(item.title);
-  const [textContent, setTextContent] = React.useState<string>(item.content);
-  const [isEditing, setIsEditing] = React.useState<boolean>(false);
+  const { id } = useLocalSearchParams();
+  const reflections = useReflectionStore(state => state.reflections);
+  const { updateReflection, deleteReflection } = useReflectionStore();
+  const reflection = reflections.find(r => r.id === Number(id));
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [textContent, setTextContent] = React.useState(reflection?.content || '');
   const [keyboardHeight, setKeyboardHeight] = React.useState(Dimensions.get('window').height);
-  const scrollViewRef = React.useRef<ScrollView>(null);
+  const [isEditing, setIsEditing] = React.useState(false);
+  const scrollViewRef = useRef<ScrollView>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
-
-  const [userResponse, setUserResponse] = React.useState<string>('');
-  const [isRecording, setIsRecording] = React.useState<boolean>(false);
-  const [isThinking, setIsThinking] = React.useState<boolean>(false);
 
   React.useEffect(() => {
     Keyboard.addListener('keyboardDidShow', () => {
@@ -45,7 +40,6 @@ const DetailsPage = () => {
       setIsEditing(false);
     });
 
-    // Clean up timeout on unmount
     return () => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
@@ -54,43 +48,53 @@ const DetailsPage = () => {
   }, []);
 
   const handleDelete = async () => {
-    await deleteMemory(item.id);
-    router.back();
+    if (reflection?.id) {
+      await deleteReflection(reflection.id);
+      router.back();
+    }
   };
 
-  React.useEffect(() => {
-    console.log('userResponse', userResponse);
-  }, [userResponse]);
-
-  // Debounced auto-save function
   const debouncedSave = useCallback(
-    (newTitle: string, newContent: string) => {
+    (newContent: string) => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
 
       saveTimeoutRef.current = setTimeout(async () => {
+        if (!reflection?.id) return;
         setIsLoading(true);
         try {
-          await updateMemory(item.id, {
-            content: newContent,
-            title: newTitle,
-            tags: item.tags || [],
-          });
+          await updateReflection(reflection.id, { content: newContent });
         } catch (error) {
-          console.error('Error auto-saving memory:', error);
+          console.error('Error auto-saving reflection:', error);
         } finally {
           setIsLoading(false);
         }
       }, 300);
     },
-    [item.id, item.tags, updateMemory]
+    [reflection?.id, updateReflection]
   );
 
   const handleTextChange = (text: string) => {
     setTextContent(text);
-    debouncedSave(title, text);
+    debouncedSave(text);
   };
+
+  if (!reflection) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={28} color="#000000" />
+            <Text style={styles.backText}>Back</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={styles.container}>
+          <Text>Reflection not found</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -99,28 +103,13 @@ const DetailsPage = () => {
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={28} color="#000000" />
           <Text style={styles.backText}>
-            {item.title.slice(0, 22) + (item.title.length > 22 ? '...' : '')}
+            {DateTime.fromISO(reflection.date).toFormat('d MMM yyyy')}
           </Text>
         </TouchableOpacity>
         {isLoading && <ActivityIndicator size="small" color="#000000" style={styles.loader} />}
-
         <TouchableOpacity onPress={handleDelete}>
           <Ionicons name="trash-outline" size={28} color="#000000" />
         </TouchableOpacity>
-
-        {/* {isEditing && (
-          <InputContainer
-            userResponse={userResponse}
-            setUserResponse={setUserResponse}
-            setStreamedResponse={(response: string) => {
-              console.log('response', response);
-            }}
-            handleSubmit={() => {}}
-            isRecording={isRecording}
-            setIsRecording={setIsRecording}
-            onlyRecording={true}
-          />
-        )} */}
       </View>
       <ScrollView
         ref={scrollViewRef}
@@ -134,16 +123,6 @@ const DetailsPage = () => {
           onChangeText={handleTextChange}
         />
       </ScrollView>
-      {/* <View style={styles.inputContainer}>
-        <InputContainer
-          userResponse={userResponse}
-          setUserResponse={setUserResponse}
-          handleSubmit={handleSubmit}
-          isRecording={isRecording}
-          setIsRecording={setIsRecording}
-          onlyRecording={true}
-        />
-      </View> */}
     </SafeAreaView>
   );
 };
@@ -153,6 +132,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAFAFA',
     paddingTop: 42,
+  },
+  container: {
+    flex: 1,
+    padding: 24,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -200,4 +185,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default DetailsPage;
+export default ReflectionDetails; 

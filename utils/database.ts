@@ -22,6 +22,19 @@ export interface Memory {
   tags: string[];
 }
 
+export interface Habit {
+  id?: number;
+  title: string;
+  completions: Record<string, boolean>; // Map of ISO date strings to completion status
+  color: string;
+}
+
+export interface Reflection {
+  id?: number;
+  date: string;
+  content: string;
+}
+
 class DatabaseManager {
   private database: SQLite.SQLiteDatabase | null = null;
   private static instance: DatabaseManager;
@@ -101,6 +114,25 @@ class DatabaseManager {
           content TEXT NOT NULL,
           date TEXT NOT NULL,
           tags TEXT NOT NULL
+        )
+      `);
+
+      // Drop and recreate habits table with new schema
+      await this.database.executeSql(`
+        CREATE TABLE IF NOT EXISTS habits (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          completions TEXT NOT NULL,
+          color TEXT NOT NULL
+        )
+      `);
+
+      // Create reflections table
+      await this.database.executeSql(`
+        CREATE TABLE IF NOT EXISTS reflections (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL,
+          content TEXT NOT NULL
         )
       `);
 
@@ -278,6 +310,167 @@ class DatabaseManager {
       await this.database.executeSql('DELETE FROM memories WHERE id = ?;', [id]);
     } catch (error) {
       console.error('Error deleting memory:', error);
+      throw error;
+    }
+  }
+
+  // Habits CRUD operations
+  async getAllHabits(): Promise<Habit[]> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      const [results] = await this.database.executeSql(
+        'SELECT * FROM habits ORDER BY id ASC;'
+      );
+      const habits: Habit[] = [];
+      for (let i = 0; i < results.rows.length; i++) {
+        const item = results.rows.item(i);
+        habits.push({
+          ...item,
+          completions: JSON.parse(item.completions),
+        });
+      }
+      return habits;
+    } catch (error) {
+      console.error('Error getting habits:', error);
+      throw error;
+    }
+  }
+
+  async addHabit(habit: Omit<Habit, 'id'>): Promise<Habit> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      const [result] = await this.database.executeSql(
+        `INSERT INTO habits (title, completions, color)
+         VALUES (?, ?, ?);`,
+        [
+          habit.title,
+          JSON.stringify(habit.completions),
+          habit.color,
+        ]
+      );
+
+      return {
+        id: result.insertId,
+        ...habit,
+      };
+    } catch (error) {
+      console.error('Error adding habit:', error);
+      throw error;
+    }
+  }
+
+  async updateHabit(id: number, updates: Partial<Omit<Habit, 'id'>>): Promise<void> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    const updateFields = Object.keys(updates)
+      .map(key => {
+        if (key === 'completions') {
+          return `${key} = ?`;
+        }
+        return `${key} = ?`;
+      })
+      .join(', ');
+    const values = Object.entries(updates).map(([key, value]) => 
+      key === 'completions' ? JSON.stringify(value) : value
+    );
+
+    try {
+      await this.database.executeSql(`UPDATE habits SET ${updateFields} WHERE id = ?;`, [
+        ...values,
+        id,
+      ]);
+    } catch (error) {
+      console.error('Error updating habit:', error);
+      throw error;
+    }
+  }
+
+  async deleteHabit(id: number): Promise<void> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      await this.database.executeSql('DELETE FROM habits WHERE id = ?;', [id]);
+    } catch (error) {
+      console.error('Error deleting habit:', error);
+      throw error;
+    }
+  }
+
+  // Reflections CRUD operations
+  async getAllReflections(): Promise<Reflection[]> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      const [results] = await this.database.executeSql(
+        'SELECT * FROM reflections ORDER BY date DESC;'
+      );
+      const reflections: Reflection[] = [];
+      for (let i = 0; i < results.rows.length; i++) {
+        reflections.push(results.rows.item(i));
+      }
+      return reflections;
+    } catch (error) {
+      console.error('Error getting reflections:', error);
+      throw error;
+    }
+  }
+
+  async addReflection(reflection: Omit<Reflection, 'id'>): Promise<Reflection> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      const [result] = await this.database.executeSql(
+        `INSERT INTO reflections (date, content)
+         VALUES (?, ?);`,
+        [reflection.date, reflection.content]
+      );
+
+      return {
+        id: result.insertId,
+        ...reflection,
+      };
+    } catch (error) {
+      console.error('Error adding reflection:', error);
+      throw error;
+    }
+  }
+
+  async updateReflection(id: number, updates: Partial<Omit<Reflection, 'id'>>): Promise<void> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    const updateFields = Object.keys(updates)
+      .map(key => `${key} = ?`)
+      .join(', ');
+    const values = Object.values(updates);
+
+    try {
+      await this.database.executeSql(
+        `UPDATE reflections SET ${updateFields} WHERE id = ?;`,
+        [...values, id]
+      );
+    } catch (error) {
+      console.error('Error updating reflection:', error);
+      throw error;
+    }
+  }
+
+  async deleteReflection(id: number): Promise<void> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      await this.database.executeSql('DELETE FROM reflections WHERE id = ?;', [id]);
+    } catch (error) {
+      console.error('Error deleting reflection:', error);
       throw error;
     }
   }

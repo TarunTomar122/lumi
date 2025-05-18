@@ -12,6 +12,10 @@ import React from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMemoryStore } from './store/memoryStore';
+import InputContainer from './components/inputContainer';
+import { talkToAgent } from '@/utils/agent';
+import { useMessageStore } from './store/messageStore';
+import HeartAnimation from './components/HeartAnimation';
 
 export default function Notes() {
   const router = useRouter();
@@ -22,6 +26,11 @@ export default function Notes() {
   const { tag } = useLocalSearchParams();
   const [filteredMemories, setFilteredMemories] = React.useState(memories);
   const [uniqueTags, setUniqueTags] = React.useState<string[]>([]);
+  const { messageHistory, updateMessageHistory, clearMessageHistory } = useMessageStore();
+  const [assistantResponse, setAssistantResponse] = React.useState('');
+  const [isThinking, setIsThinking] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [activeContent, setActiveContent] = React.useState<string>('home');
 
   React.useEffect(() => {
     const tags = memories.map(memory => memory.tags).flat();
@@ -48,9 +57,27 @@ export default function Notes() {
     setRefreshing(false);
   }, []);
 
+  const navigateTo = (path: 'tasks' | 'notes' | 'habits' | 'reflections' | '') => {
+    router.push(`/${path}`);
+  };
+
   const handleSubmit = () => {
-    // TODO: Implement note submission
-    console.log('Submitting note:', userResponse);
+    let additionalPrompt =
+      'User is on the notes page so your default action should be to create a note unless they say otherwise.';
+    if (tag) {
+      additionalPrompt += `The tag selected right now is ${tag}`;
+    }
+    const prePrompt = `${additionalPrompt} Here's the user's response - userResponse: ${userResponse}`;
+    talkToAgent(
+      prePrompt,
+      updateMessageHistory,
+      messageHistory,
+      setAssistantResponse,
+      setIsThinking,
+      setIsLoading,
+      setActiveContent,
+      navigateTo
+    );
   };
 
   return (
@@ -62,51 +89,64 @@ export default function Notes() {
           <Text style={styles.backText}>Notes</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.container}>
-        <ScrollView horizontal style={styles.tagsList} showsHorizontalScrollIndicator={false}>
-          {uniqueTags.map((currTag, index) => (
-            <TouchableOpacity
-              style={[styles.tagContainer, tag === currTag && styles.activeTagContainer]}
-              key={index}
-              onPress={() => {
-                if (tag === currTag) {
+      {activeContent === 'home' && (
+        <View style={styles.container}>
+          <ScrollView horizontal style={styles.tagsList} showsHorizontalScrollIndicator={false}>
+            {uniqueTags.map((currTag, index) => (
+              <TouchableOpacity
+                style={[styles.tagContainer, tag === currTag && styles.activeTagContainer]}
+                key={index}
+                onPress={() => {
+                  if (tag === currTag) {
+                    router.push({
+                      pathname: '/notes',
+                    });
+                  } else {
+                    router.push({
+                      pathname: '/notes',
+                      params: { tag: currTag },
+                    });
+                  }
+                }}>
+                <Text style={styles.tag}>{currTag}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+          <ScrollView
+            style={styles.notesList}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
+            }>
+            {filteredMemories.map((note, index) => (
+              <TouchableOpacity
+                key={index}
+                style={styles.noteItem}
+                onPress={() => {
                   router.push({
-                    pathname: '/notes',
+                    pathname: '/details',
+                    params: { item: JSON.stringify(note) },
                   });
-                } else {
-                  router.push({
-                    pathname: '/notes',
-                    params: { tag: currTag },
-                  });
-                }
-              }}>
-              <Text style={styles.tag}>{currTag}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <ScrollView
-          style={styles.notesList}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
-          }>
-          {filteredMemories.map((note, index) => (
-            <TouchableOpacity
-              key={index}
-              style={styles.noteItem}
-              onPress={() => {
-                router.push({
-                  pathname: '/details',
-                  params: { item: JSON.stringify(note) },
-                });
-              }}>
-              <Text style={styles.noteTitle}>{note.title}</Text>
-              <Text style={styles.noteText} numberOfLines={1}>
-                {note.content}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+                }}>
+                <Text style={styles.noteTitle}>{note.title}</Text>
+                <Text style={styles.noteText} numberOfLines={1}>
+                  {note.content}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+      {activeContent === 'chat' && <HeartAnimation />}
+      <View style={styles.inputContainer}>
+        <InputContainer
+          userResponse={userResponse}
+          setUserResponse={setUserResponse}
+          handleSubmit={handleSubmit}
+          isRecording={isRecording}
+          setIsRecording={setIsRecording}
+          onlyRecording={false}
+        />
       </View>
     </SafeAreaView>
   );
@@ -191,5 +231,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
+  },
+  inputContainer: {
+    padding: 24,
   },
 });

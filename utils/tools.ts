@@ -5,9 +5,10 @@ import notifee, {
   AndroidColor,
 } from '@notifee/react-native';
 import { db } from '@/utils/database';
-import type { Task } from '@/utils/database';
+import type { Task, Memory, Habit } from '@/utils/database';
 import { DateTime } from 'luxon';
 import { checkUsagePermission, getLastDayUsageStats } from '@/utils/usageStats';
+import { useHabitStore } from '@/app/store/habitStore';
 // const API_BASE_URL = 'http://10.161.88.145:3001/api';
 const API_BASE_URL = 'https://lumi-server-iixq.onrender.com/api';
 
@@ -161,6 +162,97 @@ const clientToolsSchema = [
       type: 'object',
       properties: {},
       required: [],
+    },
+  },
+  {
+    type: 'function',
+    name: 'addHabit',
+    description: 'Adds a new habit to track.',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Title of the habit' },
+        color: { 
+          type: 'string', 
+          description: 'Optional hex color code for the habit. If not provided, a random pastel color will be assigned.' 
+        },
+      },
+      required: ['title'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'deleteHabit',
+    description: 'Deletes a habit.',
+    parameters: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'ID of the habit to delete' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'updateHabit',
+    description: 'Updates a habit\'s properties.',
+    parameters: {
+      type: 'object',
+      properties: {
+        id: { type: 'string', description: 'ID of the habit to update' },
+        title: { type: 'string', description: 'New title for the habit' },
+        color: { type: 'string', description: 'New hex color code for the habit' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'getAllHabits',
+    description: 'Gets all habits.',
+  },
+  {
+    type: 'function',
+    name: 'getAllReflections',
+    description: 'Gets all reflections from the database.',
+  },
+  {
+    type: 'function',
+    name: 'addReflection',
+    description: 'Adds a new reflection.',
+    parameters: {
+      type: 'object',
+      properties: {
+        date: { type: 'string', description: 'Date of the reflection in ISO format' },
+        content: { type: 'string', description: 'Content of the reflection' },
+      },
+      required: ['date', 'content'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'updateReflection',
+    description: 'Updates a reflection.',
+    parameters: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'ID of the reflection to update' },
+        date: { type: 'string', description: 'New date for the reflection' },
+        content: { type: 'string', description: 'New content for the reflection' },
+      },
+      required: ['id'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'deleteReflection',
+    description: 'Deletes a reflection.',
+    parameters: {
+      type: 'object',
+      properties: {
+        id: { type: 'number', description: 'ID of the reflection to delete' },
+      },
+      required: ['id'],
     },
   },
 ];
@@ -349,6 +441,106 @@ const clientTools = {
     }
     const appUsageStats = await getLastDayUsageStats();
     return { success: true, appUsageStats };
+  },
+  addHabit: async ({ title, color }: { title: string; color?: string }) => {
+    try {
+      const habit = await db.addHabit({
+        title,
+        completions: {},
+        color: color || '#FFB3BA', // Default to first pastel color if none provided
+      });
+      return { success: true, id: habit.id };
+    } catch (error) {
+      console.error('Error adding habit:', error);
+      return { success: false, error: 'Failed to add habit.' };
+    }
+  },
+
+  deleteHabit: async ({ id }: { id: string }) => {
+    try {
+      await db.deleteHabit(Number(id));
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting habit:', error);
+      return { success: false, error: 'Failed to delete habit.' };
+    }
+  },
+
+  updateHabit: async ({ 
+    id, 
+    title, 
+    color,
+    completions 
+  }: { 
+    id: string; 
+    title?: string; 
+    color?: string;
+    completions?: Record<string, boolean>;
+  }) => {
+    try {
+      await db.updateHabit(Number(id), {
+        ...(title && { title }),
+        ...(color && { color }),
+        ...(completions && { completions }),
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating habit:', error);
+      return { success: false, error: 'Failed to update habit.' };
+    }
+  },
+
+  getAllHabits: async () => {
+    try {
+      const habits = await db.getAllHabits();
+      return { success: true, habits };
+    } catch (error) {
+      console.error('Error fetching habits:', error);
+      return { success: false, error: 'Failed to fetch habits.' };
+    }
+  },
+
+  getAllReflections: async () => {
+    try {
+      const reflections = await db.getAllReflections();
+      return { success: true, reflections };
+    } catch (error) {
+      console.error('Error fetching reflections:', error);
+      return { success: false, error: 'Failed to fetch reflections.' };
+    }
+  },
+
+  addReflection: async ({ date, content }: { date: string; content: string }) => {
+    try {
+      const reflection = await db.addReflection({ date, content });
+      return { success: true, reflection };
+    } catch (error) {
+      console.error('Error adding reflection:', error);
+      return { success: false, error: 'Failed to add reflection.' };
+    }
+  },
+
+  updateReflection: async ({ id, date, content }: { id: number; date?: string; content?: string }) => {
+    try {
+      await db.updateReflection(id, {
+        ...(date && { date }),
+        ...(content && { content }),
+      });
+      return { success: true };
+    } catch (error) {
+      console.error('Error updating reflection:', error);
+      return { success: false, error: 'Failed to update reflection.' };
+    }
+  },
+
+  deleteReflection: async ({ id }: { id: number }) => {
+    try {
+      await db.deleteReflection(id);
+      return { success: true };
+    } catch (error) {
+      console.error('Error deleting reflection:', error);
+      return { success: false, error: 'Failed to delete reflection.' };
+    }
   },
 };
 

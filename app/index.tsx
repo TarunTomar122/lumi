@@ -223,14 +223,13 @@ export default function Page() {
                 }}
               />
             </View>
-            <View style={[styles.row, styles.disabledRow]}>
+            <View style={styles.row}>
               <HomeCard
                 title="Habits"
                 icon="bar-chart-outline"
                 onPress={() => {
                   router.push('/habits');
                 }}
-                disabled={true}
               />
               <HomeCard
                 title="Reflections"
@@ -238,7 +237,6 @@ export default function Page() {
                 onPress={() => {
                   router.push('/reflections');
                 }}
-                disabled={true}
               />
             </View>
           </View>
@@ -252,6 +250,7 @@ export default function Page() {
           handleSubmit={handleSubmit}
           isRecording={isRecording}
           setIsRecording={setIsRecording}
+          onlyRecording={false}
         />
       </View>
     </SafeAreaView>
@@ -273,7 +272,7 @@ const styles = StyleSheet.create({
     padding: 32,
   },
   inputContainer: {
-    padding: 32,
+    padding: 24,
   },
   header: {
     marginTop: 20,

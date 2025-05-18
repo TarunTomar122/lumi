@@ -6,16 +6,19 @@ import { Ionicons } from '@expo/vector-icons';
 export default function InputContainer({
   userResponse,
   setUserResponse,
+  setStreamedResponse,
   handleSubmit,
   isRecording,
   setIsRecording,
-  isThinking,
+  onlyRecording,
 }: {
   userResponse: string;
   setUserResponse: (text: string) => void;
+  setStreamedResponse?: (text: string) => void;
   handleSubmit: () => void;
   isRecording: boolean;
   setIsRecording: (recording: boolean) => void;
+  onlyRecording?: boolean;
 }) {
   const processedResultsRef = React.useRef<Set<string>>(new Set());
   const { state, startRecognizing, stopRecognizing, resetState } = useVoiceRecognition();
@@ -31,7 +34,6 @@ export default function InputContainer({
   }, [state.error]);
 
   React.useEffect(() => {
-    // console.log('Recording results:', state.results, isRecording);
     if (state.results[0] && !isRecording) {
       // Only process results when stopping recording
       // Check if we've already processed this result
@@ -45,6 +47,36 @@ export default function InputContainer({
     }
   }, [state.results, isRecording]);
 
+  React.useEffect(() => {
+    if (setStreamedResponse && userResponse) {
+      setStreamedResponse(userResponse);
+    }
+  }, [state.results]);
+
+  if (onlyRecording) {
+    return (
+      <TouchableOpacity
+        style={[]}
+        onPress={() => {
+          if (userResponse) {
+            handleSubmit();
+            setUserResponse('');
+          } else if (isRecording) {
+            stopRecognizing();
+            setIsRecording(false);
+            // Don't automatically submit - let user review and send manually
+          } else {
+            startRecognizing();
+            setIsRecording(true);
+            // Clear any previous results when starting new recording
+            processedResultsRef.current.clear();
+          }
+        }}>
+        <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={26} color="#000000" />
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <View style={[styles.inputContainer]}>
       <TextInput
@@ -56,8 +88,9 @@ export default function InputContainer({
         multiline={true}
         numberOfLines={4}
       />
+
       <TouchableOpacity
-        style={styles.micButton}
+        style={[styles.micButton, { marginLeft: 8 }]}
         onPress={() => {
           if (userResponse) {
             handleSubmit();
@@ -89,6 +122,7 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E0E0E0',
     backgroundColor: '#FFFFFF',

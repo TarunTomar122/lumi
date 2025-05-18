@@ -14,13 +14,20 @@ import { Ionicons } from '@expo/vector-icons';
 import InputContainer from './components/inputContainer';
 import { useTaskStore } from './store/taskStore';
 import { formatDate } from '@/utils/commons';
-
+import { talkToAgent } from '@/utils/agent';
+import { useMessageStore } from './store/messageStore';
+import HeartAnimation from './components/HeartAnimation';
 export default function Tasks() {
   const router = useRouter();
   const [userResponse, setUserResponse] = React.useState('');
   const [isRecording, setIsRecording] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
   const { tasks, updateTask, refreshTasks } = useTaskStore();
+  const { messageHistory, updateMessageHistory, clearMessageHistory } = useMessageStore();
+  const [assistantResponse, setAssistantResponse] = React.useState('');
+  const [isThinking, setIsThinking] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [activeContent, setActiveContent] = React.useState<string>('home');
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -32,9 +39,22 @@ export default function Tasks() {
     setRefreshing(false);
   }, []);
 
+  const navigateTo = (path: 'tasks' | 'notes' | 'habits' | 'reflections' | '') => {
+    router.push(`/${path}`);
+  };
+
   const handleSubmit = () => {
-    // TODO: Implement task submission
-    console.log('Submitting task:', userResponse);
+    const prePrompt = `User is on the tasks page so your default action should be to create a task unless they say otherwise. Here's what they said: ${userResponse}`;
+    talkToAgent(
+      prePrompt,
+      updateMessageHistory,
+      messageHistory,
+      setAssistantResponse,
+      setIsThinking,
+      setIsLoading,
+      setActiveContent,
+      navigateTo
+    );
   };
 
   const handleTaskToggle = async (id: number, currentStatus: 'todo' | 'done') => {
@@ -55,31 +75,50 @@ export default function Tasks() {
           <Text style={styles.backText}>Tasks</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.container}>
-        <ScrollView
-          style={styles.taskList}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
-          }>
-          {tasks.map((task, index) => (
-            <View key={index} style={styles.taskItem}>
-              <View style={styles.taskContent}>
-                <Text style={[styles.taskText, task.status === 'done' && styles.taskTextCompleted]}>
-                  {task.title}
-                </Text>
-                <Text style={styles.taskDate}>
-                  {formatDate(task.due_date || task.reminder_date || '')}
-                </Text>
+      {activeContent === 'home' && (
+        <View style={styles.container}>
+          <ScrollView
+            style={styles.taskList}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
+            }>
+            {tasks.map((task, index) => (
+              <View key={index} style={styles.taskItem}>
+                <View style={styles.taskContent}>
+                  <Text
+                    style={[styles.taskText, task.status === 'done' && styles.taskTextCompleted]}>
+                    {task.title}
+                  </Text>
+                  <Text style={styles.taskDate}>
+                    {formatDate(task.due_date || task.reminder_date || '')}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.taskCheckbox,
+                    task.status === 'done' && styles.taskCheckboxChecked,
+                  ]}
+                  onPress={() => handleTaskToggle(task.id!, task.status)}>
+                  {task.status === 'done' && (
+                    <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity
-                style={[styles.taskCheckbox, task.status === 'done' && styles.taskCheckboxChecked]}
-                onPress={() => handleTaskToggle(task.id!, task.status)}>
-                {task.status === 'done' && <Ionicons name="checkmark" size={20} color="#FFFFFF" />}
-              </TouchableOpacity>
-            </View>
-          ))}
-        </ScrollView>
+            ))}
+          </ScrollView>
+        </View>
+      )}
+      {activeContent === 'chat' && <HeartAnimation />}
+      <View style={styles.inputContainer}>
+        <InputContainer
+          userResponse={userResponse}
+          setUserResponse={setUserResponse}
+          handleSubmit={handleSubmit}
+          isRecording={isRecording}
+          setIsRecording={setIsRecording}
+          onlyRecording={false}
+        />
       </View>
     </SafeAreaView>
   );
@@ -165,5 +204,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
+  },
+  inputContainer: {
+    padding: 24,
   },
 });

@@ -6,19 +6,21 @@ import {
   ScrollView,
   SafeAreaView,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
 import React from 'react';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import InputContainer from './components/inputContainer';
+import { DateTime } from 'luxon';
 import { useReflectionStore } from './store/reflectionStore';
+import InputContainer from './components/inputContainer';
 
 export default function Reflections() {
   const router = useRouter();
+  const [refreshing, setRefreshing] = React.useState(false);
   const [userResponse, setUserResponse] = React.useState('');
   const [isRecording, setIsRecording] = React.useState(false);
-  const [refreshing, setRefreshing] = React.useState(false);
-  const { reflections, addReflection, refreshReflections } = useReflectionStore();
+  const { reflections, refreshReflections, addReflection } = useReflectionStore();
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -30,32 +32,31 @@ export default function Reflections() {
     setRefreshing(false);
   }, []);
 
-  const handleSubmit = () => {
+  React.useEffect(() => {
+    refreshReflections();
+  }, []);
+
+  const formatDate = (dateStr: string) => {
+    return DateTime.fromISO(dateStr).toFormat('MMMM d, yyyy');
+  };
+
+  const handleSubmit = async () => {
     if (!userResponse) return;
 
-    addReflection({
-      date: new Date()
-        .toLocaleDateString('en-US', {
-          day: 'numeric',
-          month: 'long',
-        })
-        .toLowerCase(),
-      text: userResponse,
-    });
-
+    await addReflection(DateTime.now().toISODate() || '', userResponse);
     setUserResponse('');
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={28} color="#000000" />
+          <Text style={styles.backText}>Reflections</Text>
+        </TouchableOpacity>
+      </View>
       <View style={styles.container}>
-        <View style={styles.header}>
-          <Text style={styles.title}>reflections</Text>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Ionicons name="close" size={32} color="#000000" />
-          </TouchableOpacity>
-        </View>
-        <Text style={styles.wip}>WIP</Text>
         <ScrollView
           style={styles.reflectionsList}
           showsVerticalScrollIndicator={false}
@@ -63,10 +64,15 @@ export default function Reflections() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
           }>
           {reflections.map(reflection => (
-            <View key={reflection.id} style={styles.reflectionItem}>
-              <Text style={styles.date}>{reflection.date}</Text>
-              <Text style={styles.text}>{reflection.text}</Text>
-            </View>
+            <TouchableOpacity
+              key={reflection.id}
+              style={styles.reflectionItem}
+              onPress={() => router.push(`/reflection/${reflection.id}`)}>
+              <Text style={styles.reflectionDate}>{formatDate(reflection.date)}</Text>
+              <Text style={styles.reflectionPreview} numberOfLines={2}>
+                {reflection.content}
+              </Text>
+            </TouchableOpacity>
           ))}
         </ScrollView>
 
@@ -86,48 +92,54 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#fafafa',
-    paddingTop: 30,
-  },
-  container: {
-    flex: 1,
-    padding: 32,
+    paddingTop: 42,
   },
   header: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
     paddingTop: 20,
-    paddingBottom: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
-  title: {
-    fontSize: 32,
-    fontFamily: 'MonaSans-Bold',
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 12,
+  },
+  backText: {
+    fontSize: 24,
+    fontFamily: 'MonaSans-Medium',
     color: '#000000',
+    marginBottom: 3,
   },
-  wip: {
-    fontSize: 32,
-    fontFamily: 'MonaSans-Bold',
-    color: 'red',
-    marginBottom: 20,
+  container: {
+    flex: 1,
+    padding: 24,
   },
   reflectionsList: {
     flex: 1,
   },
   reflectionItem: {
-    marginBottom: 24,
+    marginBottom: 16,
+    paddingVertical: 6,
+    borderRadius: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
   },
-  date: {
-    fontSize: 16,
-    fontFamily: 'MonaSans-Regular',
+  reflectionDate: {
+    fontSize: 18,
+    fontFamily: 'MonaSans-Medium',
     color: '#000000',
     marginBottom: 8,
   },
-  text: {
-    fontSize: 14,
+  reflectionPreview: {
+    fontSize: 16,
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
-    paddingBottom: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    lineHeight: 22,
   },
 });

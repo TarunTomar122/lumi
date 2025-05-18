@@ -17,7 +17,7 @@ const getSubtitle = (title: string) => {
 
 export default function HomeCard({ title, icon, onPress, disabled }: HomeCardProps) {
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress} disabled={disabled}>
+    <TouchableOpacity style={[styles.card, disabled && styles.disabled]} onPress={onPress} disabled={disabled}>
       <Ionicons name={icon} size={24} color="#000000" />
       <Text style={styles.title}>{title}</Text>
       <Text style={styles.subtitle}>{getSubtitle(title)}</Text>
@@ -46,5 +46,8 @@ const styles = StyleSheet.create({
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
     lineHeight: 20,
+  },
+  disabled: {
+    opacity: 0.5,
   },
 });
