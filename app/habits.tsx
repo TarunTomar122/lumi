@@ -10,6 +10,7 @@ import {
   LayoutAnimation,
   Platform,
   UIManager,
+  TextInput,
 } from 'react-native';
 import React from 'react';
 import { useRouter } from 'expo-router';
@@ -30,7 +31,9 @@ export default function Habits() {
   const router = useRouter();
   const [refreshing, setRefreshing] = React.useState(false);
   const [expandedHabitId, setExpandedHabitId] = React.useState<number | null>(null);
-  const { habits, updateHabitProgress, refreshHabits, getWeekProgress } = useHabitStore();
+  const [isAddingHabit, setIsAddingHabit] = React.useState(false);
+  const [newHabitTitle, setNewHabitTitle] = React.useState('');
+  const { habits, updateHabitProgress, refreshHabits, getWeekProgress, addHabit } = useHabitStore();
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -93,6 +96,16 @@ export default function Habits() {
     }
   };
 
+  const handleAddHabit = async () => {
+    if (!newHabitTitle.trim()) return;
+    
+    await addHabit(newHabitTitle.trim());
+    
+    setNewHabitTitle('');
+    setIsAddingHabit(false);
+    refreshHabits();
+  };
+
   console.log(habits);
 
   return (
@@ -132,6 +145,29 @@ export default function Habits() {
               )}
             </View>
           ))}
+          
+          {/* Add Habit Button or Input */}
+          <View style={styles.addHabitContainer}>
+            {isAddingHabit ? (
+              <View style={styles.addHabitInputContainer}>
+                <TextInput
+                  style={styles.addHabitInput}
+                  value={newHabitTitle}
+                  onChangeText={setNewHabitTitle}
+                  placeholder="Enter habit name..."
+                  autoFocus
+                  onBlur={() => setIsAddingHabit(false)}
+                  onSubmitEditing={handleAddHabit}
+                />
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.addHabitButton}
+                onPress={() => setIsAddingHabit(true)}>
+                <Ionicons name="add-circle-outline" size={32} color="#000000" />
+              </TouchableOpacity>
+            )}
+          </View>
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -213,5 +249,26 @@ const styles = StyleSheet.create({
   },
   habitHistoryContainer: {
     marginTop: 16,
+  },
+  addHabitContainer: {
+    marginTop: 0,
+    alignItems: 'center',
+    opacity: 0.5,
+  },
+  addHabitButton: {
+    padding: 12,
+  },
+  addHabitInputContainer: {
+    width: '100%',
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: 12,
+    backgroundColor: '#ffffff',
+  },
+  addHabitInput: {
+    fontSize: 18,
+    fontFamily: 'MonaSans-Regular',
+    color: '#000000',
   },
 });

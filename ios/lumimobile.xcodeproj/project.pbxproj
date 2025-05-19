@@ -303,7 +303,7 @@
 					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.lumi.mobile";
-				PRODUCT_NAME = "lumimobile";
+				PRODUCT_NAME = "lumi";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -330,7 +330,7 @@
 					"-lc++",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.lumi.mobile";
-				PRODUCT_NAME = "lumimobile";
+				PRODUCT_NAME = "lumi";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 				ENABLE_BITCODE = NO;

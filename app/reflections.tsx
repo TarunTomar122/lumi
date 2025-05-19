@@ -43,8 +43,55 @@ export default function Reflections() {
   const handleSubmit = async () => {
     if (!userResponse) return;
 
-    await addReflection(DateTime.now().toISODate() || '', userResponse);
+    let date = DateTime.now();
+    let content = userResponse;
+
+    // First split by colon
+    const parts = userResponse.split(':');
+    
+    if (parts.length > 1) {
+      // Everything before the first colon is potential date
+      const datePart = parts[0].trim();
+      // Everything after the first colon is content
+      content = parts.slice(1).join(':').trim();
+      
+      // Now try to parse the date part - it can be either "2 apr" or "apr 2"
+      const dateWords = datePart.split(/\s+/);
+      
+      // Get the last two words (in case there's text before the date)
+      const lastTwo = dateWords.slice(-2);
+      
+      console.log('lastTwo', lastTwo);
+      console.log('dateWords', dateWords);
+
+      if (lastTwo.length === 2) {
+        // Try all possible formats
+        const formats = ['d MMMM', 'MMMM d', 'd MMM', 'MMM d'];
+        let parsedDate = null;
+
+        for (const format of formats) {
+          const attempt = DateTime.fromFormat(lastTwo.join(' '), format);
+          if (attempt.isValid) {
+            parsedDate = attempt;
+            break;
+          }
+        }
+
+        console.log('parsedDate', parsedDate?.toISODate());
+
+        if (parsedDate?.isValid) {
+          date = parsedDate.set({ year: DateTime.now().year });
+        }
+
+        console.log('final date', date.toISODate());
+      }
+    }
+
+    console.log('date', date.toISODate(), 'content', content);
+
+    await addReflection(date.toISODate() || '', content);
     setUserResponse('');
+    refreshReflections();
   };
 
   return (
@@ -82,6 +129,7 @@ export default function Reflections() {
           handleSubmit={handleSubmit}
           isRecording={isRecording}
           setIsRecording={setIsRecording}
+          placeholder="reflection"
         />
       </View>
     </SafeAreaView>

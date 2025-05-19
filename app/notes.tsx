@@ -16,6 +16,7 @@ import InputContainer from './components/inputContainer';
 import { talkToAgent } from '@/utils/agent';
 import { useMessageStore } from './store/messageStore';
 import HeartAnimation from './components/HeartAnimation';
+import { clientTools } from '@/utils/tools';
 
 export default function Notes() {
   const router = useRouter();
@@ -36,6 +37,11 @@ export default function Notes() {
     const tags = memories.map(memory => memory.tags).flat();
     const uniqueTags = [...new Set(tags)];
     setUniqueTags(uniqueTags);
+    if (tag) {
+      setFilteredMemories(memories.filter(memory => memory.tags.includes(tag as string)));
+    } else {
+      setFilteredMemories(memories);
+    }
   }, [memories]);
 
   React.useEffect(() => {
@@ -62,22 +68,30 @@ export default function Notes() {
   };
 
   const handleSubmit = () => {
-    let additionalPrompt =
-      'User is on the notes page so your default action should be to create a note unless they say otherwise.';
-    if (tag) {
-      additionalPrompt += `The tag selected right now is ${tag}`;
+    // Extract tag and content from format "tag: content" if present
+    const tagRegex = /^([a-zA-Z]+):\s*(.+)$/;
+    const match = userResponse.match(tagRegex);
+
+    let selectedTag = (tag as string) || 'untagged';
+    let noteContent = userResponse;
+
+    if (match) {
+      // If we found a tag in the format "tag: content"
+      const [_, extractedTag, content] = match;
+      selectedTag = extractedTag.toLowerCase();
+      noteContent = content.trim();
     }
-    const prePrompt = `${additionalPrompt} Here's the user's response - userResponse: ${userResponse}`;
-    talkToAgent(
-      prePrompt,
-      updateMessageHistory,
-      messageHistory,
-      setAssistantResponse,
-      setIsThinking,
-      setIsLoading,
-      setActiveContent,
-      navigateTo
-    );
+
+    // Create title from first 5 words of content
+    const words = noteContent.split(/\s+/);
+    const title = words.slice(0, 5).join(' ');
+
+    clientTools.addMemory({
+      title,
+      content: noteContent,
+      tags: [selectedTag],
+    });
+    refreshMemories();
   };
 
   return (
@@ -135,19 +149,18 @@ export default function Notes() {
               </TouchableOpacity>
             ))}
           </ScrollView>
+          <InputContainer
+            userResponse={userResponse}
+            setUserResponse={setUserResponse}
+            handleSubmit={handleSubmit}
+            isRecording={isRecording}
+            setIsRecording={setIsRecording}
+            onlyRecording={false}
+            placeholder="tag: note"
+          />
         </View>
       )}
       {activeContent === 'chat' && <HeartAnimation />}
-      <View style={styles.inputContainer}>
-        <InputContainer
-          userResponse={userResponse}
-          setUserResponse={setUserResponse}
-          handleSubmit={handleSubmit}
-          isRecording={isRecording}
-          setIsRecording={setIsRecording}
-          onlyRecording={false}
-        />
-      </View>
     </SafeAreaView>
   );
 }
@@ -190,7 +203,6 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
   tagsList: {
-    marginBottom: 12,
     paddingRight: 12,
     maxHeight: 40,
   },
@@ -203,9 +215,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f0f0f0',
   },
   activeTagContainer: {
-    backgroundColor: '#FFFCE3',
-    borderWidth: 1,
-    borderColor: '#000000',
+    backgroundColor: '#FFF0F3',
   },
   tag: {
     fontSize: 16,
@@ -231,8 +241,5 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
-  },
-  inputContainer: {
-    padding: 24,
   },
 });

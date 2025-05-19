@@ -18,11 +18,19 @@ import InputContainer from './components/inputContainer';
 import { useMessageStore } from './store/messageStore';
 import { useTaskStore } from './store/taskStore';
 import { useMemoryStore } from './store/memoryStore';
+import { useUsageStore } from './store/usageStore';
 import HomeCard from './components/HomeCard';
 import HeartAnimation from './components/HeartAnimation';
+import { SplashScreen } from './components/SplashScreen';
 import BackgroundFetch from 'react-native-background-fetch';
-import { sendInstantNotification } from '@/utils/tools';
+import { sendInstantNotification, clientTools } from '@/utils/tools';
+import { UsageChart } from './components/UsageChart';
 const MAX_HISTORY = 50;
+
+interface AppUsage {
+  appName: string;
+  totalTimeInForeground: number;
+}
 
 export default function Page() {
   const navigation = useNavigation();
@@ -33,6 +41,7 @@ export default function Page() {
   const { messageHistory, updateMessageHistory, clearMessageHistory } = useMessageStore();
   const { tasks, refreshTasks } = useTaskStore();
   const { memories, refreshMemories } = useMemoryStore();
+  const { usageData, refreshUsageData } = useUsageStore();
   const resultsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isThinking, setIsThinking] = React.useState(false);
@@ -40,6 +49,8 @@ export default function Page() {
   const [refreshing, setRefreshing] = React.useState(false);
 
   const [activeContent, setActiveContent] = React.useState<string>('home');
+  const usageDataRef = React.useRef<AppUsage[]>([]);
+  const [, setUsageUpdateTrigger] = React.useState(0);
 
   const manuallyTriggerFetch = async () => {
     try {
@@ -85,6 +96,22 @@ export default function Page() {
       console.error('[BackgroundFetch] configure ERROR:', error);
     }
   };
+
+  const fetchUsageData = React.useCallback(async () => {
+    const result = await clientTools.getUsageStats();
+    if (result.success && result.appUsageStats) {
+      const usageArray = Object.entries(result.appUsageStats)
+        .map(([_, data]) => ({
+          appName: data.appName || 'Unknown App',
+          totalTimeInForeground: data.totalTimeInForeground || 0,
+        }))
+        .sort((a, b) => b.totalTimeInForeground - a.totalTimeInForeground)
+        .slice(0, 3);
+
+      usageDataRef.current = usageArray;
+      setUsageUpdateTrigger(prev => prev + 1);
+    }
+  }, []);
 
   React.useEffect(() => {
     try {
@@ -134,16 +161,34 @@ export default function Page() {
     // Keyboard.addListener('keyboardDidShow', () => {
     //   setActiveContent('chat');
     // });
+    refreshUsageData();
   }, []);
 
-  React.useEffect(() => {
-    refreshTasks();
-    refreshMemories();
-  }, []);
+  // React.useEffect(() => {
+  //   const initializeApp = async () => {
+  //     try {
+  //       await Promise.all([
+  //         refreshTasks(),
+  //         refreshMemories(),
+  //         refreshUsageData(),
+  //       ]);
+  //     } catch (error) {
+  //       console.error('Error initializing app:', error);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+
+  //   initializeApp();
+  // }, []);
 
   React.useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
+
+  React.useEffect(() => {
+    fetchUsageData();
+  }, []);
 
   const navigateTo = (path: 'tasks' | 'notes' | 'habits' | 'reflections' | '') => {
     router.push(`/${path}`);
@@ -196,6 +241,10 @@ export default function Page() {
   //   setRefreshing(false);
   // }, []);
 
+  if (isLoading) {
+    return <SplashScreen />;
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
@@ -242,8 +291,9 @@ export default function Page() {
           </View>
         </View>
       )}
+      <UsageChart usageData={usageData} />
       {activeContent === 'chat' && <HeartAnimation />}
-      <View style={styles.inputContainer}>
+      {/* <View style={styles.inputContainer}>
         <InputContainer
           userResponse={userResponse}
           setUserResponse={setUserResponse}
@@ -252,7 +302,7 @@ export default function Page() {
           setIsRecording={setIsRecording}
           onlyRecording={false}
         />
-      </View>
+      </View> */}
     </SafeAreaView>
   );
 }
@@ -262,9 +312,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fafafa',
     paddingTop: 40,
+    gap: 48,
   },
   container: {
-    flex: 1,
+    height: '48%',
     padding: 24,
   },
   agentChatContainer: {
@@ -296,7 +347,7 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
   greeting: {
-    fontSize: 28,
+    fontSize: 32,
     fontFamily: 'MonaSans-Regular',
     color: '#000000',
   },

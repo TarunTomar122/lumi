@@ -17,6 +17,9 @@ import { formatDate } from '@/utils/commons';
 import { talkToAgent } from '@/utils/agent';
 import { useMessageStore } from './store/messageStore';
 import HeartAnimation from './components/HeartAnimation';
+import { DateTime } from 'luxon';
+import { clientTools } from '@/utils/tools';
+
 export default function Tasks() {
   const router = useRouter();
   const [userResponse, setUserResponse] = React.useState('');
@@ -28,6 +31,10 @@ export default function Tasks() {
   const [isThinking, setIsThinking] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
   const [activeContent, setActiveContent] = React.useState<string>('home');
+
+  React.useEffect(() => {
+    refreshTasks();
+  }, []);
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -44,17 +51,59 @@ export default function Tasks() {
   };
 
   const handleSubmit = () => {
-    const prePrompt = `User is on the tasks page so your default action should be to create a task unless they say otherwise. Here's what they said: ${userResponse}`;
-    talkToAgent(
-      prePrompt,
-      updateMessageHistory,
-      messageHistory,
-      setAssistantResponse,
-      setIsThinking,
-      setIsLoading,
-      setActiveContent,
-      navigateTo
-    );
+    // const prePrompt = `User is on the tasks page so your default action should be to create a task unless they say otherwise. Here's what they said: ${userResponse}`;
+    // talkToAgent(
+    //   prePrompt,
+    //   updateMessageHistory,
+    //   messageHistory,
+    //   setAssistantResponse,
+    //   setIsThinking,
+    //   setIsLoading,
+    //   setActiveContent,
+    //   navigateTo
+    // );
+
+    // We're gonna try and make this work without internet access so basically just simple text parsing
+    // So if they said 'axyz at 8am' then we'll just add a task with the title 'axyz' and the due date of 8am
+
+    // Make the entire time portion optional and allow text after it
+    const taskRegex = /^(.*?)(?:\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*([ap]m)(?:\s+.*)?)?$/i;
+    const match = userResponse.match(taskRegex);
+    let title = '';
+    let time = '';
+
+    if (match) {
+      title = match[1].trim();
+      // Only process time if the time groups were matched
+      if (match[2]) {
+        const hour = parseInt(match[2]);
+        const minutes = match[3] || '00';
+        const meridiem = match[4].toLowerCase();
+        // Convert to HH:MM AM/PM format
+        const formattedHour = hour.toString().padStart(2, '0');
+        time = `${formattedHour}:${minutes} ${meridiem.toUpperCase()}`;
+      }
+    }
+
+    if (!title) return; // Don't create task if no title
+
+    let taskData: { title: string; due_date?: string; status: 'todo' } = {
+      title,
+      status: 'todo',
+    };
+
+    // Only add due_date if time was provided
+    if (time) {
+      const dateTime = DateTime.fromFormat(time, 'hh:mm a').setZone('Asia/Kolkata');
+      const isoDate = dateTime.toISO();
+      if (isoDate) {
+        taskData.due_date = isoDate;
+      }
+    }
+
+    // save the task
+    clientTools.addTask(taskData);
+    refreshTasks();
   };
 
   const handleTaskToggle = async (id: number, currentStatus: 'todo' | 'done') => {
@@ -107,19 +156,18 @@ export default function Tasks() {
               </View>
             ))}
           </ScrollView>
+          <InputContainer
+            userResponse={userResponse}
+            setUserResponse={setUserResponse}
+            handleSubmit={handleSubmit}
+            isRecording={isRecording}
+            setIsRecording={setIsRecording}
+            onlyRecording={false}
+            placeholder="do this at 8am"
+          />
         </View>
       )}
       {activeContent === 'chat' && <HeartAnimation />}
-      <View style={styles.inputContainer}>
-        <InputContainer
-          userResponse={userResponse}
-          setUserResponse={setUserResponse}
-          handleSubmit={handleSubmit}
-          isRecording={isRecording}
-          setIsRecording={setIsRecording}
-          onlyRecording={false}
-        />
-      </View>
     </SafeAreaView>
   );
 }
@@ -206,6 +254,7 @@ const styles = StyleSheet.create({
     color: '#666666',
   },
   inputContainer: {
-    padding: 24,
+    paddingHorizontal: 24,
+    marginBottom: 24,
   },
 });

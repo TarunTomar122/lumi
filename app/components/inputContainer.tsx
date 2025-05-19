@@ -11,6 +11,7 @@ export default function InputContainer({
   isRecording,
   setIsRecording,
   onlyRecording,
+  placeholder,
 }: {
   userResponse: string;
   setUserResponse: (text: string) => void;
@@ -19,6 +20,7 @@ export default function InputContainer({
   isRecording: boolean;
   setIsRecording: (recording: boolean) => void;
   onlyRecording?: boolean;
+  placeholder?: string;
 }) {
   const processedResultsRef = React.useRef<Set<string>>(new Set());
   const { state, startRecognizing, stopRecognizing, resetState } = useVoiceRecognition();
@@ -81,7 +83,7 @@ export default function InputContainer({
     <View style={[styles.inputContainer]}>
       <TextInput
         style={styles.textInput}
-        placeholder={isRecording ? 'Listening...' : 'Ask anything'}
+        placeholder={isRecording ? 'Listening...' : placeholder || 'Ask anything'}
         placeholderTextColor="#A1887F"
         onChangeText={setUserResponse}
         value={userResponse}

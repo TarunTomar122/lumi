@@ -55,7 +55,7 @@ export const HabitHistory: React.FC<HabitHistoryProps> = ({ habit }) => {
         firstDay={1}
         theme={{
           backgroundColor: '#ffffff',
-          calendarBackground: '#ffffff',
+          calendarBackground: '#fafafa',
           textSectionTitleColor: '#666666',
           selectedDayBackgroundColor: habit.color,
           selectedDayTextColor: '#ffffff',

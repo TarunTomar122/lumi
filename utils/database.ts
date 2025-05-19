@@ -12,6 +12,7 @@ export interface Task {
   due_date?: string | null;
   reminder_date?: string | null; // Will store full datetime string
   status: 'todo' | 'done';
+  created_at: string;
 }
 
 export interface Memory {
@@ -20,6 +21,7 @@ export interface Memory {
   content: string;
   date: string;
   tags: string[];
+  created_at: string;
 }
 
 export interface Habit {
@@ -27,12 +29,14 @@ export interface Habit {
   title: string;
   completions: Record<string, boolean>; // Map of ISO date strings to completion status
   color: string;
+  created_at: string;
 }
 
 export interface Reflection {
   id?: number;
   date: string;
   content: string;
+  created_at: string;
 }
 
 class DatabaseManager {
@@ -102,7 +106,8 @@ class DatabaseManager {
           description TEXT,
           due_date TEXT,
           reminder_date TEXT,
-          status TEXT NOT NULL DEFAULT 'todo'
+          status TEXT NOT NULL DEFAULT 'todo',
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
       `);
 
@@ -113,7 +118,8 @@ class DatabaseManager {
           title TEXT NOT NULL,
           content TEXT NOT NULL,
           date TEXT NOT NULL,
-          tags TEXT NOT NULL
+          tags TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
       `);
 
@@ -123,7 +129,8 @@ class DatabaseManager {
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           title TEXT NOT NULL,
           completions TEXT NOT NULL,
-          color TEXT NOT NULL
+          color TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
       `);
 
@@ -132,7 +139,8 @@ class DatabaseManager {
         CREATE TABLE IF NOT EXISTS reflections (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           date TEXT NOT NULL,
-          content TEXT NOT NULL
+          content TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
         )
       `);
 
@@ -163,7 +171,7 @@ class DatabaseManager {
     }
   }
 
-  async addTask(task: Omit<Task, 'id'>): Promise<Task> {
+  async addTask(task: Omit<Task, 'id' | 'created_at'>): Promise<Task> {
     await this.waitForInit();
     if (!this.database) throw new Error('Database not initialized');
 
@@ -180,10 +188,13 @@ class DatabaseManager {
         ]
       );
 
-      return {
-        id: result.insertId,
-        ...task,
-      };
+      // Fetch the created task to get the created_at timestamp
+      const [createdTask] = await this.database.executeSql(
+        'SELECT * FROM tasks WHERE id = ?;',
+        [result.insertId]
+      );
+
+      return createdTask.rows.item(0);
     } catch (error) {
       console.error('Error adding task:', error);
       throw error;
@@ -246,7 +257,7 @@ class DatabaseManager {
     }
   }
 
-  async addMemory(memory: Omit<Memory, 'id'>): Promise<Memory> {
+  async addMemory(memory: Omit<Memory, 'id' | 'created_at'>): Promise<Memory> {
     await this.waitForInit();
     if (!this.database) throw new Error('Database not initialized');
 
@@ -262,9 +273,15 @@ class DatabaseManager {
         ]
       );
 
+      // Fetch the created memory to get the created_at timestamp
+      const [createdMemory] = await this.database.executeSql(
+        'SELECT * FROM memories WHERE id = ?;',
+        [result.insertId]
+      );
+      const item = createdMemory.rows.item(0);
       return {
-        id: result.insertId,
-        ...memory,
+        ...item,
+        tags: JSON.parse(item.tags),
       };
     } catch (error) {
       console.error('Error adding memory:', error);
@@ -338,7 +355,7 @@ class DatabaseManager {
     }
   }
 
-  async addHabit(habit: Omit<Habit, 'id'>): Promise<Habit> {
+  async addHabit(habit: Omit<Habit, 'id' | 'created_at'>): Promise<Habit> {
     await this.waitForInit();
     if (!this.database) throw new Error('Database not initialized');
 
@@ -353,9 +370,15 @@ class DatabaseManager {
         ]
       );
 
+      // Fetch the created habit to get the created_at timestamp
+      const [createdHabit] = await this.database.executeSql(
+        'SELECT * FROM habits WHERE id = ?;',
+        [result.insertId]
+      );
+      const item = createdHabit.rows.item(0);
       return {
-        id: result.insertId,
-        ...habit,
+        ...item,
+        completions: JSON.parse(item.completions),
       };
     } catch (error) {
       console.error('Error adding habit:', error);
@@ -422,7 +445,7 @@ class DatabaseManager {
     }
   }
 
-  async addReflection(reflection: Omit<Reflection, 'id'>): Promise<Reflection> {
+  async addReflection(reflection: Omit<Reflection, 'id' | 'created_at'>): Promise<Reflection> {
     await this.waitForInit();
     if (!this.database) throw new Error('Database not initialized');
 
@@ -433,10 +456,12 @@ class DatabaseManager {
         [reflection.date, reflection.content]
       );
 
-      return {
-        id: result.insertId,
-        ...reflection,
-      };
+      // Fetch the created reflection to get the created_at timestamp
+      const [createdReflection] = await this.database.executeSql(
+        'SELECT * FROM reflections WHERE id = ?;',
+        [result.insertId]
+      );
+      return createdReflection.rows.item(0);
     } catch (error) {
       console.error('Error adding reflection:', error);
       throw error;

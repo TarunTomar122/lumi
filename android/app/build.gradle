@@ -81,6 +81,9 @@ def enableProguardInReleaseBuilds = (findProperty('android.enableProguardInRelea
 def jscFlavor = 'org.webkit:android-jsc:+'
 
 android {
+// @generated begin react-native-background-fetch-project - expo prebuild (DO NOT MODIFY) sync-56d2d70cbc3f26369dd5e711d0ab87bf3c0aebb3
+Project background_fetch = project(':react-native-background-fetch')
+// @generated end react-native-background-fetch-project
     ndkVersion rootProject.ext.ndkVersion
 
     buildToolsVersion rootProject.ext.buildToolsVersion

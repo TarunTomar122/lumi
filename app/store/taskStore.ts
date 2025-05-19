@@ -51,8 +51,12 @@ export const useTaskStore = create<TaskState>(set => ({
 
   refreshTasks: async () => {
     const result = await clientTools.getAllTasks();
-    if (result.success && result.tasks) {
-      const tasksWithType = result.tasks.map(task => ({
+    // sort the tasks by when they were created
+    const sortedTasks = result.tasks?.sort((a, b) => {
+      return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
+    });
+    if (result.success && sortedTasks) {
+      const tasksWithType = sortedTasks.map(task => ({
         ...task,
         type: 'task' as const,
       })) as TaskWithType[];
