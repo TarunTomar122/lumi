@@ -39,10 +39,20 @@ export const HabitHistory: React.FC<HabitHistoryProps> = ({ habit }) => {
     return dates;
   }, [habit.completions, selectedDate, habit.color]);
 
-  const handleDayPress = (day: { dateString: string }) => {
-    setSelectedDate(day.dateString);
+  const handleDayPress = async (day: { dateString: string }) => {
+    const isCompleted = habit.completions[day.dateString];
+    const isCurrentlySelected = selectedDate === day.dateString;
+
+    // If the date is already selected or completed, clear the selection
+    if (isCurrentlySelected || isCompleted) {
+      setSelectedDate(null);
+    } else {
+      setSelectedDate(day.dateString);
+    }
+
+    // Update the habit progress
     if (habit.id) {
-      updateProgress(habit.id.toString(), day.dateString);
+      await updateProgress(habit.id.toString(), day.dateString);
     }
   };
 

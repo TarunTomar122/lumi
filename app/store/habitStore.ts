@@ -24,13 +24,7 @@ interface HabitState {
 
 // Pastel colors for habits
 const PASTEL_COLORS = [
-  '#FFB3BA', // pastel red
-  '#BAFFC9', // pastel green
-  '#BAE1FF', // pastel blue
-  '#FFFFBA', // pastel yellow
   '#FFB3F7', // pastel pink
-  '#E0BBE4', // pastel purple
-  '#957DAD', // pastel lavender
 ];
 
 // Get array of ISO date strings for current week (Monday to Sunday)
