@@ -105,6 +105,14 @@ export default function Notes() {
       </View>
       {activeContent === 'home' && (
         <View style={styles.container}>
+          {filteredMemories.length === 0 && (
+            <View style={styles.noNotesContainer}>
+              <Text style={styles.noNotesText}>No notes yet. Add one!</Text>
+              <Text style={styles.suggestionText}>
+                "personal: this note is about some personal stuff"
+              </Text>
+            </View>
+          )}
           <ScrollView horizontal style={styles.tagsList} showsHorizontalScrollIndicator={false}>
             {uniqueTags.map((currTag, index) => (
               <TouchableOpacity
@@ -216,6 +224,18 @@ const styles = StyleSheet.create({
   },
   activeTagContainer: {
     backgroundColor: '#FFF0F3',
+  },
+  noNotesContainer: {
+    flex: 1,
+    gap: 12,
+  },
+  noNotesText: {
+    fontSize: 18,
+  },
+  suggestionText: {
+    fontSize: 16,
+    fontFamily: 'Roboto-Regular',
+    color: '#000000',
   },
   tag: {
     fontSize: 16,

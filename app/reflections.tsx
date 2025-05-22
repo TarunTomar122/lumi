@@ -14,11 +14,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { DateTime } from 'luxon';
 import { useReflectionStore } from './store/reflectionStore';
 import InputContainer from './components/inputContainer';
+import { ReflectionPrompt } from './components/ReflectionPrompt';
 
 export default function Reflections() {
   const router = useRouter();
   const [refreshing, setRefreshing] = React.useState(false);
   const [userResponse, setUserResponse] = React.useState('');
+  const [selectedPrompt, setSelectedPrompt] = React.useState<string | undefined>();
   const [isRecording, setIsRecording] = React.useState(false);
   const { reflections, refreshReflections, addReflection } = useReflectionStore();
 
@@ -44,7 +46,7 @@ export default function Reflections() {
     if (!userResponse) return;
 
     let date = DateTime.now();
-    let content = userResponse;
+    let content = selectedPrompt ? `prompt: ${selectedPrompt}\n\n${userResponse}` : userResponse;
 
     // First split by colon
     const parts = userResponse.split(':');
@@ -53,16 +55,13 @@ export default function Reflections() {
       // Everything before the first colon is potential date
       const datePart = parts[0].trim();
       // Everything after the first colon is content
-      content = parts.slice(1).join(':').trim();
+      const responseContent = parts.slice(1).join(':').trim();
       
       // Now try to parse the date part - it can be either "2 apr" or "apr 2"
       const dateWords = datePart.split(/\s+/);
       
       // Get the last two words (in case there's text before the date)
       const lastTwo = dateWords.slice(-2);
-      
-      console.log('lastTwo', lastTwo);
-      console.log('dateWords', dateWords);
 
       if (lastTwo.length === 2) {
         // Try all possible formats
@@ -77,21 +76,23 @@ export default function Reflections() {
           }
         }
 
-        console.log('parsedDate', parsedDate?.toISODate());
-
         if (parsedDate?.isValid) {
           date = parsedDate.set({ year: DateTime.now().year });
+          content = selectedPrompt ? 
+            `prompt: ${selectedPrompt}\n\n${responseContent}` : 
+            responseContent;
         }
-
-        console.log('final date', date.toISODate());
       }
     }
 
-    console.log('date', date.toISODate(), 'content', content);
-
     await addReflection(date.toISODate() || '', content);
     setUserResponse('');
+    setSelectedPrompt(undefined);
     refreshReflections();
+  };
+
+  const handlePromptSelect = (prompt: string) => {
+    setSelectedPrompt(prompt === selectedPrompt ? undefined : prompt);
   };
 
   return (
@@ -104,6 +105,10 @@ export default function Reflections() {
         </TouchableOpacity>
       </View>
       <View style={styles.container}>
+        <ReflectionPrompt 
+          onPromptSelect={handlePromptSelect} 
+          selectedPrompt={selectedPrompt}
+        />
         <ScrollView
           style={styles.reflectionsList}
           showsVerticalScrollIndicator={false}
@@ -170,6 +175,7 @@ const styles = StyleSheet.create({
   },
   reflectionsList: {
     flex: 1,
+    marginTop: 12,
   },
   reflectionItem: {
     marginBottom: 16,

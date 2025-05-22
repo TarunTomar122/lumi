@@ -126,6 +126,13 @@ export default function Tasks() {
       </View>
       {activeContent === 'home' && (
         <View style={styles.container}>
+          {tasks.length === 0 && (
+            <View style={styles.noTasksContainer}>
+              <Text style={styles.noTasksText}>This feels too empty. Add some stuff to do!</Text>
+              <Text style={styles.suggestionText}>"do this at 8am"</Text>
+              <Text style={styles.suggestionText}>"do this"</Text>
+            </View>
+          )}
           <ScrollView
             style={styles.taskList}
             showsVerticalScrollIndicator={false}
@@ -181,6 +188,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 24,
+  },
+  noTasksContainer: {
+    flex: 1,
+    gap: 12,
+  },
+  noTasksText: {
+    fontSize: 18,
+    fontFamily: 'MonaSans-Regular',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  suggestionText: {
+    fontSize: 16,
+    fontFamily: 'Roboto-Regular',
+    color: '#000000',
   },
   header: {
     flexDirection: 'row',

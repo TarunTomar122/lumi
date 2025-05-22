@@ -33,7 +33,11 @@
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.SCHEDULE_EXACT_ALARM",
         "android.permission.USE_EXACT_ALARM"
-      ]
+      ],
+      "buildType": "apk",
+      "enableProguardInReleaseBuilds": true,
+      "enableShrinkResources": true,
+      "enableR8": true
     },
     "web": {
       "bundler": "metro",

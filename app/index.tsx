@@ -251,7 +251,7 @@ export default function Page() {
       {activeContent === 'home' && (
         <View style={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.greeting}>hello, tarat</Text>
+            <Text style={styles.greeting}>Lumi says hi</Text>
             <Ionicons name="sparkles-outline" size={24} color="#000000" />
           </View>
 
