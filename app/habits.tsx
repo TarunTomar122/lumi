@@ -106,8 +106,6 @@ export default function Habits() {
     refreshHabits();
   };
 
-  console.log(habits);
-
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />

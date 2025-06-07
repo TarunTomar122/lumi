@@ -50,59 +50,169 @@ export default function Tasks() {
     router.push(`/${path}`);
   };
 
-  const handleSubmit = () => {
-    // const prePrompt = `User is on the tasks page so your default action should be to create a task unless they say otherwise. Here's what they said: ${userResponse}`;
-    // talkToAgent(
-    //   prePrompt,
-    //   updateMessageHistory,
-    //   messageHistory,
-    //   setAssistantResponse,
-    //   setIsThinking,
-    //   setIsLoading,
-    //   setActiveContent,
-    //   navigateTo
-    // );
+  const handleSubmit = async () => {
+    // Enhanced regex to capture title, time, and date information
+    // Supports formats like:
+    // - "do this at 9pm tom"
+    // - "do this at 9pm tomorrow"
+    // - "do this at 9pm friday"
+    // - "do this at 9pm on 29th may"
+    // - "do this at 9pm"
+    // - "do this"
 
-    // We're gonna try and make this work without internet access so basically just simple text parsing
-    // So if they said 'axyz at 8am' then we'll just add a task with the title 'axyz' and the due date of 8am
+    const taskRegex =
+      /^(.*?)(?:\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*([ap]m))?(?:\s+(?:on\s+)?(tom|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thur|fri|sat|sun\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|september|oct|october|nov|november|dec|december)))?$/i;
 
-    // Make the entire time portion optional and allow text after it
-    const taskRegex = /^(.*?)(?:\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*([ap]m)(?:\s+.*)?)?$/i;
     const match = userResponse.match(taskRegex);
     let title = '';
     let time = '';
+    let dateStr = '';
 
     if (match) {
       title = match[1].trim();
-      // Only process time if the time groups were matched
+
+      // Process time if provided
       if (match[2]) {
         const hour = parseInt(match[2]);
         const minutes = match[3] || '00';
         const meridiem = match[4].toLowerCase();
-        // Convert to HH:MM AM/PM format
         const formattedHour = hour.toString().padStart(2, '0');
         time = `${formattedHour}:${minutes} ${meridiem.toUpperCase()}`;
+      }
+
+      // Process date if provided
+      if (match[5]) {
+        dateStr = match[5].toLowerCase().trim();
       }
     }
 
     if (!title) return; // Don't create task if no title
 
-    let taskData: { title: string; due_date?: string; status: 'todo' } = {
+    // Parse the date
+    let targetDate = DateTime.now().setZone('Asia/Kolkata');
+
+    if (dateStr) {
+      if (dateStr === 'tom' || dateStr === 'tomorrow') {
+        targetDate = targetDate.plus({ days: 1 });
+      } else if (
+        [
+          'monday',
+          'tuesday',
+          'wednesday',
+          'thursday',
+          'friday',
+          'saturday',
+          'sunday',
+          'mon',
+          'tue',
+          'wed',
+          'thur',
+          'fri',
+          'sat',
+          'sun',
+        ].includes(dateStr)
+      ) {
+        // Find the next occurrence of this day
+        const dayNames = [
+          'sunday',
+          'monday',
+          'tuesday',
+          'wednesday',
+          'thursday',
+          'friday',
+          'saturday',
+          'sun',
+          'mon',
+          'tue',
+          'wed',
+          'thur',
+          'fri',
+          'sat',
+        ];
+        const targetDayIndex = dayNames.indexOf(dateStr);
+        const currentDayIndex = targetDate.weekday % 7; // Convert to Sunday = 0 format
+
+        let daysToAdd = targetDayIndex - currentDayIndex;
+        if (daysToAdd <= 0) {
+          daysToAdd += 7; // Next week if it's today or already passed
+        }
+
+        targetDate = targetDate.plus({ days: daysToAdd });
+      } else {
+        // Handle specific dates like "29th may", "15 june", etc.
+        const dateFormats = [
+          'd MMMM', // "29 may"
+          'do MMMM', // "29th may"
+          'd MMM', // "29 may"
+          'do MMM', // "29th may"
+        ];
+
+        let parsedDate = null;
+        for (const format of dateFormats) {
+          try {
+            parsedDate = DateTime.fromFormat(dateStr, format, { zone: 'Asia/Kolkata' });
+            if (parsedDate.isValid) {
+              // Set the year to current year, or next year if the date has passed
+              const currentYear = DateTime.now().year;
+              parsedDate = parsedDate.set({ year: currentYear });
+
+              // If the date has already passed this year, set it to next year
+              if (parsedDate < DateTime.now()) {
+                parsedDate = parsedDate.set({ year: currentYear + 1 });
+              }
+
+              targetDate = parsedDate;
+              break;
+            }
+          } catch (error) {
+            // Continue to next format
+          }
+        }
+      }
+    }
+
+    let taskData: {
+      title: string;
+      due_date?: string;
+      reminder_date?: string;
+      status: 'todo';
+      created_at: string;
+    } = {
       title,
       status: 'todo',
+      created_at: new Date().toISOString(),
     };
 
-    // Only add due_date if time was provided
+    // Set the date and time
     if (time) {
-      const dateTime = DateTime.fromFormat(time, 'hh:mm a').setZone('Asia/Kolkata');
-      const isoDate = dateTime.toISO();
+      // Parse the time and combine with the target date
+      const timeOnly = DateTime.fromFormat(time, 'hh:mm a');
+      if (timeOnly.isValid) {
+        const finalDateTime = targetDate.set({
+          hour: timeOnly.hour,
+          minute: timeOnly.minute,
+          second: 0,
+          millisecond: 0,
+        });
+
+        const isoDate = finalDateTime.toISO();
+        if (isoDate) {
+          taskData.due_date = isoDate;
+          taskData.reminder_date = isoDate;
+        }
+      }
+    } else if (dateStr) {
+      // If only date is provided (no time), set it to start of day
+      const finalDateTime = targetDate.startOf('day');
+      const isoDate = finalDateTime.toISO();
       if (isoDate) {
         taskData.due_date = isoDate;
+        taskData.reminder_date = isoDate;
       }
     }
 
     // save the task
-    clientTools.addTask(taskData);
+    await clientTools.addTask(taskData);
     refreshTasks();
   };
 
@@ -130,7 +240,8 @@ export default function Tasks() {
             <View style={styles.noTasksContainer}>
               <Text style={styles.noTasksText}>This feels too empty. Add some stuff to do!</Text>
               <Text style={styles.suggestionText}>"do this at 8am"</Text>
-              <Text style={styles.suggestionText}>"do this"</Text>
+              <Text style={styles.suggestionText}>"do this at 9pm tomorrow"</Text>
+              <Text style={styles.suggestionText}>"do this friday"</Text>
             </View>
           )}
           <ScrollView
@@ -170,7 +281,7 @@ export default function Tasks() {
             isRecording={isRecording}
             setIsRecording={setIsRecording}
             onlyRecording={false}
-            placeholder="do this at 8am"
+            placeholder="do this at 9pm tom"
           />
         </View>
       )}

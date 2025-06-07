@@ -172,9 +172,10 @@ const clientToolsSchema = [
       type: 'object',
       properties: {
         title: { type: 'string', description: 'Title of the habit' },
-        color: { 
-          type: 'string', 
-          description: 'Optional hex color code for the habit. If not provided, a random pastel color will be assigned.' 
+        color: {
+          type: 'string',
+          description:
+            'Optional hex color code for the habit. If not provided, a random pastel color will be assigned.',
         },
       },
       required: ['title'],
@@ -195,7 +196,7 @@ const clientToolsSchema = [
   {
     type: 'function',
     name: 'updateHabit',
-    description: 'Updates a habit\'s properties.',
+    description: "Updates a habit's properties.",
     parameters: {
       type: 'object',
       properties: {
@@ -356,7 +357,15 @@ const clientTools = {
     }
   },
 
-  addMemory: async ({ title, content, tags }: { title: string; content: string; tags: string[] }) => {
+  addMemory: async ({
+    title,
+    content,
+    tags,
+  }: {
+    title: string;
+    content: string;
+    tags: string[];
+  }) => {
     try {
       const memory = await db.addMemory({
         title,
@@ -421,10 +430,11 @@ const clientTools = {
       // In the future, we can implement more sophisticated search if needed
       const allMemories = await db.getAllMemories();
       const searchTerm = q.toLowerCase();
-      const memories = allMemories.filter(memory => 
-        memory.title.toLowerCase().includes(searchTerm) ||
-        memory.content.toLowerCase().includes(searchTerm) ||
-        memory.tags.some(tag => tag.toLowerCase().includes(searchTerm))
+      const memories = allMemories.filter(
+        memory =>
+          memory.title.toLowerCase().includes(searchTerm) ||
+          memory.content.toLowerCase().includes(searchTerm) ||
+          memory.tags.some(tag => tag.toLowerCase().includes(searchTerm))
       );
       return { success: true, memories, totalResults: memories.length };
     } catch (error) {
@@ -466,14 +476,14 @@ const clientTools = {
     }
   },
 
-  updateHabit: async ({ 
-    id, 
-    title, 
+  updateHabit: async ({
+    id,
+    title,
     color,
-    completions 
-  }: { 
-    id: string; 
-    title?: string; 
+    completions,
+  }: {
+    id: string;
+    title?: string;
     color?: string;
     completions?: Record<string, boolean>;
   }) => {
@@ -520,7 +530,15 @@ const clientTools = {
     }
   },
 
-  updateReflection: async ({ id, date, content }: { id: number; date?: string; content?: string }) => {
+  updateReflection: async ({
+    id,
+    date,
+    content,
+  }: {
+    id: number;
+    date?: string;
+    content?: string;
+  }) => {
     try {
       await db.updateReflection(id, {
         ...(date && { date }),
@@ -555,43 +573,12 @@ export const setupNotifications = async () => {
     if (settings.authorizationStatus) {
       console.log('✅ Notification permissions granted');
 
-      // Create notification channel for Android with more explicit settings
-      await notifee.createChannel({
-        id: 'default',
-        name: 'Default Channel',
-        importance: AndroidImportance.HIGH,
-        sound: 'default',
-        vibrationPattern: [300, 500, 300, 500],
-        lights: true,
-        lightColor: AndroidColor.YELLOW,
-        bypassDnd: true,
-        vibration: true,
+      const channelId = await notifee.createChannel({
+        id: 'reminder',
+        name: 'Reminder Channel',
       });
 
-      // Set up foreground handler for trigger notifications
-      notifee.onForegroundEvent(async ({ type, detail }) => {
-        const { notification, pressAction } = detail;
-        console.log('🔔 Foreground event received:', type, detail);
-      });
-
-      // Set up background handler for trigger notifications
-      notifee.onBackgroundEvent(async ({ type, detail }) => {
-        const { notification, pressAction } = detail;
-
-        console.log('🔔 Background event received:', type, detail);
-
-        // Handle the trigger event
-        if (type === 7) {
-          if (notification) {
-            await notifee.displayNotification(notification);
-          }
-        }
-
-        // Handle notification press
-        if (type === 3 && pressAction) {
-          console.log('Notification pressed:', pressAction.id);
-        }
-      });
+      console.log('📅 Channel ID:', channelId);
     }
   } catch (error) {
     console.error('Error setting up notifications:', error);
@@ -622,45 +609,14 @@ export const scheduleNotification = async (
         allowWhileIdle: true,
       },
     };
-
-    const channelId = await notifee.createChannel({
-      id: 'reminder',
-      name: 'Reminder Channel',
-      importance: AndroidImportance.HIGH,
-      sound: 'default',
-      vibrationPattern: [300, 500, 300, 500],
-      lights: true,
-      lightColor: AndroidColor.YELLOW,
-      bypassDnd: true,
-      vibration: true,
-    });
-
-    console.log('📅 Channel ID:', channelId);
-
     // Create the notification
     const notificationId = await notifee.createTriggerNotification(
       {
         id: Date.now().toString(),
         title,
-        body: body || undefined,
+        body: body || '',
         android: {
-          channelId: channelId,
-          importance: AndroidImportance.HIGH,
-          pressAction: {
-            id: 'default',
-          },
-          sound: 'default',
-          vibrationPattern: [300, 500, 300, 500],
-          lights: [AndroidColor.YELLOW, 300, 500],
-          smallIcon: 'ic_launcher',
-          showTimestamp: true,
-          ongoing: false,
-          asForegroundService: true,
-          autoCancel: false,
-          timestamp: date.getTime(),
-          fullScreenAction: {
-            id: 'default',
-          },
+          channelId: 'reminder',
         },
       },
       trigger

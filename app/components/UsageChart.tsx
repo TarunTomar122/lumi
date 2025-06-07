@@ -67,10 +67,10 @@ const styles = StyleSheet.create({
   container: {
     padding: 20,
     backgroundColor: '#ffffff',
-    marginHorizontal: 24,
     marginVertical: 12,
     borderWidth: 1,
     borderColor: '#E8E8E8',
+    marginBottom: 50
   },
   title: {
     fontSize: 20,

@@ -10,7 +10,7 @@ import {
   Keyboard,
   StatusBar,
 } from 'react-native';
-import React from 'react';
+import * as React from 'react';
 import { Ionicons } from '@expo/vector-icons';
 import Message from './components/Message';
 import { getNotificationSummary, talkToAgent } from '@/utils/agent';
@@ -19,12 +19,15 @@ import { useMessageStore } from './store/messageStore';
 import { useTaskStore } from './store/taskStore';
 import { useMemoryStore } from './store/memoryStore';
 import { useUsageStore } from './store/usageStore';
+import { useUserStore } from './store/userStore';
 import HomeCard from './components/HomeCard';
 import HeartAnimation from './components/HeartAnimation';
 import { SplashScreen } from './components/SplashScreen';
-import BackgroundFetch from 'react-native-background-fetch';
-import { sendInstantNotification, clientTools } from '@/utils/tools';
+import { OnboardingScreens } from './components/OnboardingScreens';
+import { clientTools, sendInstantNotification } from '@/utils/tools';
 import { UsageChart } from './components/UsageChart';
+import BackgroundFetch from 'react-native-background-fetch';
+import { DateTime } from 'luxon';
 const MAX_HISTORY = 50;
 
 interface AppUsage {
@@ -42,60 +45,60 @@ export default function Page() {
   const { tasks, refreshTasks } = useTaskStore();
   const { memories, refreshMemories } = useMemoryStore();
   const { usageData, refreshUsageData } = useUsageStore();
+  const { username, hasCompletedOnboarding, isLoading, initializeUser } = useUserStore();
   const resultsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  const [isLoading, setIsLoading] = React.useState(false);
   const [isThinking, setIsThinking] = React.useState(false);
   const scrollViewRef = React.useRef<ScrollView>(null);
   const [refreshing, setRefreshing] = React.useState(false);
 
   const [activeContent, setActiveContent] = React.useState<string>('home');
   const usageDataRef = React.useRef<AppUsage[]>([]);
-  const [, setUsageUpdateTrigger] = React.useState(0);
+  const [, setUsageUpdateTrigger] = React.useState<number>(0);
 
-  const manuallyTriggerFetch = async () => {
-    try {
-      await BackgroundFetch.configure(
-        {
-          minimumFetchInterval: 15,
-          stopOnTerminate: false,
-          enableHeadless: true,
-          startOnBoot: true,
-        },
-        async taskId => {
-          console.log('BackgroundFetch taskId:', taskId);
-          try {
-            // send usage summary to agent
-            const { title, body } = await getNotificationSummary();
-            await sendInstantNotification(title, body);
-          } catch (error) {
-            console.error('Background fetch task failed:', error);
-          } finally {
-            // REQUIRED: Signal to the OS that your task is complete
-            BackgroundFetch.finish(taskId);
-          }
-        },
-        error => {
-          console.error('[BackgroundFetch] Failed to configure:', error);
-        }
-      );
+  // const manuallyTriggerFetch = async () => {
+  //   try {
+  //     await BackgroundFetch.configure(
+  //       {
+  //         minimumFetchInterval: 15,
+  //         stopOnTerminate: false,
+  //         enableHeadless: true,
+  //         startOnBoot: true,
+  //       },
+  //       async taskId => {
+  //         console.log('BackgroundFetch taskId:', taskId);
+  //         try {
+  //           // send usage summary to agent
+  //           const { title, body } = await getNotificationSummary();
+  //           await sendInstantNotification(title, body);
+  //         } catch (error) {
+  //           console.error('Background fetch task failed:', error);
+  //         } finally {
+  //           // REQUIRED: Signal to the OS that your task is complete
+  //           BackgroundFetch.finish(taskId);
+  //         }
+  //       },
+  //       error => {
+  //         console.error('[BackgroundFetch] Failed to configure:', error);
+  //       }
+  //     );
 
-      // Force immediate execution
-      await BackgroundFetch.start();
+  //     // Force immediate execution
+  //     await BackgroundFetch.start();
 
-      // Execute the task immediately
-      const taskId = 'immediate-fetch';
-      await BackgroundFetch.scheduleTask({
-        taskId,
-        delay: 0, // Execute immediately
-        periodic: false,
-        forceAlarmManager: true, // Force immediate execution
-      });
+  //     // Execute the task immediately
+  //     const taskId = 'immediate-fetch';
+  //     await BackgroundFetch.scheduleTask({
+  //       taskId,
+  //       delay: 0, // Execute immediately
+  //       periodic: false,
+  //       forceAlarmManager: true, // Force immediate execution
+  //     });
 
-      console.log('[BackgroundFetch] Manual fetch triggered');
-    } catch (error) {
-      console.error('[BackgroundFetch] configure ERROR:', error);
-    }
-  };
+  //     console.log('[BackgroundFetch] Manual fetch triggered');
+  //   } catch (error) {
+  //     console.error('[BackgroundFetch] configure ERROR:', error);
+  //   }
+  // };
 
   const fetchUsageData = React.useCallback(async () => {
     const result = await clientTools.getUsageStats();
@@ -109,20 +112,45 @@ export default function Page() {
         .slice(0, 3);
 
       usageDataRef.current = usageArray;
-      setUsageUpdateTrigger(prev => prev + 1);
+      setUsageUpdateTrigger((prev: number) => prev + 1);
     }
   }, []);
 
+  const checkReflectionToday = async () => {
+    try {
+      const result = await clientTools.getAllReflections();
+      if (result.success && result.reflections) {
+        const today = DateTime.now().setZone('Asia/Kolkata').toISODate();
+        const todayReflection = result.reflections.find(reflection => 
+          DateTime.fromISO(reflection.date).setZone('Asia/Kolkata').toISODate() === today
+        );
+        return !!todayReflection;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking today\'s reflection:', error);
+      return false;
+    }
+  };
+
+  const handleOnboardingComplete = (newUsername: string) => {
+    // User store handles the username setting
+  };
+
+  React.useEffect(() => {
+    initializeUser();
+  }, [initializeUser]);
+
   React.useEffect(() => {
     try {
-      // Configure background fetch
+      // Configure background fetch for daily reflection reminders
       BackgroundFetch.configure(
         {
-          minimumFetchInterval: 60, // 1 hour in minutes
+          minimumFetchInterval: 60*4, // 4 hours in minutes
           stopOnTerminate: false,
           enableHeadless: true,
           startOnBoot: true,
-          requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE, // Allow running without network
+          requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE,
           requiresCharging: false,
           requiresDeviceIdle: false,
           requiresBatteryNotLow: false,
@@ -130,16 +158,18 @@ export default function Page() {
         async taskId => {
           console.log('BackgroundFetch taskId:', taskId);
           try {
-            // Check if current time is between 7am and 10pm
-            const now = new Date();
-            const hours = now.getHours();
-
-            if (hours >= 7 && hours <= 22) {
-              // send usage summary to agent
-              const { title, body } = await getNotificationSummary();
-              await sendInstantNotification(title, body);
-            } else {
-              console.log('Outside active hours (7am-10pm), skipping notification');
+            const now = DateTime.now().setZone('Asia/Kolkata');
+            const hours = now.hour;
+            
+            // Check if it's later than 7PM
+            if (hours >= 19) {
+              const hasReflectionToday = await checkReflectionToday();
+              if (!hasReflectionToday) {
+                await sendInstantNotification(
+                  'Time to reflect 🌙',
+                  'How was your day? Add a quick reflection before bed.'
+                );
+              }
             }
           } catch (error) {
             console.error('Background fetch task failed:', error);
@@ -151,16 +181,13 @@ export default function Page() {
           console.error('[BackgroundFetch] Failed to configure:', error);
         }
       );
-
+      
       // Start the background fetch service
       BackgroundFetch.start();
     } catch (error) {
       console.error('Error setting up background fetch:', error);
     }
 
-    // Keyboard.addListener('keyboardDidShow', () => {
-    //   setActiveContent('chat');
-    // });
     refreshUsageData();
   }, []);
 
@@ -208,7 +235,7 @@ export default function Page() {
       messageHistory,
       setAssistantResponse,
       setIsThinking,
-      setIsLoading,
+      () => {}, // setIsLoading placeholder
       setActiveContent,
       navigateTo
     );
@@ -241,57 +268,62 @@ export default function Page() {
   //   setRefreshing(false);
   // }, []);
 
-  if (isLoading) {
-    return <SplashScreen />;
+  // if (isLoading) {
+  //   return <SplashScreen />;
+  // }
+
+  if (!hasCompletedOnboarding) {
+    return <OnboardingScreens onComplete={handleOnboardingComplete} />;
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
       {activeContent === 'home' && (
-        <View style={styles.container}>
+        <ScrollView style={styles.container}>
           <View style={styles.header}>
-            <Text style={styles.greeting}>Lumi says hi</Text>
+            <Text style={styles.greeting}>Hello {username}</Text>
             <Ionicons name="sparkles-outline" size={24} color="#000000" />
           </View>
-
-          <View style={styles.cardsContainer}>
-            <View style={styles.row}>
-              <HomeCard
-                title="Tasks"
-                icon="checkmark-circle-outline"
-                onPress={() => {
-                  router.push('/tasks');
-                }}
-              />
-              <HomeCard
-                title="Notes"
-                icon="bulb-outline"
-                onPress={() => {
-                  router.push('/notes');
-                }}
-              />
+          <View style={styles.mainArea}>
+            <View style={styles.cardsContainer}>
+              <View style={styles.row}>
+                <HomeCard
+                  title="Tasks"
+                  icon="checkmark-circle-outline"
+                  onPress={() => {
+                    router.push('/tasks');
+                  }}
+                />
+                <HomeCard
+                  title="Notes"
+                  icon="bulb-outline"
+                  onPress={() => {
+                    router.push('/notes');
+                  }}
+                />
+              </View>
+              <View style={styles.row}>
+                <HomeCard
+                  title="Habits"
+                  icon="bar-chart-outline"
+                  onPress={() => {
+                    router.push('/habits');
+                  }}
+                />
+                <HomeCard
+                  title="Reflections"
+                  icon="calendar-outline"
+                  onPress={() => {
+                    router.push('/reflections');
+                  }}
+                />
+              </View>
             </View>
-            <View style={styles.row}>
-              <HomeCard
-                title="Habits"
-                icon="bar-chart-outline"
-                onPress={() => {
-                  router.push('/habits');
-                }}
-              />
-              <HomeCard
-                title="Reflections"
-                icon="calendar-outline"
-                onPress={() => {
-                  router.push('/reflections');
-                }}
-              />
-            </View>
+            <UsageChart usageData={usageData} />
           </View>
-        </View>
+        </ScrollView>
       )}
-      <UsageChart usageData={usageData} />
       {activeContent === 'chat' && <HeartAnimation />}
       {/* <View style={styles.inputContainer}>
         <InputContainer
@@ -315,8 +347,13 @@ const styles = StyleSheet.create({
     gap: 48,
   },
   container: {
-    height: '48%',
+    flex: 1,
     padding: 24,
+    marginBottom: 20,
+  },
+  mainArea: {
+    flex: 1,
+    gap: 16,
   },
   agentChatContainer: {
     flex: 1,
@@ -352,7 +389,6 @@ const styles = StyleSheet.create({
     color: '#000000',
   },
   cardsContainer: {
-    flex: 1,
     gap: 16,
   },
   row: {
