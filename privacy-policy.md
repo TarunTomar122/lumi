@@ -17,13 +17,6 @@ All data is stored locally on your device and includes:
 
 **Important**: All data remains on your device. We do not collect, transmit, or store any of your personal information on external servers.
 
-### b. No External Access
-We **do not** access:
-- Your calendar or contacts
-- Device sensors (battery, location, etc.)
-- Network data or browsing history
-- Any other apps or system data beyond what's necessary for basic app functionality
-
 ## 2. How We Use Your Information
 
 Your data is used solely to:
