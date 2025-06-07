@@ -1,74 +1,71 @@
 # Privacy Policy
 
-**Effective Date**: 25-April-2025
+**Effective Date**: 07-June-2025
 
-Thank you for using our app ("lumi-mobile"). We take your privacy seriously. This Privacy Policy outlines how we collect, use, and protect your personal data, particularly in relation to your tasks, preferences, and calendar data.
+Thank you for using our app ("Lumi - Planner & Habit tracker"). We take your privacy seriously. This Privacy Policy outlines how we handle your personal data in our fully local, privacy-first productivity app.
 
 ## 1. Information We Collect
 
-### a. Calendar Access
-If you grant permission, the App accesses your Google Calendar data to:
-- Read upcoming events.
-- Suggest tasks based on your schedule.
-- Send reminders or nudges at optimal times.
+### a. Local App Data
+All data is stored locally on your device and includes:
+- Your username (chosen during onboarding)
+- Tasks you create, modify, or complete
+- Notes you write and organize
+- Habits you track and their progress
+- Daily reflections you record
+- App usage preferences and settings
 
-We **only read calendar metadata (title, time, description, attendees)** to provide intelligent task and productivity support. We **do not modify, delete, or share** your calendar events unless explicitly requested by you.
+**Important**: All data remains on your device. We do not collect, transmit, or store any of your personal information on external servers.
 
-### b. Task and Interaction Data
-We collect and store:
-- Tasks you create or modify.
-- Your interactions with the AI agent (e.g., messages and responses).
-- Behavioral preferences derived from your usage patterns (if enabled).
-
-This data helps personalize your experience and improve suggestions, scheduling, and nudging capabilities.
-
-### c. Device Data (Optional)
-If explicitly permitted, we may access basic device-level information such as:
-- Battery status.
-- Screen brightness.
-- Notification state.
-
-This data is used solely to optimize in-app experience and support automation features.
+### b. No External Access
+We **do not** access:
+- Your calendar or contacts
+- Device sensors (battery, location, etc.)
+- Network data or browsing history
+- Any other apps or system data beyond what's necessary for basic app functionality
 
 ## 2. How We Use Your Information
 
-We use the data to:
-- Provide personalized task management and AI assistant support.
-- Improve predictions, nudges, and productivity recommendations.
-- Store user preferences and behavioral insights to enhance long-term usefulness.
+Your data is used solely to:
+- Provide core app functionality (tasks, notes, habits, reflections)
+- Remember your preferences and settings
+- Display your personal productivity data within the app
 
-All AI model interactions and tool calls are handled securely. Your information is never sold or shared with advertisers.
+All processing happens locally on your device. No data analysis or processing occurs on external servers.
 
 ## 3. Data Sharing and Security
 
-- We **do not sell, rent, or share** your data with third-party advertisers.
-- We may use third-party services like **Supabase** or **OpenAI** for backend functionality, including task storage, AI conversation handling, and authentication.
-- All communications are encrypted using HTTPS.
-- Access to your calendar or sensitive data is strictly limited to functionality you authorize.
+- **Zero data sharing**: We do not collect, transmit, or share any of your personal data with third parties
+- **No external services**: The app does not connect to external APIs, cloud services, or analytics platforms
+- **Local storage only**: All your data is stored using your device's secure local storage
+- **No internet required**: The app works completely offline
 
 ## 4. Data Retention
 
-We retain your data only as long as necessary to provide the core functionality of the app. You can request full deletion of your data at any time.
+- Your data remains on your device until you choose to delete it
+- Uninstalling the app will remove all associated data from your device
+- We have no access to retrieve or backup your data since it never leaves your device
 
 ## 5. Your Rights
 
-You have the right to:
-- View the data we store.
-- Revoke access to services like Google Calendar.
-- Delete your account and associated data.
+Since all data is stored locally on your device, you have complete control:
+- View all your data within the app
+- Delete individual items (tasks, notes, etc.) or clear all data
+- Uninstall the app to remove all data permanently
+- No need to contact us for data deletion - you control everything locally
 
 ## 6. Changes to This Policy
 
-We may update this policy from time to time. All changes will be communicated within the app and on our website.
+We may update this policy from time to time. All changes will be communicated within the app.
 
 ## 7. Contact Us
 
-If you have questions about your data or this privacy policy, please contact us at:
+If you have questions about this privacy policy, please contact us at:
 
-**Email**: [tomartarun2001@gmail.com]  
-**App Developer**: [Tarun Singh Tomar]  
-**Website**: [tarat.space]
+**Email**: tomartarun2001@gmail.com  
+**App Developer**: Tarun Singh Tomar  
+**Website**: tarat.space
 
 ---
 
-**By using the App, you agree to this Privacy Policy.**
+**By using the App, you agree to this Privacy Policy. Your privacy is protected by design - everything stays on your device.**

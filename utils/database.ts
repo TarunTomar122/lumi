@@ -9,18 +9,41 @@ export interface Task {
   id?: number;
   title: string;
   description?: string | null;
-  category: string;
-  status: 'todo' | 'in_progress' | 'done';
+  due_date?: string | null;
+  reminder_date?: string | null; // Will store full datetime string
+  status: 'todo' | 'done';
   created_at: string;
-  due_date: string;
-  priority: 'low' | 'medium' | 'high';
-  reminder_time?: string | null;
-  notification_id?: string | null;
+}
+
+export interface Memory {
+  id?: number;
+  title: string;
+  content: string;
+  date: string;
+  tags: string[];
+  created_at: string;
+}
+
+export interface Habit {
+  id?: number;
+  title: string;
+  completions: Record<string, boolean>; // Map of ISO date strings to completion status
+  color: string;
+  created_at: string;
+}
+
+export interface Reflection {
+  id?: number;
+  date: string;
+  content: string;
+  created_at: string;
 }
 
 class DatabaseManager {
   private database: SQLite.SQLiteDatabase | null = null;
   private static instance: DatabaseManager;
+  private isInitializing: boolean = false;
+  private initPromise: Promise<void> | null = null;
 
   private constructor() {}
 
@@ -31,70 +54,97 @@ class DatabaseManager {
     return DatabaseManager.instance;
   }
 
-  async reinitialize(): Promise<void> {
-    try {
-      // Close existing connection if any
-      if (this.database) {
-        await this.database.close();
-        this.database = null;
-      }
-      // Initialize again
-      await this.init();
-      console.log('Database reinitialized successfully');
-    } catch (error) {
-      console.error('Error reinitializing database:', error);
-      throw error;
+  private async waitForInit(): Promise<void> {
+    if (this.database) return;
+    if (this.isInitializing) {
+      await this.initPromise;
+      return;
     }
+    await this.init();
   }
 
   async init(): Promise<void> {
-    try {
-      const db = await SQLite.openDatabase({
-        name: 'lumiDB.db',
-        location: 'default',
-      });
-      this.database = db;
-      await this.createTables();
-      console.log('Database initialized successfully');
-    } catch (error) {
-      console.error('Error initializing database:', error);
-      throw error;
+    if (this.database) return;
+    if (this.isInitializing) {
+      await this.initPromise;
+      return;
     }
+
+    this.isInitializing = true;
+    this.initPromise = (async () => {
+      try {
+        const db = await SQLite.openDatabase({
+          name: 'lumiDB.db',
+          location: 'default',
+        });
+        this.database = db;
+        await this.createTables();
+        console.log('Database initialized successfully');
+      } catch (error) {
+        console.error('Error initializing database:', error);
+        throw error;
+      } finally {
+        this.isInitializing = false;
+        this.initPromise = null;
+      }
+    })();
+
+    await this.initPromise;
   }
 
   private async createTables(): Promise<void> {
-    if (!this.database) throw new Error('Database not initialized');
-
+    if (!this.database) {
+      console.error('Database not initialized');
+      return;
+    }
     try {
-      // Create tasks table with basic fields
+      // Create tasks table if it doesn't exist
       await this.database.executeSql(`
         CREATE TABLE IF NOT EXISTS tasks (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           title TEXT NOT NULL,
           description TEXT,
-          category TEXT NOT NULL,
-          status TEXT NOT NULL,
-          created_at TEXT NOT NULL,
-          due_date TEXT NOT NULL,
-          priority TEXT NOT NULL
-        );
+          due_date TEXT,
+          reminder_date TEXT,
+          status TEXT NOT NULL DEFAULT 'todo',
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
       `);
 
-      // Check if reminder_time column exists
-      const [result] = await this.database.executeSql(`
-        SELECT name FROM pragma_table_info('tasks') WHERE name='reminder_time';
+      // Create memories table
+      await this.database.executeSql(`
+        CREATE TABLE IF NOT EXISTS memories (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          content TEXT NOT NULL,
+          date TEXT NOT NULL,
+          tags TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
       `);
 
-      // Add new columns if they don't exist
-      if (result.rows.length === 0) {
-        await this.database.executeSql(`
-          ALTER TABLE tasks ADD COLUMN reminder_time TEXT;
-        `);
-        await this.database.executeSql(`
-          ALTER TABLE tasks ADD COLUMN notification_id TEXT;
-        `);
-        console.log('Added reminder columns to tasks table');
-      }
+      // Drop and recreate habits table with new schema
+      await this.database.executeSql(`
+        CREATE TABLE IF NOT EXISTS habits (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          completions TEXT NOT NULL,
+          color TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `);
+
+      // Create reflections table
+      await this.database.executeSql(`
+        CREATE TABLE IF NOT EXISTS reflections (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          date TEXT NOT NULL,
+          content TEXT NOT NULL,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        )
+      `);
+
+      console.log('Tables created successfully');
     } catch (error) {
       console.error('Error in createTables:', error);
       throw error;
@@ -103,11 +153,12 @@ class DatabaseManager {
 
   // Tasks CRUD operations
   async getAllTasks(): Promise<Task[]> {
+    await this.waitForInit();
     if (!this.database) throw new Error('Database not initialized');
 
     try {
       const [results] = await this.database.executeSql(
-        'SELECT * FROM tasks ORDER BY due_date ASC;'
+        'SELECT * FROM tasks ORDER BY COALESCE(due_date, reminder_date, datetime("now")) ASC;'
       );
       const tasks: Task[] = [];
       for (let i = 0; i < results.rows.length; i++) {
@@ -121,38 +172,37 @@ class DatabaseManager {
   }
 
   async addTask(task: Omit<Task, 'id' | 'created_at'>): Promise<Task> {
+    await this.waitForInit();
     if (!this.database) throw new Error('Database not initialized');
 
     try {
-      const created_at = new Date().toISOString();
       const [result] = await this.database.executeSql(
-        `INSERT INTO tasks (title, description, category, status, created_at, due_date, priority, reminder_time, notification_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);`,
+        `INSERT INTO tasks (title, description, due_date, reminder_date, status)
+         VALUES (?, ?, ?, ?, ?);`,
         [
           task.title,
-          task.description,
-          task.category,
-          task.status,
-          created_at,
-          task.due_date,
-          task.priority,
-          task.reminder_time || null,
-          task.notification_id || null
+          task.description || null,
+          task.due_date || null,
+          task.reminder_date || null,
+          task.status || 'todo',
         ]
       );
 
-      return {
-        id: result.insertId,
-        ...task,
-        created_at,
-      };
+      // Fetch the created task to get the created_at timestamp
+      const [createdTask] = await this.database.executeSql(
+        'SELECT * FROM tasks WHERE id = ?;',
+        [result.insertId]
+      );
+
+      return createdTask.rows.item(0);
     } catch (error) {
       console.error('Error adding task:', error);
       throw error;
     }
   }
 
-  async updateTask(id: number, updates: Partial<Omit<Task, 'id' | 'created_at'>>): Promise<void> {
+  async updateTask(id: number, updates: Partial<Omit<Task, 'id'>>): Promise<void> {
+    await this.waitForInit();
     if (!this.database) throw new Error('Database not initialized');
 
     const updateFields = Object.keys(updates)
@@ -161,10 +211,10 @@ class DatabaseManager {
     const values = Object.values(updates);
 
     try {
-      await this.database.executeSql(
-        `UPDATE tasks SET ${updateFields} WHERE id = ?;`,
-        [...values, id]
-      );
+      await this.database.executeSql(`UPDATE tasks SET ${updateFields} WHERE id = ?;`, [
+        ...values,
+        id,
+      ]);
     } catch (error) {
       console.error('Error updating task:', error);
       throw error;
@@ -172,6 +222,7 @@ class DatabaseManager {
   }
 
   async deleteTask(id: number): Promise<void> {
+    await this.waitForInit();
     if (!this.database) throw new Error('Database not initialized');
 
     try {
@@ -181,6 +232,273 @@ class DatabaseManager {
       throw error;
     }
   }
+
+  // Memories CRUD operations
+  async getAllMemories(): Promise<Memory[]> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      const [results] = await this.database.executeSql(
+        'SELECT * FROM memories ORDER BY date DESC;'
+      );
+      const memories: Memory[] = [];
+      for (let i = 0; i < results.rows.length; i++) {
+        const item = results.rows.item(i);
+        memories.push({
+          ...item,
+          tags: JSON.parse(item.tags),
+        });
+      }
+      return memories;
+    } catch (error) {
+      console.error('Error getting memories:', error);
+      throw error;
+    }
+  }
+
+  async addMemory(memory: Omit<Memory, 'id' | 'created_at'>): Promise<Memory> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      const [result] = await this.database.executeSql(
+        `INSERT INTO memories (title, content, date, tags)
+         VALUES (?, ?, ?, ?);`,
+        [
+          memory.title,
+          memory.content,
+          memory.date,
+          JSON.stringify(memory.tags),
+        ]
+      );
+
+      // Fetch the created memory to get the created_at timestamp
+      const [createdMemory] = await this.database.executeSql(
+        'SELECT * FROM memories WHERE id = ?;',
+        [result.insertId]
+      );
+      const item = createdMemory.rows.item(0);
+      return {
+        ...item,
+        tags: JSON.parse(item.tags),
+      };
+    } catch (error) {
+      console.error('Error adding memory:', error);
+      throw error;
+    }
+  }
+
+  async updateMemory(id: number, updates: Partial<Omit<Memory, 'id'>>): Promise<void> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    const updateFields = Object.keys(updates)
+      .map(key => {
+        if (key === 'tags') {
+          return `${key} = ?`;
+        }
+        return `${key} = ?`;
+      })
+      .join(', ');
+    const values = Object.entries(updates).map(([key, value]) => {
+      if (key === 'tags') {
+        return JSON.stringify(value);
+      }
+      return value;
+    });
+
+    try {
+      await this.database.executeSql(`UPDATE memories SET ${updateFields} WHERE id = ?;`, [
+        ...values,
+        id,
+      ]);
+    } catch (error) {
+      console.error('Error updating memory:', error);
+      throw error;
+    }
+  }
+
+  async deleteMemory(id: number): Promise<void> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      await this.database.executeSql('DELETE FROM memories WHERE id = ?;', [id]);
+    } catch (error) {
+      console.error('Error deleting memory:', error);
+      throw error;
+    }
+  }
+
+  // Habits CRUD operations
+  async getAllHabits(): Promise<Habit[]> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      const [results] = await this.database.executeSql(
+        'SELECT * FROM habits ORDER BY id ASC;'
+      );
+      const habits: Habit[] = [];
+      for (let i = 0; i < results.rows.length; i++) {
+        const item = results.rows.item(i);
+        habits.push({
+          ...item,
+          completions: JSON.parse(item.completions),
+        });
+      }
+      return habits;
+    } catch (error) {
+      console.error('Error getting habits:', error);
+      throw error;
+    }
+  }
+
+  async addHabit(habit: Omit<Habit, 'id' | 'created_at'>): Promise<Habit> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      const [result] = await this.database.executeSql(
+        `INSERT INTO habits (title, completions, color)
+         VALUES (?, ?, ?);`,
+        [
+          habit.title,
+          JSON.stringify(habit.completions),
+          habit.color,
+        ]
+      );
+
+      // Fetch the created habit to get the created_at timestamp
+      const [createdHabit] = await this.database.executeSql(
+        'SELECT * FROM habits WHERE id = ?;',
+        [result.insertId]
+      );
+      const item = createdHabit.rows.item(0);
+      return {
+        ...item,
+        completions: JSON.parse(item.completions),
+      };
+    } catch (error) {
+      console.error('Error adding habit:', error);
+      throw error;
+    }
+  }
+
+  async updateHabit(id: number, updates: Partial<Omit<Habit, 'id'>>): Promise<void> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    const updateFields = Object.keys(updates)
+      .map(key => {
+        if (key === 'completions') {
+          return `${key} = ?`;
+        }
+        return `${key} = ?`;
+      })
+      .join(', ');
+    const values = Object.entries(updates).map(([key, value]) => 
+      key === 'completions' ? JSON.stringify(value) : value
+    );
+
+    try {
+      await this.database.executeSql(`UPDATE habits SET ${updateFields} WHERE id = ?;`, [
+        ...values,
+        id,
+      ]);
+    } catch (error) {
+      console.error('Error updating habit:', error);
+      throw error;
+    }
+  }
+
+  async deleteHabit(id: number): Promise<void> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      await this.database.executeSql('DELETE FROM habits WHERE id = ?;', [id]);
+    } catch (error) {
+      console.error('Error deleting habit:', error);
+      throw error;
+    }
+  }
+
+  // Reflections CRUD operations
+  async getAllReflections(): Promise<Reflection[]> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      const [results] = await this.database.executeSql(
+        'SELECT * FROM reflections ORDER BY date DESC;'
+      );
+      const reflections: Reflection[] = [];
+      for (let i = 0; i < results.rows.length; i++) {
+        reflections.push(results.rows.item(i));
+      }
+      return reflections;
+    } catch (error) {
+      console.error('Error getting reflections:', error);
+      throw error;
+    }
+  }
+
+  async addReflection(reflection: Omit<Reflection, 'id' | 'created_at'>): Promise<Reflection> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      const [result] = await this.database.executeSql(
+        `INSERT INTO reflections (date, content)
+         VALUES (?, ?);`,
+        [reflection.date, reflection.content]
+      );
+
+      // Fetch the created reflection to get the created_at timestamp
+      const [createdReflection] = await this.database.executeSql(
+        'SELECT * FROM reflections WHERE id = ?;',
+        [result.insertId]
+      );
+      return createdReflection.rows.item(0);
+    } catch (error) {
+      console.error('Error adding reflection:', error);
+      throw error;
+    }
+  }
+
+  async updateReflection(id: number, updates: Partial<Omit<Reflection, 'id'>>): Promise<void> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    const updateFields = Object.keys(updates)
+      .map(key => `${key} = ?`)
+      .join(', ');
+    const values = Object.values(updates);
+
+    try {
+      await this.database.executeSql(
+        `UPDATE reflections SET ${updateFields} WHERE id = ?;`,
+        [...values, id]
+      );
+    } catch (error) {
+      console.error('Error updating reflection:', error);
+      throw error;
+    }
+  }
+
+  async deleteReflection(id: number): Promise<void> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      await this.database.executeSql('DELETE FROM reflections WHERE id = ?;', [id]);
+    } catch (error) {
+      console.error('Error deleting reflection:', error);
+      throw error;
+    }
+  }
 }
 
-export const db = DatabaseManager.getInstance(); 
+export const db = DatabaseManager.getInstance();

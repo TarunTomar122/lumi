@@ -1,246 +1,244 @@
-import { useNavigation } from 'expo-router';
-import { Text, View, TouchableWithoutFeedback, ScrollView, TouchableOpacity } from 'react-native';
-import React from 'react';
-import { useVoiceRecognition } from '../hooks/useVoiceRecognition';
-import { clientTools } from '@/utils/tools';
-import { clientToolsSchema } from '@/utils/tools';
-import { setupNotifications, scheduleNotification } from '@/utils/tools';
-import { db } from '@/utils/database';
-import { styles } from './styles/indexStyles';
-import LottieView from 'lottie-react-native';
+import { useNavigation, useRouter } from 'expo-router';
+import {
+  Text,
+  View,
+  ScrollView,
+  StyleSheet,
+  SafeAreaView,
+  RefreshControl,
+  TouchableOpacity,
+  Keyboard,
+  StatusBar,
+} from 'react-native';
+import * as React from 'react';
 import { Ionicons } from '@expo/vector-icons';
-
-const SYSTEM_MESSAGE = {
-  role: 'system',
-  content: `
-            You are a lumi, a helpful productivity assistant with access to various tools that can help users with their tasks. 
-            When a user asks for something that requires using a tool, always try to use the appropriate tool to help them.
-            Respond in a friendly, concise manner and focus on taking actions that help users accomplish their goals. Try to sound empathetic and supportive.
-            Your character is a very very cute fluflly pink colored pokemon type character. So you sound very cute and fluffy and helpful.
-
-            Examples:
-              If a user asks you to remind them to buy groceries, you can use the "addTask" tool to add a task to their list. 
-              If they also provide a time, you set the due date to that time. For other parts of the task, like priority, category, etc, 
-              you can use your best judgement to set them.
-              If the user is confused about what to do and asks you to help, you can use the "getAllTasks" tool to get a list of all tasks. 
-              Then you can decide based on the user's goals and the list of tasks, prioritize and decide what to do next.
-        
-            
-            Note:
-              Today is ${new Date().toLocaleString('en-IN', {
-                weekday: 'long',
-                year: 'numeric',
-                month: 'long',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: 'numeric',
-                second: 'numeric',
-                timeZone: 'Asia/Kolkata',
-              })}.
-              Do not say things like you don't know how to do xyz, you are a helpful assistant, you can do anything and so based on user's prompt
-              try to be appropriate and helpful in the way you can. But if you're really confused, just ask for clarification.
-              Talk in small sentences and try to be as helpful as possible. Nobody likes long sentences.
-              Use \n to break lines. And try to break lines after 1-2 sentences.
-              Make sure to try and answer stuff in a concise manner. Don't be too verbose. 
-              You can also use emojis to make your response more friendly. Keep your answer under 4-5 sentences at max.
-            `,
-};
-
+import Message from './components/Message';
+import { getNotificationSummary, talkToAgent } from '@/utils/agent';
+import InputContainer from './components/inputContainer';
+import { useMessageStore } from './store/messageStore';
+import { useTaskStore } from './store/taskStore';
+import { useMemoryStore } from './store/memoryStore';
+import { useUsageStore } from './store/usageStore';
+import { useUserStore } from './store/userStore';
+import HomeCard from './components/HomeCard';
+import HeartAnimation from './components/HeartAnimation';
+import { SplashScreen } from './components/SplashScreen';
+import { OnboardingScreens } from './components/OnboardingScreens';
+import { clientTools, sendInstantNotification } from '@/utils/tools';
+import { UsageChart } from './components/UsageChart';
+import BackgroundFetch from 'react-native-background-fetch';
+import { DateTime } from 'luxon';
 const MAX_HISTORY = 50;
+
+interface AppUsage {
+  appName: string;
+  totalTimeInForeground: number;
+}
 
 export default function Page() {
   const navigation = useNavigation();
-  const { state, startRecognizing, stopRecognizing, destroyRecognizer, resetState } =
-    useVoiceRecognition();
+  const router = useRouter();
   const [isRecording, setIsRecording] = React.useState(false);
-  const [assistantResponse, setAssistantResponse] = React.useState<string>(
-    'Hii tarat, how can I help you today?'
-  );
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [messageHistory, setMessageHistory] = React.useState<Array<any>>([SYSTEM_MESSAGE]);
-  const animationRef = React.useRef<LottieView>(null);
-  const processedResultsRef = React.useRef<Set<string>>(new Set());
+  const [userResponse, setUserResponse] = React.useState<string>('');
+  const [assistantResponse, setAssistantResponse] = React.useState<string>('');
+  const { messageHistory, updateMessageHistory, clearMessageHistory } = useMessageStore();
+  const { tasks, refreshTasks } = useTaskStore();
+  const { memories, refreshMemories } = useMemoryStore();
+  const { usageData, refreshUsageData } = useUsageStore();
+  const { username, hasCompletedOnboarding, isLoading, initializeUser } = useUserStore();
   const resultsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const [isThinking, setIsThinking] = React.useState(false);
+  const scrollViewRef = React.useRef<ScrollView>(null);
+  const [refreshing, setRefreshing] = React.useState(false);
 
-  // Watch for speech errors and update assistant response
-  React.useEffect(() => {
-    if (state.error) {
-      setAssistantResponse("I couldn't quite understand you. Could you please try speaking again?");
-      // Clear the error state after displaying the message
-      resetState();
+  const [activeContent, setActiveContent] = React.useState<string>('home');
+  const usageDataRef = React.useRef<AppUsage[]>([]);
+  const [, setUsageUpdateTrigger] = React.useState<number>(0);
+
+  // const manuallyTriggerFetch = async () => {
+  //   try {
+  //     await BackgroundFetch.configure(
+  //       {
+  //         minimumFetchInterval: 15,
+  //         stopOnTerminate: false,
+  //         enableHeadless: true,
+  //         startOnBoot: true,
+  //       },
+  //       async taskId => {
+  //         console.log('BackgroundFetch taskId:', taskId);
+  //         try {
+  //           // send usage summary to agent
+  //           const { title, body } = await getNotificationSummary();
+  //           await sendInstantNotification(title, body);
+  //         } catch (error) {
+  //           console.error('Background fetch task failed:', error);
+  //         } finally {
+  //           // REQUIRED: Signal to the OS that your task is complete
+  //           BackgroundFetch.finish(taskId);
+  //         }
+  //       },
+  //       error => {
+  //         console.error('[BackgroundFetch] Failed to configure:', error);
+  //       }
+  //     );
+
+  //     // Force immediate execution
+  //     await BackgroundFetch.start();
+
+  //     // Execute the task immediately
+  //     const taskId = 'immediate-fetch';
+  //     await BackgroundFetch.scheduleTask({
+  //       taskId,
+  //       delay: 0, // Execute immediately
+  //       periodic: false,
+  //       forceAlarmManager: true, // Force immediate execution
+  //     });
+
+  //     console.log('[BackgroundFetch] Manual fetch triggered');
+  //   } catch (error) {
+  //     console.error('[BackgroundFetch] configure ERROR:', error);
+  //   }
+  // };
+
+  const fetchUsageData = React.useCallback(async () => {
+    const result = await clientTools.getUsageStats();
+    if (result.success && result.appUsageStats) {
+      const usageArray = Object.entries(result.appUsageStats)
+        .map(([_, data]) => ({
+          appName: data.appName || 'Unknown App',
+          totalTimeInForeground: data.totalTimeInForeground || 0,
+        }))
+        .sort((a, b) => b.totalTimeInForeground - a.totalTimeInForeground)
+        .slice(0, 3);
+
+      usageDataRef.current = usageArray;
+      setUsageUpdateTrigger((prev: number) => prev + 1);
     }
-  }, [state.error]);
+  }, []);
+
+  const checkReflectionToday = async () => {
+    try {
+      const result = await clientTools.getAllReflections();
+      if (result.success && result.reflections) {
+        const today = DateTime.now().setZone('Asia/Kolkata').toISODate();
+        const todayReflection = result.reflections.find(reflection => 
+          DateTime.fromISO(reflection.date).setZone('Asia/Kolkata').toISODate() === today
+        );
+        return !!todayReflection;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking today\'s reflection:', error);
+      return false;
+    }
+  };
+
+  const handleOnboardingComplete = (newUsername: string) => {
+    // User store handles the username setting
+  };
 
   React.useEffect(() => {
-    const setup = async () => {
-      try {
-        await setupNotifications();
-        animationRef.current?.play(30, 50);
-      } catch (error) {
-        console.error('Setup error:', error);
-      }
-    };
-    setup();
+    initializeUser();
+  }, [initializeUser]);
+
+  React.useEffect(() => {
+    try {
+      // Configure background fetch for daily reflection reminders
+      BackgroundFetch.configure(
+        {
+          minimumFetchInterval: 60*4, // 4 hours in minutes
+          stopOnTerminate: false,
+          enableHeadless: true,
+          startOnBoot: true,
+          requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE,
+          requiresCharging: false,
+          requiresDeviceIdle: false,
+          requiresBatteryNotLow: false,
+        },
+        async taskId => {
+          console.log('BackgroundFetch taskId:', taskId);
+          try {
+            const now = DateTime.now().setZone('Asia/Kolkata');
+            const hours = now.hour;
+            
+            // Check if it's later than 7PM
+            if (hours >= 19) {
+              const hasReflectionToday = await checkReflectionToday();
+              if (!hasReflectionToday) {
+                await sendInstantNotification(
+                  'Time to reflect 🌙',
+                  'How was your day? Add a quick reflection before bed.'
+                );
+              }
+            }
+          } catch (error) {
+            console.error('Background fetch task failed:', error);
+          } finally {
+            BackgroundFetch.finish(taskId);
+          }
+        },
+        error => {
+          console.error('[BackgroundFetch] Failed to configure:', error);
+        }
+      );
+      
+      // Start the background fetch service
+      BackgroundFetch.start();
+    } catch (error) {
+      console.error('Error setting up background fetch:', error);
+    }
+
+    refreshUsageData();
   }, []);
+
+  // React.useEffect(() => {
+  //   const initializeApp = async () => {
+  //     try {
+  //       await Promise.all([
+  //         refreshTasks(),
+  //         refreshMemories(),
+  //         refreshUsageData(),
+  //       ]);
+  //     } catch (error) {
+  //       console.error('Error initializing app:', error);
+  //     } finally {
+  //       setIsLoading(false);
+  //     }
+  //   };
+
+  //   initializeApp();
+  // }, []);
 
   React.useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  // Watch for transcription results when we're waiting for them
   React.useEffect(() => {
-    console.log('Recording results:', state.results);
-    if (state.results[0]) {
-      // Check if we've already processed this result
-      const resultString = state.results[0];
-      if (!processedResultsRef.current.has(resultString)) {
-        processedResultsRef.current.add(resultString);
-        handleSubmit();
-      }
-    }
-  }, [state.results]);
+    fetchUsageData();
+  }, []);
 
-  const updateMessageHistory = (newMessages: Array<any>) => {
-    // Always keep the system message at the start and limit to MAX_HISTORY messages
-    const updatedHistory = [SYSTEM_MESSAGE, ...newMessages].slice(0, MAX_HISTORY);
-    setMessageHistory(updatedHistory);
+  const navigateTo = (path: 'tasks' | 'notes' | 'habits' | 'reflections' | '') => {
+    router.push(`/${path}`);
   };
 
-  const handleSubmit = async () => {
-    if (!state.results[0]) {
+  const handleSubmit = async (quickAction?: string) => {
+    if (!userResponse && !quickAction) {
       console.log('No results to send');
       return;
     }
-    const message = state.results[0];
-    try {
-      setIsLoading(true);
-      console.log('🎤 Transcribed message:', message);
 
-      // Add user message to history
-      const userMessage = { role: 'user', content: message };
-      let currentMessageHistory = [...messageHistory.slice(1), userMessage];
-      updateMessageHistory(currentMessageHistory);
-
-      let isModelThinking = true;
-      while (isModelThinking) {
-        const requestBody = {
-          model: 'gpt-4.1-nano-2025-04-14',
-          messages: [SYSTEM_MESSAGE, ...currentMessageHistory],
-          tools: clientToolsSchema.map(tool => ({
-            type: 'function',
-            function: {
-              name: tool.name,
-              description: tool.description,
-              // @ts-ignore - we know these tools have parameters
-              parameters: tool.parameters,
-            },
-          })),
-        };
-        // console.log('📦 Request body:', JSON.stringify(requestBody, null, 2));
-
-        const response = await fetch('https://api.openai.com/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${process.env.EXPO_PUBLIC_OPENAI_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestBody),
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error('❌ OpenAI API error:', errorData);
-          throw new Error(`OpenAI API error: ${JSON.stringify(errorData)}`);
-        }
-
-        const responseData = await response.json();
-        // console.log('📥 OpenAI response:', JSON.stringify(responseData, null, 2));
-
-        const assistantMessage = responseData.choices[0].message;
-        currentMessageHistory.push(assistantMessage);
-
-        // If the model wants to make tool calls
-        if (assistantMessage.tool_calls) {
-          console.log('🔧 OpenAI requested tool calls');
-          const toolCalls = assistantMessage.tool_calls;
-          console.log('🛠️ Tool calls:', JSON.stringify(toolCalls, null, 2));
-
-          // Execute each tool call sequentially and add results to message history
-          for (const toolCall of toolCalls) {
-            const tool = clientTools[toolCall.function.name as keyof typeof clientTools];
-            if (tool) {
-              try {
-                console.log(`🔨 Executing tool: ${toolCall.function.name}`);
-                const args = JSON.parse(toolCall.function.arguments);
-                console.log('📝 Tool arguments:', args);
-                const result = await tool(args);
-                console.log('✅ Tool result:', result);
-
-                // Add tool result to message history
-                currentMessageHistory.push({
-                  role: 'tool',
-                  tool_call_id: toolCall.id,
-                  content: JSON.stringify(result),
-                });
-              } catch (error) {
-                console.error(`❌ Tool call failed for ${toolCall.function.name}:`, error);
-              }
-            } else {
-              console.warn(`⚠️ Tool not found: ${toolCall.function.name}`);
-            }
-          }
-          // Continue the loop - model will see tool results and may make more calls
-        } else {
-          // Model gave a final response without tool calls
-          console.log('💬 Model provided final response');
-          setAssistantResponse(assistantMessage.content || 'No response');
-          updateMessageHistory(currentMessageHistory);
-          isModelThinking = false;
-        }
-      }
-      // console.log('✨ All done!');
-    } catch (e) {
-      console.error('❌ Error in handleSubmit:', e);
-      setAssistantResponse('Sorry, there was an error processing your request.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleFabPress = async () => {
-    if (!isRecording) {
-      // Clear any existing timeout
-      if (resultsTimeoutRef.current) {
-        clearTimeout(resultsTimeoutRef.current);
-        resultsTimeoutRef.current = null;
-      }
-
-      resetState(); // Reset previous results
-      setIsRecording(true);
-      await startRecognizing();
-      console.log('Started recording');
-    } else {
-      console.log('Stopping recording - current results:', state.results);
-      setIsRecording(false);
-      await stopRecognizing();
-
-      // Clear any existing timeout
-      if (resultsTimeoutRef.current) {
-        clearTimeout(resultsTimeoutRef.current);
-      }
-
-      // Set a new timeout to wait for results
-      resultsTimeoutRef.current = setTimeout(() => {
-        console.log('stopRecording - final results after timeout:', state.results);
-        // If we still don't have results, try using partial results
-        if (!state.results.length && state.partialResults.length) {
-          // Use the first partial result if available
-          const partialResult = state.partialResults[0];
-          processedResultsRef.current.add(partialResult);
-          handleSubmit();
-        }
-      }, 1000);
-    }
+    // hide the main container
+    setActiveContent('chat');
+    talkToAgent(
+      userResponse + (quickAction || ''),
+      updateMessageHistory,
+      messageHistory,
+      setAssistantResponse,
+      setIsThinking,
+      () => {}, // setIsLoading placeholder
+      setActiveContent,
+      navigateTo
+    );
   };
 
   // Cleanup timeouts on unmount
@@ -252,47 +250,162 @@ export default function Page() {
     };
   }, []);
 
+  // const scrollToTop = () => {
+  //   if (scrollViewRef.current) {
+  //     scrollViewRef.current.scrollTo({ y: 1200, animated: true });
+  //   }
+  // };
+
+  // Add effect to scroll when messages change
+  // React.useEffect(() => {
+  //   // Small delay to ensure the new message is rendered
+  //   setTimeout(scrollToTop, 100);
+  // }, [isThinking]);
+
+  // const onMessageRefresh = React.useCallback(async () => {
+  //   setRefreshing(true);
+  //   clearMessageHistory();
+  //   setRefreshing(false);
+  // }, []);
+
+  // if (isLoading) {
+  //   return <SplashScreen />;
+  // }
+
+  if (!hasCompletedOnboarding) {
+    return <OnboardingScreens onComplete={handleOnboardingComplete} />;
+  }
+
   return (
-    <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <View>
-          <Text style={styles.greetingText}>Welcome, </Text>
-          <Text style={styles.headerText}>Tarat</Text>
-        </View>
-        <TouchableOpacity onPress={() => navigation.navigate('reminders' as never)}>
-          <Ionicons name="alarm-outline" size={32} color="#333" />
-        </TouchableOpacity>
-      </View>
-      <View style={styles.scrollContainer}>
-        <ScrollView
-          style={styles.agentTextContainer}
-          contentContainerStyle={{ padding: 24 }}
-          showsVerticalScrollIndicator={false}>
-          <Text style={styles.agentText}>{assistantResponse}</Text>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
+      {activeContent === 'home' && (
+        <ScrollView style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.greeting}>Hello {username}</Text>
+            <Ionicons name="sparkles-outline" size={24} color="#000000" />
+          </View>
+          <View style={styles.mainArea}>
+            <View style={styles.cardsContainer}>
+              <View style={styles.row}>
+                <HomeCard
+                  title="Tasks"
+                  icon="checkmark-circle-outline"
+                  onPress={() => {
+                    router.push('/tasks');
+                  }}
+                />
+                <HomeCard
+                  title="Notes"
+                  icon="bulb-outline"
+                  onPress={() => {
+                    router.push('/notes');
+                  }}
+                />
+              </View>
+              <View style={styles.row}>
+                <HomeCard
+                  title="Habits"
+                  icon="bar-chart-outline"
+                  onPress={() => {
+                    router.push('/habits');
+                  }}
+                />
+                <HomeCard
+                  title="Reflections"
+                  icon="calendar-outline"
+                  onPress={() => {
+                    router.push('/reflections');
+                  }}
+                />
+              </View>
+            </View>
+            <UsageChart usageData={usageData} />
+          </View>
         </ScrollView>
-      </View>
-
-      <View style={styles.imageContainer}>
-        <TouchableWithoutFeedback>
-          <LottieView
-            ref={animationRef}
-            source={require('@/assets/lottiefiles/sloth_floating.json')}
-            autoPlay={false}
-            loop={true}
-            style={styles.image}
-          />
-        </TouchableWithoutFeedback>
-      </View>
-
-      <TouchableOpacity
-        style={[styles.fab, isRecording && styles.fabRecording]}
-        onPress={handleFabPress}>
-        <Ionicons
-          name={isRecording ? 'paw' : 'paw-outline'}
-          size={40}
-          color={isRecording ? '#fff' : '#333'}
+      )}
+      {activeContent === 'chat' && <HeartAnimation />}
+      {/* <View style={styles.inputContainer}>
+        <InputContainer
+          userResponse={userResponse}
+          setUserResponse={setUserResponse}
+          handleSubmit={handleSubmit}
+          isRecording={isRecording}
+          setIsRecording={setIsRecording}
+          onlyRecording={false}
         />
-      </TouchableOpacity>
-    </View>
+      </View> */}
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fafafa',
+    paddingTop: 40,
+    gap: 48,
+  },
+  container: {
+    flex: 1,
+    padding: 24,
+    marginBottom: 20,
+  },
+  mainArea: {
+    flex: 1,
+    gap: 16,
+  },
+  agentChatContainer: {
+    flex: 1,
+    padding: 32,
+  },
+  inputContainer: {
+    padding: 24,
+  },
+  header: {
+    marginTop: 20,
+    marginBottom: 40,
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    gap: 16,
+  },
+  chatHeader: {
+    marginVertical: 30,
+    display: 'flex',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  chatHeaderText: {
+    fontSize: 28,
+    fontFamily: 'MonaSans-Regular',
+    color: '#000000',
+  },
+  greeting: {
+    fontSize: 32,
+    fontFamily: 'MonaSans-Regular',
+    color: '#000000',
+  },
+  cardsContainer: {
+    gap: 16,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: 16,
+  },
+  disabledRow: {
+    opacity: 0.5,
+  },
+  messageContainer: {
+    flex: 1,
+  },
+  messageContentContainer: {
+    paddingBottom: 20,
+  },
+  messagesWrapper: {
+    flex: 1,
+    justifyContent: 'flex-start',
+  },
+});

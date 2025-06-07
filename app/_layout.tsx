@@ -1,34 +1,27 @@
-import {
-  DarkTheme,
-  DefaultTheme,
-  NavigationContainer,
-  ThemeProvider,
-} from '@react-navigation/native';
+import { setupNotifications } from '@/utils/tools';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import React, { useEffect } from 'react';
-import { View, } from 'react-native';
-import { initializeFirebase } from '../config/firebase';
+import { View } from 'react-native';
 import { db } from '../utils/database';
-import { CustomBottomNav } from './components/CustomBottomNav';
 import { Slot } from 'expo-router';
+import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 function NavigatorContent() {
   return (
-    <View style={{ flex: 1, backgroundColor: '#DAD9DE'}}>
-      {/* <Header /> */}
-      <StatusBar style="light-content" backgroundColor="#DAD9DE" />
+    <View style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
+      <StatusBar style="light" backgroundColor="#FAFAFA" />
       <Slot />
-      <CustomBottomNav />
     </View>
   );
 }
 
 export default function RootLayout() {
+  const { checkPermissions } = useVoiceRecognition();
   const [loaded] = useFonts({
     'MonaSans-Regular': require('../assets/fonts/MonaSans-Regular.ttf'),
     'MonaSans-Medium': require('../assets/fonts/MonaSans-Medium.ttf'),
@@ -39,11 +32,15 @@ export default function RootLayout() {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // Initialize Firebase
-        // initializeFirebase();
-        // Initialize SQLite database
+        // warm up the server
+        fetch('https://lumi-server-iixq.onrender.com/api/test');
+        // check for audio permissions
+        await checkPermissions();
+        // setup notifications
+        setupNotifications();
+        // initialize the database
         await db.init();
-        console.log('✅ Database initialized');
+        console.log('✅ Database initialized & notifications setup');
       } catch (error) {
         console.error('❌ Error initializing:', error);
       }
@@ -60,7 +57,5 @@ export default function RootLayout() {
     return null;
   }
 
-  return (
-    <NavigatorContent />
-  );
+  return <NavigatorContent />;
 }

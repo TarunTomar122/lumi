@@ -1,260 +1,393 @@
-import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  FlatList,
-  ActivityIndicator,
   TouchableOpacity,
-  Pressable,
+  ScrollView,
+  SafeAreaView,
   RefreshControl,
+  StatusBar,
 } from 'react-native';
-import { clientTools } from '@/utils/tools';
-import { Task } from '@/utils/database';
+import React from 'react';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import TaskEditModal from '../components/TaskEditModal';
-import { styles } from './styles/taskStyles';
+import InputContainer from './components/inputContainer';
+import { useTaskStore } from './store/taskStore';
+import { formatDate } from '@/utils/commons';
+import { talkToAgent } from '@/utils/agent';
+import { useMessageStore } from './store/messageStore';
+import HeartAnimation from './components/HeartAnimation';
+import { DateTime } from 'luxon';
+import { clientTools } from '@/utils/tools';
 
-export default function TasksScreen() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+export default function Tasks() {
+  const router = useRouter();
+  const [userResponse, setUserResponse] = React.useState('');
+  const [isRecording, setIsRecording] = React.useState(false);
+  const [refreshing, setRefreshing] = React.useState(false);
+  const { tasks, updateTask, refreshTasks } = useTaskStore();
+  const { messageHistory, updateMessageHistory, clearMessageHistory } = useMessageStore();
+  const [assistantResponse, setAssistantResponse] = React.useState('');
+  const [isThinking, setIsThinking] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [activeContent, setActiveContent] = React.useState<string>('home');
 
-  useEffect(() => {
-    loadTasks();
+  React.useEffect(() => {
+    refreshTasks();
   }, []);
 
-  const loadTasks = async () => {
-    try {
-      const result = await clientTools.getAllTasks();
-      if (result.success && result.tasks) {
-        setTasks(result.tasks);
-      } else {
-        setError('Failed to load tasks');
-      }
-    } catch (err) {
-      setError('Error loading tasks');
-      console.error(err);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
-
-  const onRefresh = React.useCallback(() => {
+  const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
-    loadTasks();
+    try {
+      await refreshTasks();
+    } catch (error) {
+      console.error('Error refreshing tasks:', error);
+    }
+    setRefreshing(false);
   }, []);
 
-  const validateReminderTime = (reminderTime: string | null | undefined): boolean => {
-    if (!reminderTime) return true;
-    const now = new Date();
-    const reminderDate = new Date(reminderTime);
-    return reminderDate > now;
+  const navigateTo = (path: 'tasks' | 'notes' | 'habits' | 'reflections' | '') => {
+    router.push(`/${path}`);
   };
 
-  const handleUpdateTask = async (taskId: number, updates: Partial<Task>) => {
+  const handleSubmit = async () => {
+    // Enhanced regex to capture title, time, and date information
+    // Supports formats like:
+    // - "do this at 9pm tom"
+    // - "do this at 9pm tomorrow"
+    // - "do this at 9pm friday"
+    // - "do this at 9pm on 29th may"
+    // - "do this at 9pm"
+    // - "do this"
+
+    const taskRegex =
+      /^(.*?)(?:\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*([ap]m))?(?:\s+(?:on\s+)?(tom|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thur|fri|sat|sun\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|september|oct|october|nov|november|dec|december)))?$/i;
+
+    const match = userResponse.match(taskRegex);
+    let title = '';
+    let time = '';
+    let dateStr = '';
+
+    if (match) {
+      title = match[1].trim();
+
+      // Process time if provided
+      if (match[2]) {
+        const hour = parseInt(match[2]);
+        const minutes = match[3] || '00';
+        const meridiem = match[4].toLowerCase();
+        const formattedHour = hour.toString().padStart(2, '0');
+        time = `${formattedHour}:${minutes} ${meridiem.toUpperCase()}`;
+      }
+
+      // Process date if provided
+      if (match[5]) {
+        dateStr = match[5].toLowerCase().trim();
+      }
+    }
+
+    if (!title) return; // Don't create task if no title
+
+    // Parse the date
+    let targetDate = DateTime.now().setZone('Asia/Kolkata');
+
+    if (dateStr) {
+      if (dateStr === 'tom' || dateStr === 'tomorrow') {
+        targetDate = targetDate.plus({ days: 1 });
+      } else if (
+        [
+          'monday',
+          'tuesday',
+          'wednesday',
+          'thursday',
+          'friday',
+          'saturday',
+          'sunday',
+          'mon',
+          'tue',
+          'wed',
+          'thur',
+          'fri',
+          'sat',
+          'sun',
+        ].includes(dateStr)
+      ) {
+        // Find the next occurrence of this day
+        const dayNames = [
+          'sunday',
+          'monday',
+          'tuesday',
+          'wednesday',
+          'thursday',
+          'friday',
+          'saturday',
+          'sun',
+          'mon',
+          'tue',
+          'wed',
+          'thur',
+          'fri',
+          'sat',
+        ];
+        const targetDayIndex = dayNames.indexOf(dateStr);
+        const currentDayIndex = targetDate.weekday % 7; // Convert to Sunday = 0 format
+
+        let daysToAdd = targetDayIndex - currentDayIndex;
+        if (daysToAdd <= 0) {
+          daysToAdd += 7; // Next week if it's today or already passed
+        }
+
+        targetDate = targetDate.plus({ days: daysToAdd });
+      } else {
+        // Handle specific dates like "29th may", "15 june", etc.
+        const dateFormats = [
+          'd MMMM', // "29 may"
+          'do MMMM', // "29th may"
+          'd MMM', // "29 may"
+          'do MMM', // "29th may"
+        ];
+
+        let parsedDate = null;
+        for (const format of dateFormats) {
+          try {
+            parsedDate = DateTime.fromFormat(dateStr, format, { zone: 'Asia/Kolkata' });
+            if (parsedDate.isValid) {
+              // Set the year to current year, or next year if the date has passed
+              const currentYear = DateTime.now().year;
+              parsedDate = parsedDate.set({ year: currentYear });
+
+              // If the date has already passed this year, set it to next year
+              if (parsedDate < DateTime.now()) {
+                parsedDate = parsedDate.set({ year: currentYear + 1 });
+              }
+
+              targetDate = parsedDate;
+              break;
+            }
+          } catch (error) {
+            // Continue to next format
+          }
+        }
+      }
+    }
+
+    let taskData: {
+      title: string;
+      due_date?: string;
+      reminder_date?: string;
+      status: 'todo';
+      created_at: string;
+    } = {
+      title,
+      status: 'todo',
+      created_at: new Date().toISOString(),
+    };
+
+    // Set the date and time
+    if (time) {
+      // Parse the time and combine with the target date
+      const timeOnly = DateTime.fromFormat(time, 'hh:mm a');
+      if (timeOnly.isValid) {
+        const finalDateTime = targetDate.set({
+          hour: timeOnly.hour,
+          minute: timeOnly.minute,
+          second: 0,
+          millisecond: 0,
+        });
+
+        const isoDate = finalDateTime.toISO();
+        if (isoDate) {
+          taskData.due_date = isoDate;
+          taskData.reminder_date = isoDate;
+        }
+      }
+    } else if (dateStr) {
+      // If only date is provided (no time), set it to start of day
+      const finalDateTime = targetDate.startOf('day');
+      const isoDate = finalDateTime.toISO();
+      if (isoDate) {
+        taskData.due_date = isoDate;
+        taskData.reminder_date = isoDate;
+      }
+    }
+
+    // save the task
+    await clientTools.addTask(taskData);
+    refreshTasks();
+  };
+
+  const handleTaskToggle = async (id: number, currentStatus: 'todo' | 'done') => {
     try {
-      // Validate reminder time if present
-      if (updates.reminder_time && !validateReminderTime(updates.reminder_time)) {
-        setError('Reminder time must be in the future');
-        return;
-      }
-
-      const result = await clientTools.updateTask({ id: taskId, ...updates });
-      if (result.success) {
-        await loadTasks();
-        setError(null); // Clear any existing errors
-      } else {
-        setError('Failed to update task');
-      }
-    } catch (err) {
-      console.error('Error updating task:', err);
-      if (err instanceof Error && err.message.includes('must be in the future')) {
-        setError('Reminder time must be in the future');
-      } else {
-        setError('Error updating task');
-      }
+      const newStatus = currentStatus === 'done' ? 'todo' : 'done';
+      await updateTask(id, { status: newStatus });
+    } catch (error) {
+      console.error('Failed to update task:', error);
     }
   };
-
-  const handleToggleStatus = async (task: Task) => {
-    if (task.id === undefined) return;
-    const newStatus = task.status === 'done' ? 'todo' : 'done';
-    await handleUpdateTask(task.id, { status: newStatus });
-  };
-
-  const getPriorityColor = (priority: string): string => {
-    switch (priority.toLowerCase()) {
-      case 'high':
-        return '#FF6B6B';
-      case 'medium':
-        return '#4CAF50';
-      default:
-        return '#FFA726';
-    }
-  };
-
-  const getRelativeTime = (date: string) => {
-    const now = new Date();
-    const taskDate = new Date(date);
-    const diffHours = Math.round((taskDate.getTime() - now.getTime()) / (1000 * 60 * 60));
-
-    if (diffHours < 24) {
-      return `in ${diffHours} hours`;
-    } else {
-      const diffDays = Math.round(diffHours / 24);
-      return `in ${diffDays} days`;
-    }
-  };
-
-  const handleAddTask = async (taskData: Partial<Task>) => {
-    try {
-      console.log('Adding task with data:', taskData);
-      
-      // Validate reminder time if present
-      if (taskData.reminder_time && !validateReminderTime(taskData.reminder_time)) {
-        setError('Reminder time must be in the future');
-        return;
-      }
-
-      const result = await clientTools.addTask({
-        title: taskData.title || '',
-        description: taskData.description || null,
-        category: taskData.category || 'Personal',
-        status: taskData.status || 'todo',
-        due_date: taskData.due_date || new Date().toISOString(),
-        priority: taskData.priority || 'medium',
-        reminder_time: taskData.reminder_time || null,
-      });
-
-      if (result.success) {
-        console.log('Task added successfully:', result.task);
-        await loadTasks();
-      } else {
-        setError('Failed to add task');
-      }
-    } catch (err) {
-      console.error('Error adding task:', err);
-      if (err instanceof Error && err.message.includes('must be in the future')) {
-        setError('Reminder time must be in the future');
-      } else {
-        setError('Error adding task');
-      }
-    }
-  };
-
-  const createNewTask = (): Task => ({
-    id: -1, // Temporary ID for new task
-    title: '',
-    description: null,
-    category: 'Personal',
-    status: 'todo',
-    created_at: new Date().toISOString(),
-    due_date: new Date().toISOString(),
-    priority: 'medium',
-  });
-
-  const renderTask = ({ item }: { item: Task }) => {
-    if (!item.id) return null;
-    return (
-      <Pressable style={styles.taskItem} onPress={() => setEditingTask(item)}>
-        <View style={[styles.priorityBar, { backgroundColor: getPriorityColor(item.priority) }]} />
-        <View style={styles.taskContent}>
-          <View style={styles.taskMain}>
-            <View>
-              <Text style={styles.taskTitle}>{item.title}</Text>
-              <View style={styles.taskMeta}>
-                <View style={styles.categoryPill}>
-                  <Text style={styles.categoryText}>{item.category}</Text>
-                </View>
-                <Text style={styles.dueText}>Due {getRelativeTime(item.due_date)}</Text>
-              </View>
-            </View>
-            <TouchableOpacity
-              style={[styles.checkbox, item.status === 'done' && styles.checkboxChecked]}
-              onPress={() => handleToggleStatus(item)}>
-              {item.status === 'done' && <Ionicons name="checkmark" size={16} color="white" />}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Pressable>
-    );
-  };
-
-  if (loading) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#000000" />
-      </View>
-    );
-  }
-
-  if (error) {
-    return (
-      <View style={styles.container}>
-        <Text style={styles.errorText}>{error}</Text>
-      </View>
-    );
-  }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerContainer}>
-        <View>
-          <Text style={styles.headerText}>Tasks</Text>
-        </View>
-        <Ionicons name="calendar-outline" size={30} color="#333" />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={28} color="#000000" />
+          <Text style={styles.backText}>Tasks</Text>
+        </TouchableOpacity>
       </View>
-      <FlatList
-        data={tasks}
-        renderItem={renderTask}
-        keyExtractor={item => (item.id || Date.now()).toString()}
-        contentContainerStyle={styles.listContainer}
-        ListEmptyComponent={<Text style={styles.emptyText}>No tasks yet</Text>}
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            tintColor="#333"
-            colors={['#333']}
+      {activeContent === 'home' && (
+        <View style={styles.container}>
+          {tasks.length === 0 && (
+            <View style={styles.noTasksContainer}>
+              <Text style={styles.noTasksText}>This feels too empty. Add some stuff to do!</Text>
+              <Text style={styles.suggestionText}>"do this at 8am"</Text>
+              <Text style={styles.suggestionText}>"do this at 9pm tomorrow"</Text>
+              <Text style={styles.suggestionText}>"do this friday"</Text>
+            </View>
+          )}
+          <ScrollView
+            style={styles.taskList}
+            showsVerticalScrollIndicator={false}
+            refreshControl={
+              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
+            }>
+            {tasks.map((task, index) => (
+              <View key={index} style={styles.taskItem}>
+                <View style={styles.taskContent}>
+                  <Text
+                    style={[styles.taskText, task.status === 'done' && styles.taskTextCompleted]}>
+                    {task.title}
+                  </Text>
+                  <Text style={styles.taskDate}>
+                    {formatDate(task.due_date || task.reminder_date || '')}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={[
+                    styles.taskCheckbox,
+                    task.status === 'done' && styles.taskCheckboxChecked,
+                  ]}
+                  onPress={() => handleTaskToggle(task.id!, task.status)}>
+                  {task.status === 'done' && (
+                    <Ionicons name="checkmark" size={20} color="#FFFFFF" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            ))}
+          </ScrollView>
+          <InputContainer
+            userResponse={userResponse}
+            setUserResponse={setUserResponse}
+            handleSubmit={handleSubmit}
+            isRecording={isRecording}
+            setIsRecording={setIsRecording}
+            onlyRecording={false}
+            placeholder="do this at 9pm tom"
           />
-        }
-      />
-      <TouchableOpacity style={styles.fab} onPress={() => setEditingTask(createNewTask())}>
-        <Ionicons name="add-outline" size={40} color="#333" />
-      </TouchableOpacity>
-      {editingTask && ( 
-        <TaskEditModal
-          visible={true}
-          task={editingTask}
-          onClose={() => setEditingTask(null)}
-          onSave={updates => {
-            if (editingTask.id === -1) {
-              handleAddTask(updates);
-            } else if (editingTask.id !== undefined) {
-              handleUpdateTask(editingTask.id, updates);
-            }
-            setEditingTask(null);
-          }}
-          onDelete={async (taskId) => {
-            try {
-              const result = await clientTools.deleteTask({ id: taskId });
-              if (result.success) {
-                await loadTasks();
-              } else {
-                setError('Failed to delete task');
-              }
-            } catch (err) {
-              setError('Error deleting task');
-              console.error(err);
-            }
-          }}
-        />
+        </View>
       )}
-    </View>
+      {activeContent === 'chat' && <HeartAnimation />}
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#fafafa',
+    paddingTop: 42,
+  },
+  container: {
+    flex: 1,
+    padding: 24,
+  },
+  noTasksContainer: {
+    flex: 1,
+    gap: 12,
+  },
+  noTasksText: {
+    fontSize: 18,
+    fontFamily: 'MonaSans-Regular',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  suggestionText: {
+    fontSize: 16,
+    fontFamily: 'Roboto-Regular',
+    color: '#000000',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 12,
+  },
+  backText: {
+    fontSize: 24,
+    fontFamily: 'MonaSans-Medium',
+    color: '#000000',
+    marginBottom: 3,
+  },
+  title: {
+    fontSize: 32,
+    fontFamily: 'MonaSans-Bold',
+    color: '#000000',
+  },
+  taskList: {
+    flex: 1,
+    paddingRight: 8,
+  },
+  taskItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    gap: 12,
+    marginBottom: 12,
+  },
+  taskCheckbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: '#000000',
+    marginTop: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  taskCheckboxChecked: {
+    backgroundColor: '#000000',
+  },
+  taskContent: {
+    flex: 1,
+  },
+  taskText: {
+    fontSize: 20,
+    fontFamily: 'MonaSans-Regular',
+    color: '#000000',
+    marginBottom: 4,
+  },
+  taskTextCompleted: {
+    textDecorationLine: 'line-through',
+    color: '#666666',
+  },
+  taskDate: {
+    fontSize: 14,
+    fontFamily: 'MonaSans-Regular',
+    color: '#666666',
+  },
+  inputContainer: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+});

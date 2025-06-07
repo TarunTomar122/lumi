@@ -1,12 +1,17 @@
 {
   "expo": {
-    "name": "lumi-mobile",
-    "slug": "lumi-mobile",
+    "name": "lumi",
+    "slug": "lumi",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myapp",
     "userInterfaceStyle": "automatic",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#fafafa"
+    },
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
@@ -22,7 +27,17 @@
         "backgroundColor": "#ffffff"
       },
       "package": "com.lumi.mobile",
-      "permissions": ["android.permission.RECORD_AUDIO", "android.permission.INTERNET"]
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.INTERNET",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.SCHEDULE_EXACT_ALARM",
+        "android.permission.USE_EXACT_ALARM"
+      ],
+      "buildType": "apk",
+      "enableProguardInReleaseBuilds": true,
+      "enableShrinkResources": true,
+      "enableR8": true
     },
     "web": {
       "bundler": "metro",
@@ -31,18 +46,15 @@
     },
     "plugins": [
       [
-        "@react-native-voice/voice",
+        "expo-speech-recognition",
         {
-          "microphonePermission": "CUSTOM: Allow $(PRODUCT_NAME) to access the microphone",
-          "speechRecognitionPermission": "CUSTOM: Allow $(PRODUCT_NAME) to securely recognize user speech"
+          "microphonePermission": "Allow $(PRODUCT_NAME) to use the microphone.",
+          "speechRecognitionPermission": "Allow $(PRODUCT_NAME) to use speech recognition.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
         }
       ],
-      [
-        "@config-plugins/react-native-webrtc",
-        {
-          "microphonePermission": "Allow $(PRODUCT_NAME) to access your microphone"
-        }
-      ]
+      "./plugins/notifee/withNotifee",
+      "react-native-background-fetch"
     ],
     "experiments": {
       "typedRoutes": true
