@@ -36,11 +36,18 @@ All data is stored **locally on your device**, giving you complete control and p
 
 ## 🖼️ Screenshots
 
-<p float="left">
-  <img src="screenshots/home.png" width="200" />
-  <img src="screenshots/habits.png" width="200" />
-  <img src="screenshots/notes.png" width="200" />
-</p>
+<table>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/456ced31-5bc4-45c2-8593-c44b5977af9b" width="200"/></td>
+    <td><img src="https://github.com/user-attachments/assets/65a32469-b941-44a6-acdd-1ab30f300bee" width="200"/></td>
+  </tr>
+  <tr>
+    <td><img src="https://github.com/user-attachments/assets/2210419d-9ac9-46eb-9079-eb5289ecb1a1" width="200"/></td>
+    <td><img src="https://github.com/user-attachments/assets/07000177-91dc-4143-8010-0ef0e2aab3a9" width="200"/></td>
+  </tr>
+</table>
+
+
 
 ---
 
