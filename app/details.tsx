@@ -11,6 +11,8 @@ import {
   ActivityIndicator,
   Keyboard,
   StatusBar,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -72,7 +74,7 @@ const DetailsPage = () => {
             .split(',')
             .map(tag => tag.trim())
             .filter(tag => tag.length > 0);
-          
+
           await updateMemory(item.id, {
             content: newContent,
             title: newTitle,
@@ -106,7 +108,7 @@ const DetailsPage = () => {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" backgroundColor="#fafafa" />
-      
+
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
@@ -121,70 +123,74 @@ const DetailsPage = () => {
         </View>
       </View>
 
-      {/* Content */}
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled">
-        
-        {/* Title Input */}
-        <TextInput
-          ref={titleInputRef}
-          style={styles.titleInput}
-          value={title}
-          onChangeText={handleTitleChange}
-          placeholder="Title"
-          placeholderTextColor="#999999"
-          multiline={true}
-          returnKeyType="next"
-          onSubmitEditing={() => tagsInputRef.current?.focus()}
-          blurOnSubmit={false}
-        />
+      {/* Content with Keyboard Avoiding */}
+      <KeyboardAvoidingView
+        style={[styles.keyboardAvoidingView, isEditing ? { maxHeight: Dimensions.get('window').height - 120 } : {}]}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.contentContainer}
+          contentContainerStyle={styles.scrollContentContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="interactive">
+          {/* Title Input */}
+          <TextInput
+            ref={titleInputRef}
+            style={styles.titleInput}
+            value={title}
+            onChangeText={handleTitleChange}
+            placeholder="Title"
+            placeholderTextColor="#999999"
+            multiline={true}
+            returnKeyType="next"
+            onSubmitEditing={() => tagsInputRef.current?.focus()}
+            blurOnSubmit={false}
+          />
 
-        {/* Tags Input */}
-        <TextInput
-          ref={tagsInputRef}
-          style={styles.tagsInput}
-          value={tags}
-          onChangeText={handleTagsChange}
-          placeholder="Tags (comma separated)"
-          placeholderTextColor="#999999"
-          multiline={false}
-          returnKeyType="next"
-          onSubmitEditing={() => contentInputRef.current?.focus()}
-          blurOnSubmit={false}
-        />
+          {/* Tags Input */}
+          <TextInput
+            ref={tagsInputRef}
+            style={styles.tagsInput}
+            value={tags}
+            onChangeText={handleTagsChange}
+            placeholder="Tags (comma separated)"
+            placeholderTextColor="#999999"
+            multiline={false}
+            returnKeyType="next"
+            onSubmitEditing={() => contentInputRef.current?.focus()}
+            blurOnSubmit={false}
+          />
 
-        {/* Content Input */}
-        <TextInput
-          ref={contentInputRef}
-          style={styles.contentInput}
-          multiline={true}
-          value={textContent}
-          onChangeText={handleTextChange}
-          placeholder="Note"
-          placeholderTextColor="#999999"
-          textAlignVertical="top"
-          scrollEnabled={false}
-        />
-      </ScrollView>
+          {/* Content Input */}
+          <TextInput
+            ref={contentInputRef}
+            style={styles.contentInput}
+            multiline={true}
+            value={textContent}
+            onChangeText={handleTextChange}
+            placeholder="Note"
+            placeholderTextColor="#999999"
+            textAlignVertical="top"
+            scrollEnabled={false}
+          />
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Bottom timestamp */}
-      {!isEditing && (
-        <View style={styles.bottomInfo}>
-          <Text style={styles.timestampText}>
-            Edited {item.created_at ? 
-              new Date(item.created_at).toLocaleTimeString([], { 
-                hour: '2-digit', 
-                minute: '2-digit',
-                hour12: true 
-              }) : 
-              'just now'
-            }
-          </Text>
-        </View>
-      )}
+      <View style={styles.bottomInfo}>
+        <Text style={styles.timestampText}>
+          Edited {item.created_at ? 
+            new Date(item.created_at).toLocaleTimeString([], { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: true 
+            }) : 
+            'just now'
+          }
+        </Text>
+      </View>
     </SafeAreaView>
   );
 };
@@ -225,6 +231,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 12,
   },
+  scrollContentContainer: {
+    paddingBottom: 120,
+  },
   titleInput: {
     fontSize: 22,
     fontFamily: 'MonaSans-Medium',
@@ -261,6 +270,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
   },
 });
 
