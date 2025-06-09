@@ -1,4 +1,5 @@
-import React, { useRef, useCallback } from 'react';
+import * as React from 'react';
+import { useRef, useCallback } from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -16,7 +17,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemoryStore } from './store/memoryStore';
 import { Dimensions } from 'react-native';
-import InputContainer from './components/inputContainer';
 
 const DetailsPage = () => {
   const router = useRouter();
@@ -26,27 +26,26 @@ const DetailsPage = () => {
   const { updateMemory, deleteMemory } = useMemoryStore();
   const [title, setTitle] = React.useState<string>(item.title);
   const [textContent, setTextContent] = React.useState<string>(item.content);
+  const [tags, setTags] = React.useState<string>(item.tags?.join(', ') || '');
   const [isEditing, setIsEditing] = React.useState<boolean>(false);
-  const [keyboardHeight, setKeyboardHeight] = React.useState(Dimensions.get('window').height);
   const scrollViewRef = React.useRef<ScrollView>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
-
-  const [userResponse, setUserResponse] = React.useState<string>('');
-  const [isRecording, setIsRecording] = React.useState<boolean>(false);
-  const [isThinking, setIsThinking] = React.useState<boolean>(false);
+  const titleInputRef = React.useRef<TextInput>(null);
+  const tagsInputRef = React.useRef<TextInput>(null);
+  const contentInputRef = React.useRef<TextInput>(null);
 
   React.useEffect(() => {
-    Keyboard.addListener('keyboardDidShow', () => {
-      setKeyboardHeight(400);
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
       setIsEditing(true);
     });
-    Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(Dimensions.get('window').height);
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
       setIsEditing(false);
     });
 
     // Clean up timeout on unmount
     return () => {
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -58,13 +57,9 @@ const DetailsPage = () => {
     router.back();
   };
 
-  React.useEffect(() => {
-    console.log('userResponse', userResponse);
-  }, [userResponse]);
-
   // Debounced auto-save function
   const debouncedSave = useCallback(
-    (newTitle: string, newContent: string) => {
+    (newTitle: string, newContent: string, newTags: string) => {
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -72,78 +67,124 @@ const DetailsPage = () => {
       saveTimeoutRef.current = setTimeout(async () => {
         setIsLoading(true);
         try {
+          // Convert tags string to array
+          const tagsArray = newTags
+            .split(',')
+            .map(tag => tag.trim())
+            .filter(tag => tag.length > 0);
+          
           await updateMemory(item.id, {
             content: newContent,
             title: newTitle,
-            tags: item.tags || [],
+            tags: tagsArray,
           });
         } catch (error) {
           console.error('Error auto-saving memory:', error);
         } finally {
           setIsLoading(false);
         }
-      }, 300);
+      }, 500);
     },
-    [item.id, item.tags, updateMemory]
+    [item.id, updateMemory]
   );
+
+  const handleTitleChange = (text: string) => {
+    setTitle(text);
+    debouncedSave(text, textContent, tags);
+  };
+
+  const handleTagsChange = (text: string) => {
+    setTags(text);
+    debouncedSave(title, textContent, text);
+  };
 
   const handleTextChange = (text: string) => {
     setTextContent(text);
-    debouncedSave(title, text);
+    debouncedSave(title, text, tags);
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#fafafa" />
+      
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
           <Ionicons name="arrow-back" size={28} color="#000000" />
-          <Text style={styles.backText}>
-            {item.title.slice(0, 22) + (item.title.length > 22 ? '...' : '')}
-          </Text>
-        </TouchableOpacity>
-        {isLoading && <ActivityIndicator size="small" color="#000000" style={styles.loader} />}
-
-        <TouchableOpacity onPress={handleDelete}>
-          <Ionicons name="trash-outline" size={28} color="#000000" />
         </TouchableOpacity>
 
-        {/* {isEditing && (
-          <InputContainer
-            userResponse={userResponse}
-            setUserResponse={setUserResponse}
-            setStreamedResponse={(response: string) => {
-              console.log('response', response);
-            }}
-            handleSubmit={() => {}}
-            isRecording={isRecording}
-            setIsRecording={setIsRecording}
-            onlyRecording={true}
-          />
-        )} */}
+        <View style={styles.headerActions}>
+          {isLoading && <ActivityIndicator size="small" color="#666666" style={styles.loader} />}
+          <TouchableOpacity onPress={handleDelete} style={styles.headerButton}>
+            <Ionicons name="trash-outline" size={28} color="#000000" />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Content */}
       <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={[{ maxHeight: keyboardHeight }]}
+        style={styles.contentContainer}
         showsVerticalScrollIndicator={false}
-        style={styles.contentContainer}>
+        keyboardShouldPersistTaps="handled">
+        
+        {/* Title Input */}
         <TextInput
-          style={styles.text}
+          ref={titleInputRef}
+          style={styles.titleInput}
+          value={title}
+          onChangeText={handleTitleChange}
+          placeholder="Title"
+          placeholderTextColor="#999999"
+          multiline={false}
+          returnKeyType="next"
+          onSubmitEditing={() => tagsInputRef.current?.focus()}
+          blurOnSubmit={false}
+        />
+
+        {/* Tags Input */}
+        <TextInput
+          ref={tagsInputRef}
+          style={styles.tagsInput}
+          value={tags}
+          onChangeText={handleTagsChange}
+          placeholder="Tags (comma separated)"
+          placeholderTextColor="#999999"
+          multiline={false}
+          returnKeyType="next"
+          onSubmitEditing={() => contentInputRef.current?.focus()}
+          blurOnSubmit={false}
+        />
+
+        {/* Content Input */}
+        <TextInput
+          ref={contentInputRef}
+          style={styles.contentInput}
           multiline={true}
           value={textContent}
           onChangeText={handleTextChange}
+          placeholder="Note"
+          placeholderTextColor="#999999"
+          textAlignVertical="top"
+          scrollEnabled={false}
         />
       </ScrollView>
-      {/* <View style={styles.inputContainer}>
-        <InputContainer
-          userResponse={userResponse}
-          setUserResponse={setUserResponse}
-          handleSubmit={handleSubmit}
-          isRecording={isRecording}
-          setIsRecording={setIsRecording}
-          onlyRecording={true}
-        />
-      </View> */}
+
+      {/* Bottom timestamp */}
+      {!isEditing && (
+        <View style={styles.bottomInfo}>
+          <Text style={styles.timestampText}>
+            Edited {item.created_at ? 
+              new Date(item.created_at).toLocaleTimeString([], { 
+                hour: '2-digit', 
+                minute: '2-digit',
+                hour12: true 
+              }) : 
+              'just now'
+            }
+          </Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -151,7 +192,7 @@ const DetailsPage = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#fafafa',
     paddingTop: 42,
   },
   header: {
@@ -162,41 +203,63 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 10,
     borderBottomWidth: 1,
+    backgroundColor: '#fafafa',
     borderBottomColor: '#E0E0E0',
   },
-  backButton: {
+  headerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
     gap: 12,
   },
-  backText: {
-    fontSize: 24,
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    marginBottom: 3,
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   loader: {
-    marginRight: 12,
+    marginRight: 4,
   },
   contentContainer: {
-    padding: 24,
-    minHeight: Dimensions.get('window').height,
-  },
-  text: {
-    fontSize: 18,
-    color: '#000000',
-    fontFamily: 'MonaSans-Regular',
-    lineHeight: 28,
-    textAlignVertical: 'top',
-  },
-  inputContainer: {
-    position: 'absolute',
-    bottom: 0,
-    top: 720,
-    left: 280,
-    right: -280,
+    flex: 1,
     paddingHorizontal: 24,
+    paddingTop: 12,
+  },
+  titleInput: {
+    fontSize: 22,
+    fontFamily: 'MonaSans-Medium',
+    color: '#000000',
+    paddingVertical: 8,
+    paddingHorizontal: 0,
+  },
+  tagsInput: {
+    fontSize: 14,
+    fontFamily: 'MonaSans-Regular',
+    color: '#666666',
+    paddingHorizontal: 0,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderColor: '#E0E0E0',
+    marginBottom: 18,
+  },
+  contentInput: {
+    fontSize: 16,
+    fontFamily: 'MonaSans-Regular',
+    color: '#000000',
+    lineHeight: 24,
+    minHeight: 200,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+  },
+  bottomInfo: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  timestampText: {
+    fontSize: 12,
+    fontFamily: 'MonaSans-Regular',
+    color: '#666666',
   },
 });
 
