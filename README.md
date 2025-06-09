@@ -2,8 +2,8 @@
 
 **Lumi** is a frictionless personal productivity app designed for people who want a minimalist space to track their tasks, habits, reflections, and notes — all without any unnecessary complexity or clutter. Think of it as your quiet companion, always there to help you stay on track.
 
-> ✨ *Currently in open beta on the Play Store.*
-> [📲 Download from Play Store](https://drive.google.com/file/d/1ZVRtt1h642Y1j0fc7b-QdhcUXvcLSjhX/view?usp=drive_link)
+> ✨ *Currently in closed beta on the Play Store.*
+> [📲 Download from Play Store](https://play.google.com/store/apps/details?id=com.lumi.mobile)
    
 ![image](https://github.com/user-attachments/assets/10f52d05-b266-4ccd-a684-9ecd287aa086)
 
