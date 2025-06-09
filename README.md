@@ -72,7 +72,7 @@ Here’s what we’re planning to add in the near future:
 - [ ] **Background nudges**: smart prompts based on your patterns (using background fetch)
 - [ ] Light **task management analytics** to help you reflect on your habits and productivity
 
-> Have ideas or feature requests? [Open an issue](https://github.com/yourusername/lumi/issues) or reach out!
+> Have ideas or feature requests? [Open an issue](https://github.com/TarunTomar122/lumi/issues) or reach out!
 
 
 ---
