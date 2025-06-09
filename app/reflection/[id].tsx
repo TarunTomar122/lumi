@@ -1,4 +1,5 @@
-import React, { useRef, useCallback } from 'react';
+import * as React from 'react';
+import { useRef, useCallback } from 'react';
 import {
   SafeAreaView,
   StyleSheet,
@@ -25,22 +26,22 @@ const ReflectionDetails = () => {
   const reflection = reflections.find(r => r.id === Number(id));
   const [isLoading, setIsLoading] = React.useState(false);
   const [textContent, setTextContent] = React.useState(reflection?.content || '');
-  const [keyboardHeight, setKeyboardHeight] = React.useState(Dimensions.get('window').height);
   const [isEditing, setIsEditing] = React.useState(false);
   const scrollViewRef = useRef<ScrollView>(null);
   const saveTimeoutRef = useRef<NodeJS.Timeout>();
+  const contentInputRef = React.useRef<TextInput>(null);
 
   React.useEffect(() => {
-    Keyboard.addListener('keyboardDidShow', () => {
-      setKeyboardHeight(400);
+    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', () => {
       setIsEditing(true);
     });
-    Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(Dimensions.get('window').height);
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
       setIsEditing(false);
     });
 
     return () => {
+      keyboardDidShowListener?.remove();
+      keyboardDidHideListener?.remove();
       if (saveTimeoutRef.current) {
         clearTimeout(saveTimeoutRef.current);
       }
@@ -70,7 +71,7 @@ const ReflectionDetails = () => {
         } finally {
           setIsLoading(false);
         }
-      }, 300);
+      }, 500);
     },
     [reflection?.id, updateReflection]
   );
@@ -84,13 +85,12 @@ const ReflectionDetails = () => {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
             <Ionicons name="arrow-back" size={28} color="#000000" />
-            <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
         </View>
         <View style={styles.container}>
-          <Text>Reflection not found</Text>
+          <Text style={styles.errorText}>Reflection not found</Text>
         </View>
       </SafeAreaView>
     );
@@ -98,31 +98,60 @@ const ReflectionDetails = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle="dark-content" backgroundColor="#fafafa" />
+
+      {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
           <Ionicons name="arrow-back" size={28} color="#000000" />
-          <Text style={styles.backText}>
-            {DateTime.fromISO(reflection.date).toFormat('d MMM yyyy')}
-          </Text>
         </TouchableOpacity>
-        {isLoading && <ActivityIndicator size="small" color="#000000" style={styles.loader} />}
-        <TouchableOpacity onPress={handleDelete}>
-          <Ionicons name="trash-outline" size={28} color="#000000" />
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Your Reflection</Text>
+        <View style={styles.headerActions}>
+          {isLoading && <ActivityIndicator size="small" color="#666666" style={styles.loader} />}
+          <TouchableOpacity onPress={handleDelete} style={styles.headerButton}>
+            <Ionicons name="trash-outline" size={28} color="#000000" />
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Content */}
       <ScrollView
         ref={scrollViewRef}
-        contentContainerStyle={[{ maxHeight: keyboardHeight }]}
+        style={styles.contentContainer}
         showsVerticalScrollIndicator={false}
-        style={styles.contentContainer}>
+        keyboardShouldPersistTaps="handled">
+        {/* Date Title */}
+        <Text style={styles.dateTitle}>
+          {DateTime.fromISO(reflection.date).toFormat('EEEE, MMMM d, yyyy')}
+        </Text>
+
+        {/* Content Input */}
         <TextInput
-          style={styles.text}
+          ref={contentInputRef}
+          style={styles.contentInput}
           multiline={true}
           value={textContent}
           onChangeText={handleTextChange}
+          placeholder="How was your day?"
+          placeholderTextColor="#999999"
+          textAlignVertical="top"
+          scrollEnabled={false}
         />
       </ScrollView>
+
+      {/* Bottom timestamp */}
+      {!isEditing && (
+        <View style={styles.bottomInfo}>
+          <Text style={styles.timestampText}>
+            Edited{' '}
+            {new Date(reflection.created_at).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: true,
+            })}
+          </Text>
+        </View>
+      )}
     </SafeAreaView>
   );
 };
@@ -130,7 +159,7 @@ const ReflectionDetails = () => {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#fafafa',
     paddingTop: 42,
   },
   container: {
@@ -138,6 +167,11 @@ const styles = StyleSheet.create({
     padding: 24,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 18,
+    fontFamily: 'MonaSans-Regular',
+    color: '#666666',
   },
   header: {
     flexDirection: 'row',
@@ -147,42 +181,59 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 10,
     borderBottomWidth: 1,
+    backgroundColor: '#fafafa',
     borderBottomColor: '#E0E0E0',
   },
-  backButton: {
+  headerTitle: {
+    fontSize: 22,
+    fontFamily: 'MonaSans-Medium',
+    color: '#000000',
+  },
+  headerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
     gap: 12,
   },
-  backText: {
-    fontSize: 24,
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    marginBottom: 3,
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
   },
   loader: {
-    marginRight: 12,
+    marginRight: 4,
   },
   contentContainer: {
-    padding: 24,
-    minHeight: Dimensions.get('window').height,
-  },
-  text: {
-    fontSize: 18,
-    color: '#000000',
-    fontFamily: 'MonaSans-Regular',
-    lineHeight: 28,
-    textAlignVertical: 'top',
-  },
-  inputContainer: {
-    position: 'absolute',
-    bottom: 0,
-    top: 720,
-    left: 280,
-    right: -280,
+    flex: 1,
     paddingHorizontal: 24,
+    paddingTop: 12,
+  },
+  dateTitle: {
+    fontSize: 22,
+    fontFamily: 'MonaSans-Medium',
+    color: '#000000',
+    marginBottom: 16,
+    paddingVertical: 8,
+  },
+  contentInput: {
+    fontSize: 16,
+    fontFamily: 'MonaSans-Regular',
+    color: '#000000',
+    lineHeight: 24,
+    minHeight: 200,
+    paddingVertical: 0,
+    paddingHorizontal: 0,
+  },
+  bottomInfo: {
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  timestampText: {
+    fontSize: 12,
+    fontFamily: 'MonaSans-Regular',
+    color: '#666666',
   },
 });
 
-export default ReflectionDetails; 
+export default ReflectionDetails;
