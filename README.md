@@ -4,6 +4,8 @@
 
 > ✨ *Currently in closed beta on the Play Store.*
 > [📲 Download from Play Store](https://play.google.com/store/apps/details?id=com.lumi.mobile)
+
+NOTE: I'd have to add your email to the list for you to be able to download the app. Send me your email at [tarat.hobbies](https://www.instagram.com/tarat.hobbies/) on Instagram.
    
 ![image](https://github.com/user-attachments/assets/10f52d05-b266-4ccd-a684-9ecd287aa086)
 
