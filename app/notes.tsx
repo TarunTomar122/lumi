@@ -82,9 +82,9 @@ export default function Notes() {
       noteContent = content.trim();
     }
 
-    // Create title from first 5 words of content
+    // Create title from first 3 words of content
     const words = noteContent.split(/\s+/);
-    const title = words.slice(0, 5).join(' ');
+    const title = words.slice(0, 3).join(' ');
 
     clientTools.addMemory({
       title,

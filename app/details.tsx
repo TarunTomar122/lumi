@@ -136,7 +136,7 @@ const DetailsPage = () => {
           onChangeText={handleTitleChange}
           placeholder="Title"
           placeholderTextColor="#999999"
-          multiline={false}
+          multiline={true}
           returnKeyType="next"
           onSubmitEditing={() => tagsInputRef.current?.focus()}
           blurOnSubmit={false}
@@ -250,6 +250,7 @@ const styles = StyleSheet.create({
     minHeight: 200,
     paddingVertical: 0,
     paddingHorizontal: 0,
+    marginBottom: 32,
   },
   bottomInfo: {
     paddingHorizontal: 24,
