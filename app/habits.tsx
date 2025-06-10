@@ -34,7 +34,8 @@ export default function Habits() {
   const [expandedHabitId, setExpandedHabitId] = React.useState<number | null>(null);
   const [isAddingHabit, setIsAddingHabit] = React.useState(false);
   const [newHabitTitle, setNewHabitTitle] = React.useState('');
-  const { habits, updateHabitProgress, refreshHabits, getWeekProgress, addHabit, deleteHabit } = useHabitStore();
+  const { habits, updateHabitProgress, refreshHabits, getWeekProgress, addHabit, deleteHabit } =
+    useHabitStore();
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -68,7 +69,7 @@ export default function Habits() {
     // Get array of ISO date strings for current week starting from Monday
     const weekDates = React.useMemo(() => {
       const now = DateTime.now();
-      const monday = now.startOf('week');  // Luxon uses Monday as start of week by default
+      const monday = now.startOf('week'); // Luxon uses Monday as start of week by default
       return Array.from({ length: 7 }, (_, i) => monday.plus({ days: i }).toISODate() || '');
     }, []);
 
@@ -80,9 +81,9 @@ export default function Habits() {
             <TouchableOpacity
               onPress={() => onDayPress(weekDates[index])}
               style={[
-                styles.circle, 
+                styles.circle,
                 progress[index] && { backgroundColor: habit.color },
-                !progress[index] && { backgroundColor: '#FFF0F3' }  // Light pink background for non-completed days
+                !progress[index] && { backgroundColor: '#FFF0F3' }, // Light pink background for non-completed days
               ]}
             />
           </View>
@@ -99,9 +100,9 @@ export default function Habits() {
 
   const handleAddHabit = async () => {
     if (!newHabitTitle.trim()) return;
-    
+
     await addHabit(newHabitTitle.trim());
-    
+
     setNewHabitTitle('');
     setIsAddingHabit(false);
     refreshHabits();
@@ -149,13 +150,15 @@ export default function Habits() {
               <TouchableOpacity
                 onPress={() => habit.id && toggleExpand(habit.id)}
                 style={styles.habitHeader}>
-                <Text style={styles.habitTitle}>{habit.title}</Text>
-                <View style={styles.habitHeaderActions}>
+                <View style={styles.habitHeaderContent}>
+                  <Text style={styles.habitTitle}>{habit.title}</Text>
                   <TouchableOpacity
                     onPress={() => habit.id && handleDeleteHabit(habit.id, habit.title)}
                     style={styles.deleteButton}>
                     <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
                   </TouchableOpacity>
+                </View>
+                <View style={styles.habitHeaderActions}>
                   <Ionicons
                     name={expandedHabitId === habit.id ? 'chevron-up' : 'chevron-down'}
                     size={24}
@@ -172,7 +175,7 @@ export default function Habits() {
               )}
             </View>
           ))}
-          
+
           {/* Add Habit Button or Input */}
           <View style={styles.addHabitContainer}>
             {isAddingHabit ? (
@@ -247,9 +250,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   habitHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  habitHeaderContent: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
