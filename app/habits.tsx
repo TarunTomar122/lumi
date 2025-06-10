@@ -11,6 +11,7 @@ import {
   Platform,
   UIManager,
   TextInput,
+  Alert,
 } from 'react-native';
 import React from 'react';
 import { useRouter } from 'expo-router';
@@ -33,7 +34,7 @@ export default function Habits() {
   const [expandedHabitId, setExpandedHabitId] = React.useState<number | null>(null);
   const [isAddingHabit, setIsAddingHabit] = React.useState(false);
   const [newHabitTitle, setNewHabitTitle] = React.useState('');
-  const { habits, updateHabitProgress, refreshHabits, getWeekProgress, addHabit } = useHabitStore();
+  const { habits, updateHabitProgress, refreshHabits, getWeekProgress, addHabit, deleteHabit } = useHabitStore();
 
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -106,6 +107,27 @@ export default function Habits() {
     refreshHabits();
   };
 
+  const handleDeleteHabit = async (habitId: number, habitTitle: string) => {
+    Alert.alert(
+      'Delete Habit',
+      `Are you sure you want to delete "${habitTitle}"? This action cannot be undone.`,
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: async () => {
+            await deleteHabit(habitId.toString());
+            refreshHabits();
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="dark-content" />
@@ -128,11 +150,18 @@ export default function Habits() {
                 onPress={() => habit.id && toggleExpand(habit.id)}
                 style={styles.habitHeader}>
                 <Text style={styles.habitTitle}>{habit.title}</Text>
-                <Ionicons
-                  name={expandedHabitId === habit.id ? 'chevron-up' : 'chevron-down'}
-                  size={24}
-                  color="#000000"
-                />
+                <View style={styles.habitHeaderActions}>
+                  <TouchableOpacity
+                    onPress={() => habit.id && handleDeleteHabit(habit.id, habit.title)}
+                    style={styles.deleteButton}>
+                    <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+                  </TouchableOpacity>
+                  <Ionicons
+                    name={expandedHabitId === habit.id ? 'chevron-up' : 'chevron-down'}
+                    size={24}
+                    color="#000000"
+                  />
+                </View>
               </TouchableOpacity>
               {expandedHabitId === habit.id ? (
                 <View style={styles.habitHistoryContainer}>
@@ -220,6 +249,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 16,
   },
+  habitHeaderActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   habitTitle: {
     fontSize: 24,
     fontFamily: 'MonaSans-Regular',
@@ -268,5 +302,8 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: 'MonaSans-Regular',
     color: '#000000',
+  },
+  deleteButton: {
+    padding: 4,
   },
 });
