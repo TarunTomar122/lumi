@@ -262,8 +262,31 @@ const clientTools = {
   getAllTasks: async () => {
     try {
       const tasks = await db.getAllTasks();
-      // Filter out done tasks
-      const filteredTasks = tasks.filter(task => task.status !== 'done');
+      // Show ALL uncompleted tasks (regardless of date)
+      // Only hide completed tasks from yesterday or before
+      const today = DateTime.now().setZone('Asia/Kolkata').startOf('day');
+      
+      const filteredTasks = tasks.filter(task => {
+        // Always show uncompleted tasks
+        if (task.status !== 'done') {
+          return true;
+        }
+        
+        // For completed tasks, hide them if they have no due_date or reminder_date
+        if (!task.due_date && !task.reminder_date) {
+          return false;
+        }
+        
+        // Check the task date (use due_date if available, otherwise reminder_date)
+        const taskDateStr = task.due_date || task.reminder_date;
+        if (!taskDateStr) return false;
+        
+        const taskDate = DateTime.fromISO(taskDateStr).setZone('Asia/Kolkata').startOf('day');
+        
+        // Show completed tasks only if they're from today or future
+        return taskDate >= today;
+      });
+      
       return { success: true, tasks: filteredTasks };
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -344,6 +367,29 @@ const clientTools = {
             updates.description || task?.description || null,
             DateTime.fromISO(updates.reminder_date).setZone('Asia/Kolkata')
           );
+        }
+      }
+
+      // Cancel notifications when task is marked as completed
+      if (updates.status === 'done' && task?.reminder_date) {
+        const notificationIds = await notifee.getTriggerNotificationIds();
+        for (const nId of notificationIds) {
+          await notifee.cancelTriggerNotification(nId);
+        }
+        console.log('📱 Cancelled notification for completed task:', task.title);
+      }
+
+      // Re-schedule notification when task is marked as todo again (if it has a future reminder)
+      if (updates.status === 'todo' && task?.reminder_date) {
+        const reminderTime = DateTime.fromISO(task.reminder_date).setZone('Asia/Kolkata');
+        // Only re-schedule if the reminder is in the future
+        if (reminderTime > DateTime.now().setZone('Asia/Kolkata')) {
+          await scheduleNotification(
+            task.title,
+            task.description || null,
+            reminderTime
+          );
+          console.log('📱 Re-scheduled notification for uncompleted task:', task.title);
         }
       }
 

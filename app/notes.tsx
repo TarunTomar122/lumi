@@ -107,10 +107,20 @@ export default function Notes() {
         <View style={styles.container}>
           {filteredMemories.length === 0 && (
             <View style={styles.noNotesContainer}>
-              <Text style={styles.noNotesText}>No notes yet. Add one!</Text>
-              <Text style={styles.suggestionText}>
-                "personal: this note is about some personal stuff"
-              </Text>
+              <View style={styles.emptyStateCard}>
+                <Text style={styles.emptyStateTitle}>Start capturing your thoughts!</Text>
+                
+                <View style={styles.examplesContainer}>
+                  <View style={styles.exampleItem}>
+                    <Text style={styles.exampleText}>"work: meeting with client tomorrow"</Text>
+                    <Text style={styles.exampleDescription}>Work-related notes</Text>
+                  </View>
+                  <View style={styles.exampleItem}>
+                    <Text style={styles.exampleText}>"ideas: app feature for location sharing"</Text>
+                    <Text style={styles.exampleDescription}>Creative thoughts</Text>
+                  </View>
+                </View>
+              </View>
             </View>
           )}
           <ScrollView horizontal style={styles.tagsList} showsHorizontalScrollIndicator={false}>
@@ -164,7 +174,7 @@ export default function Notes() {
             isRecording={isRecording}
             setIsRecording={setIsRecording}
             onlyRecording={false}
-            placeholder="tag: note"
+            placeholder="Work: This is a note about work"
           />
         </View>
       )}
@@ -261,5 +271,82 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
+  },
+  emptyStateCard: {
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontFamily: 'MonaSans-Medium',
+    color: '#000000',
+    marginBottom: 24,
+    textAlign: 'center',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E0E0E0',
+    paddingBottom: 12,
+  },
+  emptyStateSubtitle: {
+    fontSize: 16,
+    fontFamily: 'Roboto-Regular',
+    color: '#666666',
+    marginBottom: 20,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  examplesContainer: {
+    gap: 16,
+    marginBottom: 20,
+  },
+  exampleItem: {
+    gap: 4,
+  },
+  exampleText: {
+    fontSize: 16,
+    fontFamily: 'MonaSans-Regular',
+    color: '#000000',
+    fontStyle: 'italic',
+  },
+  exampleDescription: {
+    fontSize: 14,
+    fontFamily: 'Roboto-Regular',
+    color: '#999999',
+  },
+  emptyStateFooter: {
+    fontSize: 16,
+    fontFamily: 'MonaSans-Regular',
+    color: '#666666',
+    textAlign: 'center',
+  },
+  proTipsContainer: {
+    marginTop: 20,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: '#F0F0F0',
+  },
+  proTipsTitle: {
+    fontSize: 16,
+    fontFamily: 'MonaSans-Medium',
+    color: '#000000',
+    marginBottom: 12,
+  },
+  tipItem: {
+    marginBottom: 8,
+  },
+  tipText: {
+    fontSize: 14,
+    fontFamily: 'Roboto-Regular',
+    color: '#666666',
+    lineHeight: 20,
   },
 });

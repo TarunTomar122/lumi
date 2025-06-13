@@ -58,7 +58,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ usageData }) => {
           </View>
         );
       })}
-      <Text style={styles.totalTime}>Total: {Math.round(totalTime / 60)} min</Text>
+      <Text style={styles.totalTime}>Total screen time: {Math.round(totalTime / 60)} min</Text>
     </View>
   );
 };

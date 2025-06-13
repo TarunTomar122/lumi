@@ -51,8 +51,22 @@ export const useTaskStore = create<TaskState>(set => ({
 
   refreshTasks: async () => {
     const result = await clientTools.getAllTasks();
-    // sort the tasks by when they were created
+    // sort the tasks by due date (earliest first), then by creation date
     const sortedTasks = result.tasks?.sort((a, b) => {
+      // Get the relevant date for each task (due_date or reminder_date)
+      const aDate = a.due_date || a.reminder_date;
+      const bDate = b.due_date || b.reminder_date;
+      
+      // If both have dates, sort by date (earliest first)
+      if (aDate && bDate) {
+        return new Date(aDate).getTime() - new Date(bDate).getTime();
+      }
+      
+      // If only one has a date, prioritize the one with a date
+      if (aDate && !bDate) return -1;
+      if (!aDate && bDate) return 1;
+      
+      // If neither has a date, sort by creation date (newest first)
       return new Date(b.created_at || '').getTime() - new Date(a.created_at || '').getTime();
     });
     if (result.success && sortedTasks) {

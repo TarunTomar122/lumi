@@ -134,7 +134,7 @@ export default function Reflections() {
           handleSubmit={handleSubmit}
           isRecording={isRecording}
           setIsRecording={setIsRecording}
-          placeholder="reflection"
+          placeholder="Today was a good day"
         />
       </View>
     </SafeAreaView>

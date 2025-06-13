@@ -155,7 +155,7 @@ export default function Habits() {
                   <TouchableOpacity
                     onPress={() => habit.id && handleDeleteHabit(habit.id, habit.title)}
                     style={styles.deleteButton}>
-                    <Ionicons name="trash-outline" size={20} color="#FF6B6B" />
+                    <Ionicons name="trash-outline" size={20} color="#000000" />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.habitHeaderActions}>
@@ -177,7 +177,7 @@ export default function Habits() {
           ))}
 
           {/* Add Habit Button or Input */}
-          <View style={styles.addHabitContainer}>
+          <View style={[styles.addHabitContainer, isAddingHabit && { opacity: 1 }]}>
             {isAddingHabit ? (
               <View style={styles.addHabitInputContainer}>
                 <TextInput
@@ -244,7 +244,6 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    borderRadius: 12,
   },
   habitHeader: {
     flexDirection: 'row',
@@ -293,25 +292,26 @@ const styles = StyleSheet.create({
   addHabitContainer: {
     marginTop: 0,
     alignItems: 'center',
-    opacity: 0.5,
+    opacity: 0.4,
   },
   addHabitButton: {
     padding: 12,
   },
   addHabitInputContainer: {
     width: '100%',
-    padding: 16,
+    padding: 24,
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    borderRadius: 12,
     backgroundColor: '#ffffff',
   },
   addHabitInput: {
     fontSize: 18,
-    fontFamily: 'MonaSans-Regular',
+    fontFamily: 'MonaSans-Medium',
     color: '#000000',
   },
   deleteButton: {
     padding: 4,
+    alignItems: 'flex-end',
+    marginBottom: -4,
   },
 });

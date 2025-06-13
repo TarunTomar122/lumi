@@ -142,80 +142,89 @@ export default function Page() {
   }, [initializeUser]);
 
   React.useEffect(() => {
-    try {
-      // Configure background fetch for daily reflection reminders
-      BackgroundFetch.configure(
-        {
-          minimumFetchInterval: 60*4, // 4 hours in minutes
-          stopOnTerminate: false,
-          enableHeadless: true,
-          startOnBoot: true,
-          requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE,
-          requiresCharging: false,
-          requiresDeviceIdle: false,
-          requiresBatteryNotLow: false,
-        },
-        async taskId => {
-          console.log('BackgroundFetch taskId:', taskId);
-          try {
-            const now = DateTime.now().setZone('Asia/Kolkata');
-            const hours = now.hour;
-            
-            // Check if it's later than 7PM
-            if (hours >= 19) {
-              const hasReflectionToday = await checkReflectionToday();
-              if (!hasReflectionToday) {
-                await sendInstantNotification(
-                  'Time to reflect 🌙',
-                  'How was your day? Add a quick reflection before bed.'
-                );
+    const initializeApp = async () => {
+      try {
+        // Wait for database to be ready (from _layout.tsx)
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Configure background fetch for daily reflection reminders
+        BackgroundFetch.configure(
+          {
+            minimumFetchInterval: 60*4, // 4 hours in minutes
+            stopOnTerminate: false,
+            enableHeadless: true,
+            startOnBoot: true,
+            requiredNetworkType: BackgroundFetch.NETWORK_TYPE_NONE,
+            requiresCharging: false,
+            requiresDeviceIdle: false,
+            requiresBatteryNotLow: false,
+          },
+          async taskId => {
+            console.log('BackgroundFetch taskId:', taskId);
+            try {
+              const now = DateTime.now().setZone('Asia/Kolkata');
+              const hours = now.hour;
+              
+              // Check if it's later than 7PM
+              if (hours >= 19) {
+                const hasReflectionToday = await checkReflectionToday();
+                if (!hasReflectionToday) {
+                  await sendInstantNotification(
+                    'Time to reflect 🌙',
+                    'How was your day? Add a quick reflection before bed.'
+                  );
+                }
               }
+            } catch (error) {
+              console.error('Background fetch task failed:', error);
+            } finally {
+              BackgroundFetch.finish(taskId);
             }
-          } catch (error) {
-            console.error('Background fetch task failed:', error);
-          } finally {
-            BackgroundFetch.finish(taskId);
+          },
+          error => {
+            console.error('[BackgroundFetch] Failed to configure:', error);
           }
-        },
-        error => {
-          console.error('[BackgroundFetch] Failed to configure:', error);
-        }
-      );
-      
-      // Start the background fetch service
-      BackgroundFetch.start();
-    } catch (error) {
-      console.error('Error setting up background fetch:', error);
-    }
+        );
+        
+        // Start the background fetch service
+        BackgroundFetch.start();
 
-    refreshUsageData();
+        // Initialize data with proper retry logic
+        await Promise.all([
+          refreshTasks(),
+          refreshMemories(),
+          refreshUsageDataWithRetry(),
+        ]);
+        
+        console.log('✅ App initialization complete');
+      } catch (error) {
+        console.error('Error initializing app:', error);
+      }
+    };
+
+    initializeApp();
   }, []);
 
-  // React.useEffect(() => {
-  //   const initializeApp = async () => {
-  //     try {
-  //       await Promise.all([
-  //         refreshTasks(),
-  //         refreshMemories(),
-  //         refreshUsageData(),
-  //       ]);
-  //     } catch (error) {
-  //       console.error('Error initializing app:', error);
-  //     } finally {
-  //       setIsLoading(false);
-  //     }
-  //   };
-
-  //   initializeApp();
-  // }, []);
+  const refreshUsageDataWithRetry = async () => {
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        await refreshUsageData();
+        console.log('✅ Usage data refreshed successfully');
+        break;
+      } catch (error) {
+        console.log(`❌ Usage data fetch failed, retries left: ${retries - 1}`);
+        retries--;
+        if (retries > 0) {
+          await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds before retry
+        }
+      }
+    }
+  };
 
   React.useEffect(() => {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
-
-  React.useEffect(() => {
-    fetchUsageData();
-  }, []);
 
   const navigateTo = (path: 'tasks' | 'notes' | 'habits' | 'reflections' | '') => {
     router.push(`/${path}`);
