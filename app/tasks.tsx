@@ -22,6 +22,7 @@ import { useMessageStore } from './store/messageStore';
 import HeartAnimation from './components/HeartAnimation';
 import { DateTime } from 'luxon';
 import { clientTools } from '@/utils/tools';
+import { parseTaskInput } from '@/utils/taskParser';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS } from 'react-native-reanimated';
 
@@ -200,186 +201,22 @@ export default function Tasks() {
   }, []);
 
   const handleSubmit = async () => {
-    // Enhanced regex to capture title, time, and date information
-    // Supports formats like:
-    // - "do this at 9pm tom"
-    // - "do this at 9pm tomorrow"
-    // - "do this at 9pm friday"
-    // - "do this at 9pm on 29th may"
-    // - "do this at 9pm"
-    // - "do this 9pm"
-    // - "do this 9 pm"
-    // - "do this 9PM"
-    // - "do this 9 PM"
-    // - "do this"
+    if (!userResponse.trim()) return; // Don't create task if no input
 
-    const taskRegex =
-      /^(.*?)(?:\s+(?:at\s+)?(\d{1,2})(?::(\d{2}))?\s*([ap]m))?(?:\s+(?:on\s+)?(tom|tomorrow|monday|tuesday|wednesday|thursday|friday|saturday|sunday|mon|tue|wed|thur|fri|sat|sun|\d{1,2}(?:st|nd|rd|th)?\s+(?:jan|january|feb|february|mar|march|apr|april|may|jun|june|jul|july|aug|august|sep|september|oct|october|nov|november|dec|december)))?$/i;
-
-    const match = userResponse.match(taskRegex);
-    let title = '';
-    let time = '';
-    let dateStr = '';
-
-    if (match) {
-      title = match[1].trim();
-
-      // Process time if provided
-      if (match[2]) {
-        const hour = parseInt(match[2]);
-        const minutes = match[3] || '00';
-        const meridiem = match[4].toLowerCase();
-        const formattedHour = hour.toString().padStart(2, '0');
-        time = `${formattedHour}:${minutes} ${meridiem.toUpperCase()}`;
-      }
-
-      // Process date if provided
-      if (match[5]) {
-        dateStr = match[5].toLowerCase().trim();
-      }
+    try {
+      // Parse the user input using the utility function
+      const taskData = parseTaskInput(userResponse);
+      
+      // Save the task
+      await clientTools.addTask(taskData);
+      refreshTasks();
+      
+      // Clear the input
+      setUserResponse('');
+    } catch (error) {
+      console.error('Error creating task:', error);
+      // Could show an alert to user if needed
     }
-
-    if (!title) return; // Don't create task if no title
-
-    // Parse the date
-    let targetDate = DateTime.now().setZone('Asia/Kolkata');
-
-    if (dateStr) {
-      if (dateStr === 'tom' || dateStr === 'tomorrow') {
-        targetDate = targetDate.plus({ days: 1 });
-      } else if (
-        [
-          'monday',
-          'tuesday',
-          'wednesday',
-          'thursday',
-          'friday',
-          'saturday',
-          'sunday',
-          'mon',
-          'tue',
-          'wed',
-          'thur',
-          'fri',
-          'sat',
-          'sun',
-        ].includes(dateStr)
-      ) {
-        // Find the next occurrence of this day
-        const dayNames = [
-          'sunday',
-          'monday',
-          'tuesday',
-          'wednesday',
-          'thursday',
-          'friday',
-          'saturday',
-          'sun',
-          'mon',
-          'tue',
-          'wed',
-          'thur',
-          'fri',
-          'sat',
-        ];
-        const targetDayIndex = dayNames.indexOf(dateStr);
-        const currentDayIndex = targetDate.weekday % 7; // Convert to Sunday = 0 format
-
-        let daysToAdd = targetDayIndex - currentDayIndex;
-        if (daysToAdd <= 0) {
-          daysToAdd += 7; // Next week if it's today or already passed
-        }
-
-        targetDate = targetDate.plus({ days: daysToAdd });
-      } else {
-        // Handle specific dates like "29th may", "15 june", etc.
-        const dateFormats = [
-          'd MMMM', // "29 may"
-          'do MMMM', // "29th may"
-          'd MMM', // "29 may"
-          'do MMM', // "29th may"
-        ];
-
-        let parsedDate = null;
-        for (const format of dateFormats) {
-          try {
-            parsedDate = DateTime.fromFormat(dateStr, format, { zone: 'Asia/Kolkata' });
-            if (parsedDate.isValid) {
-              // Set the year to current year, or next year if the date has passed
-              const currentYear = DateTime.now().year;
-              parsedDate = parsedDate.set({ year: currentYear });
-
-              // If the date has already passed this year, set it to next year
-              if (parsedDate < DateTime.now()) {
-                parsedDate = parsedDate.set({ year: currentYear + 1 });
-              }
-
-              targetDate = parsedDate;
-              break;
-            }
-          } catch (error) {
-            // Continue to next format
-          }
-        }
-      }
-    }
-
-    let taskData: {
-      title: string;
-      due_date?: string;
-      reminder_date?: string;
-      status: 'todo';
-      created_at: string;
-    } = {
-      title,
-      status: 'todo',
-      created_at: new Date().toISOString(),
-    };
-
-    // Set the date and time
-    if (time) {
-      // Parse the time and combine with the target date
-      const timeOnly = DateTime.fromFormat(time, 'hh:mm a');
-      if (timeOnly.isValid) {
-        const finalDateTime = targetDate.set({
-          hour: timeOnly.hour,
-          minute: timeOnly.minute,
-          second: 0,
-          millisecond: 0,
-        });
-
-        const isoDate = finalDateTime.toISO();
-        if (isoDate) {
-          taskData.due_date = isoDate;
-          taskData.reminder_date = isoDate;
-        }
-      }
-    } else if (dateStr) {
-      // If only date is provided (no time), set it to start of day
-      const finalDateTime = targetDate.startOf('day');
-      const isoDate = finalDateTime.toISO();
-      if (isoDate) {
-        taskData.due_date = isoDate;
-        taskData.reminder_date = isoDate;
-      }
-    } else {
-      // Default: if no date or time is specified, set due_date to today at 9pm
-      const todayDateTime = DateTime.now().setZone('Asia/Kolkata').set({
-        hour: 21, // 9pm in 24-hour format
-        minute: 0,
-        second: 0,
-        millisecond: 0,
-      });
-      const isoDate = todayDateTime.toISO();
-      if (isoDate) {
-        taskData.due_date = isoDate;
-        taskData.reminder_date = isoDate;
-      }
-    }
-
-    // save the task
-    await clientTools.addTask(taskData);
-    refreshTasks();
   };
 
   const handleTaskToggle = async (id: number, currentStatus: 'todo' | 'done') => {
