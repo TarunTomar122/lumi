@@ -29,7 +29,8 @@ export const UsageChart: React.FC<UsageChartProps> = ({ usageData }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Top apps today</Text>
+      <Text style={styles.title}>Most used apps</Text>
+      <Text style={styles.subtitle}>Last 24 hours</Text>
       {usageData.map((app, index) => {
         const percentage = Math.round((app.totalTimeInForeground / totalTime) * 100);
         return (
@@ -76,6 +77,11 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontFamily: 'MonaSans-SemiBold',
     color: '#1A1A1A',
+  },
+  subtitle: {
+    fontSize: 12,
+    fontFamily: 'MonaSans-Regular',
+    color: '#666666',
     marginBottom: 20,
   },
   barContainer: {

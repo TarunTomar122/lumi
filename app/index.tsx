@@ -139,6 +139,7 @@ export default function Page() {
 
   React.useEffect(() => {
     initializeUser();
+    refreshUsageDataWithRetry();
   }, [initializeUser]);
 
   React.useEffect(() => {
@@ -192,8 +193,7 @@ export default function Page() {
         // Initialize data with proper retry logic
         await Promise.all([
           refreshTasks(),
-          refreshMemories(),
-          refreshUsageDataWithRetry(),
+          refreshMemories()
         ]);
         
         console.log('✅ App initialization complete');

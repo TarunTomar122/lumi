@@ -362,6 +362,19 @@ export default function Tasks() {
         taskData.due_date = isoDate;
         taskData.reminder_date = isoDate;
       }
+    } else {
+      // Default: if no date or time is specified, set due_date to today at 9pm
+      const todayDateTime = DateTime.now().setZone('Asia/Kolkata').set({
+        hour: 21, // 9pm in 24-hour format
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+      });
+      const isoDate = todayDateTime.toISO();
+      if (isoDate) {
+        taskData.due_date = isoDate;
+        taskData.reminder_date = isoDate;
+      }
     }
 
     // save the task
