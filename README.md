@@ -63,11 +63,12 @@ You can also open issues here for any bugs or suggestions.
 
 Here’s what we’re planning to add in the near future:
 
-- [ ] Gentle **reminders** to fill in your daily reflection (customizable prompts)
-- [ ] Ability to **archive/unarchive habits** to keep your tracker clean
+- [x] Ability to **delete habits/tasks** to keep your tracker clean
+- [x] Tag management: Add tags to **untagged notes** for better organization
+- [ ] Gentle **reminders** to fill in your daily reflection
+- [ ] Ability to add images to notes
 - [ ] Export a **shareable image of your monthly habit streaks**
 - [ ] **Export your notes and reflections** to a Google Doc or `.txt` file
-- [ ] Tag management: Add tags to **untagged notes** for better organization
 - [ ] **Speech-to-text notes** for quick voice capture
 - [ ] **Background nudges**: smart prompts based on your patterns (using background fetch)
 - [ ] Light **task management analytics** to help you reflect on your habits and productivity
