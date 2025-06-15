@@ -38,19 +38,15 @@ interface AppUsage {
 export default function Page() {
   const navigation = useNavigation();
   const router = useRouter();
-  const [isRecording, setIsRecording] = React.useState(false);
   const [userResponse, setUserResponse] = React.useState<string>('');
-  const [assistantResponse, setAssistantResponse] = React.useState<string>('');
-  const { messageHistory, updateMessageHistory, clearMessageHistory } = useMessageStore();
-  const { tasks, refreshTasks } = useTaskStore();
-  const { memories, refreshMemories } = useMemoryStore();
+  const { messageHistory, updateMessageHistory } = useMessageStore();
+  const { refreshTasks } = useTaskStore();
+  const { refreshMemories } = useMemoryStore();
   const { usageData, refreshUsageData } = useUsageStore();
-  const { username, hasCompletedOnboarding, isLoading, initializeUser } = useUserStore();
+  const { username, hasCompletedOnboarding, isLoading } = useUserStore();
   const resultsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const [isThinking, setIsThinking] = React.useState(false);
-  const scrollViewRef = React.useRef<ScrollView>(null);
-  const [refreshing, setRefreshing] = React.useState(false);
-
+  const [assistantResponse, setAssistantResponse] = React.useState('');
   const [activeContent, setActiveContent] = React.useState<string>('home');
   const usageDataRef = React.useRef<AppUsage[]>([]);
   const [, setUsageUpdateTrigger] = React.useState<number>(0);
@@ -138,9 +134,8 @@ export default function Page() {
   };
 
   React.useEffect(() => {
-    initializeUser();
     refreshUsageDataWithRetry();
-  }, [initializeUser]);
+  }, []);
 
   React.useEffect(() => {
     const initializeApp = async () => {
@@ -230,26 +225,6 @@ export default function Page() {
     router.push(`/${path}`);
   };
 
-  const handleSubmit = async (quickAction?: string) => {
-    if (!userResponse && !quickAction) {
-      console.log('No results to send');
-      return;
-    }
-
-    // hide the main container
-    setActiveContent('chat');
-    talkToAgent(
-      userResponse + (quickAction || ''),
-      updateMessageHistory,
-      messageHistory,
-      setAssistantResponse,
-      setIsThinking,
-      () => {}, // setIsLoading placeholder
-      setActiveContent,
-      navigateTo
-    );
-  };
-
   // Cleanup timeouts on unmount
   React.useEffect(() => {
     return () => {
@@ -258,28 +233,6 @@ export default function Page() {
       }
     };
   }, []);
-
-  // const scrollToTop = () => {
-  //   if (scrollViewRef.current) {
-  //     scrollViewRef.current.scrollTo({ y: 1200, animated: true });
-  //   }
-  // };
-
-  // Add effect to scroll when messages change
-  // React.useEffect(() => {
-  //   // Small delay to ensure the new message is rendered
-  //   setTimeout(scrollToTop, 100);
-  // }, [isThinking]);
-
-  // const onMessageRefresh = React.useCallback(async () => {
-  //   setRefreshing(true);
-  //   clearMessageHistory();
-  //   setRefreshing(false);
-  // }, []);
-
-  // if (isLoading) {
-  //   return <SplashScreen />;
-  // }
 
   if (!hasCompletedOnboarding) {
     return <OnboardingScreens onComplete={handleOnboardingComplete} />;
@@ -333,17 +286,6 @@ export default function Page() {
           </View>
         </ScrollView>
       )}
-      {activeContent === 'chat' && <HeartAnimation />}
-      {/* <View style={styles.inputContainer}>
-        <InputContainer
-          userResponse={userResponse}
-          setUserResponse={setUserResponse}
-          handleSubmit={handleSubmit}
-          isRecording={isRecording}
-          setIsRecording={setIsRecording}
-          onlyRecording={false}
-        />
-      </View> */}
     </SafeAreaView>
   );
 }

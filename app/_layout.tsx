@@ -7,6 +7,7 @@ import { View } from 'react-native';
 import { db } from '../utils/database';
 import { Slot } from 'expo-router';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
+import { useUserStore } from './store/userStore';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -22,6 +23,7 @@ function NavigatorContent() {
 
 export default function RootLayout() {
   const { checkPermissions } = useVoiceRecognition();
+  const { initializeUser, isLoading } = useUserStore();
   const [loaded] = useFonts({
     'MonaSans-Regular': require('../assets/fonts/MonaSans-Regular.ttf'),
     'MonaSans-Medium': require('../assets/fonts/MonaSans-Medium.ttf'),
@@ -30,10 +32,9 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
+    initializeUser();
     const initializeApp = async () => {
       try {
-        // warm up the server
-        fetch('https://lumi-server-iixq.onrender.com/api/test');
         // check for audio permissions
         await checkPermissions();
         // setup notifications
@@ -45,15 +46,13 @@ export default function RootLayout() {
         console.error('❌ Error initializing:', error);
       }
     };
-
     initializeApp();
-
-    if (loaded) {
+    if (loaded && !isLoading) {
       SplashScreen.hideAsync();
     }
-  }, [loaded]);
+  }, [loaded, isLoading]);
 
-  if (!loaded) {
+  if (!loaded || isLoading) {
     return null;
   }
 
