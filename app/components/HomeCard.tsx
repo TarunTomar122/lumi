@@ -1,22 +1,6 @@
-import { View, Text, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-const { width, height } = Dimensions.get('window');
-
-// Responsive helper functions
-const getResponsiveSize = (size: number) => {
-  const baseWidth = 375; // iPhone 8 width as base
-  let scale = width / baseWidth;
-
-  // More aggressive scaling for smaller screens
-  if (width < 350) {
-    scale = scale * 0.8; // Make 20% smaller for very small screens
-  } else if (width < 370) {
-    scale = scale * 0.9; // Make 10% smaller for small screens
-  }
-
-  return scale * size;
-};
+import { getResponsiveSize } from '../../utils/responsive';
 
 type HomeCardProps = {
   title: string;

@@ -13,43 +13,13 @@ import {
   StatusBar,
   KeyboardAvoidingView,
   Platform,
+  Dimensions,
 } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemoryStore } from './store/memoryStore';
-import { Dimensions } from 'react-native';
-
-const { width, height } = Dimensions.get('window');
-
-// Responsive helper functions
-const getResponsiveSize = (size: number) => {
-  const baseWidth = 375; // iPhone 8 width as base
-  let scale = width / baseWidth;
-  
-  // More aggressive scaling for smaller screens
-  if (width < 350) {
-    scale = scale * 0.8; // Make 20% smaller for very small screens
-  } else if (width < 370) {
-    scale = scale * 0.9; // Make 10% smaller for small screens
-  }
-  
-  return scale * size;
-};
-
-const getResponsiveHeight = (size: number) => {
-  const baseHeight = 667; // iPhone 8 height as base
-  let scale = height / baseHeight;
-  
-  // More aggressive scaling for smaller screens
-  if (height < 600) {
-    scale = scale * 0.75; // Make 25% smaller for very small screens
-  } else if (height < 650) {
-    scale = scale * 0.85; // Make 15% smaller for small screens
-  }
-  
-  return scale * size;
-};
+import { getResponsiveSize, getResponsiveHeight } from '../utils/responsive';
 
 const DetailsPage = () => {
   const router = useRouter();
@@ -156,7 +126,7 @@ const DetailsPage = () => {
 
       {/* Content with Keyboard Avoiding */}
       <KeyboardAvoidingView
-        style={[styles.keyboardAvoidingView, isEditing ? { maxHeight: height - getResponsiveHeight(120) } : {}]}
+        style={[styles.keyboardAvoidingView, isEditing ? { maxHeight: Dimensions.get('window').height - getResponsiveHeight(120) } : {}]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         <ScrollView

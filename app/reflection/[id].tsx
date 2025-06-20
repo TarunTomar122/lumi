@@ -11,43 +11,12 @@ import {
   ActivityIndicator,
   Keyboard,
   StatusBar,
-  Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useReflectionStore } from '../store/reflectionStore';
 import { DateTime } from 'luxon';
-
-const { width, height } = Dimensions.get('window');
-
-// Responsive helper functions
-const getResponsiveSize = (size: number) => {
-  const baseWidth = 375; // iPhone 8 width as base
-  let scale = width / baseWidth;
-
-  // More aggressive scaling for smaller screens
-  if (width < 350) {
-    scale = scale * 0.8; // Make 20% smaller for very small screens
-  } else if (width < 370) {
-    scale = scale * 0.9; // Make 10% smaller for small screens
-  }
-
-  return scale * size;
-};
-
-const getResponsiveHeight = (size: number) => {
-  const baseHeight = 667; // iPhone 8 height as base
-  let scale = height / baseHeight;
-
-  // More aggressive scaling for smaller screens
-  if (height < 600) {
-    scale = scale * 0.75; // Make 25% smaller for very small screens
-  } else if (height < 650) {
-    scale = scale * 0.85; // Make 15% smaller for small screens
-  }
-
-  return scale * size;
-};
+import { getResponsiveSize, getResponsiveHeight } from '../../utils/responsive';
 
 const ReflectionDetails = () => {
   const router = useRouter();
@@ -58,22 +27,25 @@ const ReflectionDetails = () => {
   const [isLoading, setIsLoading] = React.useState(false);
   const [textContent, setTextContent] = React.useState(reflection?.content || '');
   const [isEditing, setIsEditing] = React.useState(false);
-  
+
   // Parse content to separate prompt and response
   const parseContent = (content: string) => {
     const lines = content.split('\n');
     const promptLineIndex = lines.findIndex(line => line.toLowerCase().startsWith('prompt:'));
-    
+
     if (promptLineIndex === -1) {
       return { prompt: '', response: content };
     }
-    
+
     const prompt = lines[promptLineIndex].substring(7).trim(); // Remove "prompt:" and trim
-    const response = lines.slice(promptLineIndex + 1).join('\n').trim();
-    
+    const response = lines
+      .slice(promptLineIndex + 1)
+      .join('\n')
+      .trim();
+
     return { prompt, response };
   };
-  
+
   const { prompt, response } = parseContent(textContent);
   const [responseContent, setResponseContent] = React.useState(response);
   const scrollViewRef = useRef<ScrollView>(null);
@@ -154,13 +126,15 @@ const ReflectionDetails = () => {
 
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-          <Ionicons name="arrow-back" size={getResponsiveSize(28)} color="#000000" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>
-          {' '}
-          {DateTime.fromISO(reflection.date).toFormat('MMMM d')}
-        </Text>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
+            <Ionicons name="arrow-back" size={getResponsiveSize(28)} color="#000000" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>
+            {' '}
+            {DateTime.fromISO(reflection.date).toFormat('MMMM d')}
+          </Text>
+        </View>
         <View style={styles.headerActions}>
           {isLoading && <ActivityIndicator size="small" color="#666666" style={styles.loader} />}
           <TouchableOpacity onPress={handleDelete} style={styles.headerButton}>
@@ -175,7 +149,6 @@ const ReflectionDetails = () => {
         style={styles.contentContainer}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled">
-
         {/* Prompt Section (Non-editable) */}
         {prompt && (
           <View style={styles.promptContainer}>
@@ -191,7 +164,7 @@ const ReflectionDetails = () => {
           multiline={true}
           value={responseContent}
           onChangeText={handleTextChange}
-          placeholder={prompt ? "Your response..." : "How was your day?"}
+          placeholder={prompt ? 'Your response...' : 'How was your day?'}
           placeholderTextColor="#999999"
           textAlignVertical="top"
           scrollEnabled={false}
@@ -242,6 +215,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     backgroundColor: '#fafafa',
     borderBottomColor: '#E0E0E0',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: getResponsiveSize(12),
   },
   headerTitle: {
     fontSize: getResponsiveSize(24),
