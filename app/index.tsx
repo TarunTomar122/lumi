@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Keyboard,
   StatusBar,
+  Dimensions,
 } from 'react-native';
 import * as React from 'react';
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +29,38 @@ import { clientTools, sendInstantNotification } from '@/utils/tools';
 import { UsageChart } from './components/UsageChart';
 import BackgroundFetch from 'react-native-background-fetch';
 import { DateTime } from 'luxon';
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive helper functions
+const getResponsiveSize = (size: number) => {
+  const baseWidth = 375; // iPhone 8 width as base
+  let scale = width / baseWidth;
+  
+  // More aggressive scaling for smaller screens
+  if (width < 350) {
+    scale = scale * 0.8; // Make 20% smaller for very small screens
+  } else if (width < 370) {
+    scale = scale * 0.9; // Make 10% smaller for small screens
+  }
+  
+  return scale * size;
+};
+
+const getResponsiveHeight = (size: number) => {
+  const baseHeight = 667; // iPhone 8 height as base
+  let scale = height / baseHeight;
+  
+  // More aggressive scaling for smaller screens
+  if (height < 600) {
+    scale = scale * 0.75; // Make 25% smaller for very small screens
+  } else if (height < 650) {
+    scale = scale * 0.85; // Make 15% smaller for small screens
+  }
+  
+  return scale * size;
+};
+
 const MAX_HISTORY = 50;
 
 interface AppUsage {
@@ -245,7 +278,7 @@ export default function Page() {
         <ScrollView style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.greeting}>Hello {username}</Text>
-            <Ionicons name="sparkles-outline" size={24} color="#000000" />
+            <Ionicons name="sparkles-outline" size={getResponsiveSize(24)} color="#000000" />
           </View>
           <View style={styles.mainArea}>
             <View style={styles.cardsContainer}>
@@ -294,57 +327,56 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#fafafa',
-    paddingTop: 40,
-    gap: 48,
+    paddingTop: getResponsiveHeight(28),
+    gap: getResponsiveSize(48),
   },
   container: {
     flex: 1,
-    padding: 24,
-    marginBottom: 20,
+    padding: getResponsiveSize(24),
   },
   mainArea: {
     flex: 1,
-    gap: 16,
+    gap: getResponsiveSize(16),
   },
   agentChatContainer: {
     flex: 1,
-    padding: 32,
+    padding: getResponsiveSize(32),
   },
   inputContainer: {
-    padding: 24,
+    padding: getResponsiveSize(24),
   },
   header: {
-    marginTop: 20,
-    marginBottom: 40,
+    marginTop: getResponsiveHeight(20),
+    marginBottom: getResponsiveHeight(32),
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'flex-start',
     alignItems: 'center',
-    gap: 16,
+    gap: getResponsiveSize(16),
   },
   chatHeader: {
-    marginVertical: 30,
+    marginVertical: getResponsiveHeight(30),
     display: 'flex',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   chatHeaderText: {
-    fontSize: 28,
+    fontSize: getResponsiveSize(28),
     fontFamily: 'MonaSans-Regular',
     color: '#000000',
   },
   greeting: {
-    fontSize: 32,
+    fontSize: getResponsiveSize(32),
     fontFamily: 'MonaSans-Regular',
     color: '#000000',
   },
   cardsContainer: {
-    gap: 16,
+    gap: getResponsiveSize(16),
   },
   row: {
     flexDirection: 'row',
-    gap: 16,
+    gap: getResponsiveSize(16),
   },
   disabledRow: {
     opacity: 0.5,
@@ -353,7 +385,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   messageContentContainer: {
-    paddingBottom: 20,
+    paddingBottom: getResponsiveSize(20),
   },
   messagesWrapper: {
     flex: 1,

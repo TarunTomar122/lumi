@@ -265,28 +265,28 @@ const clientTools = {
       // Show ALL uncompleted tasks (regardless of date)
       // Only hide completed tasks from yesterday or before
       const today = DateTime.now().setZone('Asia/Kolkata').startOf('day');
-      
+
       const filteredTasks = tasks.filter(task => {
         // Always show uncompleted tasks
         if (task.status !== 'done') {
           return true;
         }
-        
+
         // For completed tasks, hide them if they have no due_date or reminder_date
         if (!task.due_date && !task.reminder_date) {
           return false;
         }
-        
+
         // Check the task date (use due_date if available, otherwise reminder_date)
         const taskDateStr = task.due_date || task.reminder_date;
         if (!taskDateStr) return false;
-        
+
         const taskDate = DateTime.fromISO(taskDateStr).setZone('Asia/Kolkata').startOf('day');
-        
+
         // Show completed tasks only if they're from today or future
         return taskDate >= today;
       });
-      
+
       return { success: true, tasks: filteredTasks };
     } catch (error) {
       console.error('Error fetching tasks:', error);
@@ -307,13 +307,24 @@ const clientTools = {
     try {
       let notificationId = null;
       if (taskData.reminder_date) {
-        const dt = DateTime.fromISO(taskData.reminder_date).setZone('Asia/Kolkata');
-        console.log('📅 scheduling notification for:', dt);
-        notificationId = await scheduleNotification(
-          taskData.title,
-          taskData.description || null,
-          dt
-        );
+        // if the reminder date is in the past, schedule a notification for 9pm today
+        if (
+          DateTime.fromISO(taskData.reminder_date).setZone('Asia/Kolkata').diffNow().toMillis() < 0
+        ) {
+          await scheduleNotification(
+            taskData.title,
+            taskData.description || null,
+            DateTime.now().setZone('Asia/Kolkata').set({ hour: 21, minute: 0, second: 0 })
+          );
+          taskData.reminder_date = DateTime.now().setZone('Asia/Kolkata').set({ hour: 21, minute: 0, second: 0 }).toISO();
+        } else {
+          const dt = DateTime.fromISO(taskData.reminder_date).setZone('Asia/Kolkata');
+          notificationId = await scheduleNotification(
+            taskData.title,
+            taskData.description || null,
+            dt
+          );
+        }
       }
 
       const task = await db.addTask(taskData);
@@ -384,11 +395,7 @@ const clientTools = {
         const reminderTime = DateTime.fromISO(task.reminder_date).setZone('Asia/Kolkata');
         // Only re-schedule if the reminder is in the future
         if (reminderTime > DateTime.now().setZone('Asia/Kolkata')) {
-          await scheduleNotification(
-            task.title,
-            task.description || null,
-            reminderTime
-          );
+          await scheduleNotification(task.title, task.description || null, reminderTime);
           console.log('📱 Re-scheduled notification for uncompleted task:', task.title);
         }
       }

@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 const PROMPTS = [
@@ -52,13 +52,44 @@ const PROMPTS = [
   'What was the most meaningful conversation or exchange you had today?',
   'Which moment today reminded you of something you love about life?',
   'What was the best decision you made today, big or small?',
-  'Describe a time today when you felt grateful for the people in your life'
+  'Describe a time today when you felt grateful for the people in your life',
 ];
 
 interface ReflectionPromptProps {
   onPromptSelect: (prompt: string) => void;
   selectedPrompt?: string;
 }
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive helper functions
+const getResponsiveSize = (size: number) => {
+  const baseWidth = 375; // iPhone 8 width as base
+  let scale = width / baseWidth;
+
+  // More aggressive scaling for smaller screens
+  if (width < 350) {
+    scale = scale * 0.8; // Make 20% smaller for very small screens
+  } else if (width < 370) {
+    scale = scale * 0.9; // Make 10% smaller for small screens
+  }
+
+  return scale * size;
+};
+
+const getResponsiveHeight = (size: number) => {
+  const baseHeight = 667; // iPhone 8 height as base
+  let scale = height / baseHeight;
+
+  // More aggressive scaling for smaller screens
+  if (height < 600) {
+    scale = scale * 0.75; // Make 25% smaller for very small screens
+  } else if (height < 650) {
+    scale = scale * 0.85; // Make 15% smaller for small screens
+  }
+
+  return scale * size;
+};
 
 export const ReflectionPrompt: React.FC<ReflectionPromptProps> = ({
   onPromptSelect,
@@ -76,17 +107,15 @@ export const ReflectionPrompt: React.FC<ReflectionPromptProps> = ({
     setCurrentPrompt(newPrompt);
   };
 
-  const isSelected = selectedPrompt === currentPrompt;
+  useEffect(() => {
+    onPromptSelect(currentPrompt);
+  }, [currentPrompt]);
 
   return (
-    <View
-      style={[styles.container, isSelected && styles.selectedContainer]}
-      onPress={() => onPromptSelect(currentPrompt)}>
-      <Text style={[styles.tapHint]}>
-        Try this prompt?
-      </Text>
+    <View style={[styles.container]}>
+      <Text style={[styles.tapHint]}>Try this prompt?</Text>
       <View style={styles.content}>
-        <Text style={[styles.promptText, isSelected && styles.selectedPromptText]}>
+        <Text style={[styles.promptText]}>
           {currentPrompt}
         </Text>
         <TouchableOpacity
@@ -95,7 +124,7 @@ export const ReflectionPrompt: React.FC<ReflectionPromptProps> = ({
             getNewPrompt();
           }}
           style={styles.refreshButton}>
-          <Ionicons name="refresh" size={20} color="#666666" />
+          <Ionicons name="refresh" size={24} color="#666666" />
         </TouchableOpacity>
       </View>
     </View>
@@ -112,9 +141,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
-  selectedContainer: {
-    backgroundColor: '#f0f0f0',
-  },
   content: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -122,15 +148,11 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   promptText: {
-    fontSize: 16,
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
     flex: 1,
-    lineHeight: 22,
-  },
-  selectedPromptText: {
-    color: '#000000',
-    fontFamily: 'MonaSans-Medium',
+    fontSize: getResponsiveSize(16),
+    fontFamily: 'MonaSans-Regular',
+    color: '#333333',
+    lineHeight: getResponsiveSize(22),
   },
   refreshButton: {
     padding: 4,

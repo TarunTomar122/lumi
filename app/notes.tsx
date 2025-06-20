@@ -7,16 +7,46 @@ import {
   SafeAreaView,
   RefreshControl,
   StatusBar,
+  Dimensions,
 } from 'react-native';
 import React from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMemoryStore } from './store/memoryStore';
 import InputContainer from './components/inputContainer';
-import { talkToAgent } from '@/utils/agent';
 import { useMessageStore } from './store/messageStore';
-import HeartAnimation from './components/HeartAnimation';
 import { clientTools } from '@/utils/tools';
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive helper functions
+const getResponsiveSize = (size: number) => {
+  const baseWidth = 375; // iPhone 8 width as base
+  let scale = width / baseWidth;
+
+  // More aggressive scaling for smaller screens
+  if (width < 350) {
+    scale = scale * 0.8; // Make 20% smaller for very small screens
+  } else if (width < 370) {
+    scale = scale * 0.9; // Make 10% smaller for small screens
+  }
+
+  return scale * size;
+};
+
+const getResponsiveHeight = (size: number) => {
+  const baseHeight = 667; // iPhone 8 height as base
+  let scale = height / baseHeight;
+
+  // More aggressive scaling for smaller screens
+  if (height < 600) {
+    scale = scale * 0.75; // Make 25% smaller for very small screens
+  } else if (height < 650) {
+    scale = scale * 0.85; // Make 15% smaller for small screens
+  }
+
+  return scale * size;
+};
 
 export default function Notes() {
   const router = useRouter();
@@ -99,86 +129,83 @@ export default function Notes() {
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={28} color="#000000" />
+          <Ionicons name="arrow-back" size={getResponsiveSize(28)} color="#000000" />
           <Text style={styles.backText}>Notes</Text>
         </TouchableOpacity>
       </View>
-      {activeContent === 'home' && (
-        <View style={styles.container}>
-          {filteredMemories.length === 0 && (
-            <View style={styles.noNotesContainer}>
-              <View style={styles.emptyStateCard}>
-                <Text style={styles.emptyStateTitle}>Start capturing your thoughts!</Text>
-                
-                <View style={styles.examplesContainer}>
-                  <View style={styles.exampleItem}>
-                    <Text style={styles.exampleText}>"work: meeting with client tomorrow"</Text>
-                    <Text style={styles.exampleDescription}>Work-related notes</Text>
-                  </View>
-                  <View style={styles.exampleItem}>
-                    <Text style={styles.exampleText}>"ideas: app feature for location sharing"</Text>
-                    <Text style={styles.exampleDescription}>Creative thoughts</Text>
-                  </View>
+      <View style={styles.container}>
+        {filteredMemories.length === 0 && (
+          <View style={styles.noNotesContainer}>
+            <View style={styles.emptyStateCard}>
+              <Text style={styles.emptyStateTitle}>Start capturing your thoughts!</Text>
+
+              <View style={styles.examplesContainer}>
+                <View style={styles.exampleItem}>
+                  <Text style={styles.exampleText}>"work: meeting with client tomorrow"</Text>
+                  <Text style={styles.exampleDescription}>Work-related notes</Text>
+                </View>
+                <View style={styles.exampleItem}>
+                  <Text style={styles.exampleText}>"ideas: app feature for location sharing"</Text>
+                  <Text style={styles.exampleDescription}>Creative thoughts</Text>
                 </View>
               </View>
             </View>
-          )}
-          <ScrollView horizontal style={styles.tagsList} showsHorizontalScrollIndicator={false}>
-            {uniqueTags.map((currTag, index) => (
-              <TouchableOpacity
-                style={[styles.tagContainer, tag === currTag && styles.activeTagContainer]}
-                key={index}
-                onPress={() => {
-                  if (tag === currTag) {
-                    router.push({
-                      pathname: '/notes',
-                    });
-                  } else {
-                    router.push({
-                      pathname: '/notes',
-                      params: { tag: currTag },
-                    });
-                  }
-                }}>
-                <Text style={styles.tag}>{currTag}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <ScrollView
-            style={styles.notesList}
-            showsVerticalScrollIndicator={false}
-            refreshControl={
-              <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
-            }>
-            {filteredMemories.map((note, index) => (
-              <TouchableOpacity
-                key={index}
-                style={styles.noteItem}
-                onPress={() => {
+          </View>
+        )}
+        <ScrollView horizontal style={styles.tagsList} showsHorizontalScrollIndicator={false}>
+          {uniqueTags.map((currTag, index) => (
+            <TouchableOpacity
+              style={[styles.tagContainer, tag === currTag && styles.activeTagContainer]}
+              key={index}
+              onPress={() => {
+                if (tag === currTag) {
                   router.push({
-                    pathname: '/details',
-                    params: { item: JSON.stringify(note) },
+                    pathname: '/notes',
                   });
-                }}>
-                <Text style={styles.noteTitle}>{note.title}</Text>
-                <Text style={styles.noteText} numberOfLines={1}>
-                  {note.content}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-          <InputContainer
-            userResponse={userResponse}
-            setUserResponse={setUserResponse}
-            handleSubmit={handleSubmit}
-            isRecording={isRecording}
-            setIsRecording={setIsRecording}
-            onlyRecording={false}
-            placeholder="Work: This is a note about work"
-          />
-        </View>
-      )}
-      {activeContent === 'chat' && <HeartAnimation />}
+                } else {
+                  router.push({
+                    pathname: '/notes',
+                    params: { tag: currTag },
+                  });
+                }
+              }}>
+              <Text style={styles.tag}>{currTag}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <ScrollView
+          style={styles.notesList}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
+          }>
+          {filteredMemories.map((note, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.noteItem}
+              onPress={() => {
+                router.push({
+                  pathname: '/details',
+                  params: { item: JSON.stringify(note) },
+                });
+              }}>
+              <Text style={styles.noteTitle}>{note.title}</Text>
+              <Text style={styles.noteText} numberOfLines={1}>
+                {note.content}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <InputContainer
+          userResponse={userResponse}
+          setUserResponse={setUserResponse}
+          handleSubmit={handleSubmit}
+          isRecording={isRecording}
+          setIsRecording={setIsRecording}
+          onlyRecording={false}
+          placeholder="Work: This is a work note"
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -187,15 +214,15 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#fafafa',
-    paddingTop: 42,
+    paddingTop: getResponsiveHeight(28),
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 10,
+    paddingHorizontal: getResponsiveSize(24),
+    paddingTop: getResponsiveHeight(20),
+    paddingBottom: getResponsiveSize(10),
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
@@ -203,33 +230,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    gap: 12,
+    gap: getResponsiveSize(12),
   },
   backText: {
-    fontSize: 24,
+    fontSize: getResponsiveSize(24),
     fontFamily: 'MonaSans-Medium',
     color: '#000000',
-    marginBottom: 3,
+    marginBottom: getResponsiveSize(3),
   },
   container: {
     flex: 1,
-    padding: 24,
+    padding: getResponsiveSize(24),
   },
   title: {
-    fontSize: 32,
+    fontSize: getResponsiveSize(32),
     fontFamily: 'MonaSans-Bold',
     color: '#000000',
   },
   tagsList: {
-    paddingRight: 12,
-    maxHeight: 40,
+    paddingRight: getResponsiveSize(12),
+    maxHeight: getResponsiveSize(40),
   },
   tagContainer: {
-    marginTop: 2,
-    marginRight: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 16,
+    marginTop: getResponsiveSize(2),
+    marginRight: getResponsiveSize(8),
+    paddingHorizontal: getResponsiveSize(12),
+    paddingVertical: getResponsiveSize(8),
+    borderRadius: getResponsiveSize(16),
     backgroundColor: '#f0f0f0',
   },
   activeTagContainer: {
@@ -237,18 +264,18 @@ const styles = StyleSheet.create({
   },
   noNotesContainer: {
     flex: 1,
-    gap: 12,
+    gap: getResponsiveSize(12),
   },
   noNotesText: {
-    fontSize: 18,
+    fontSize: getResponsiveSize(18),
   },
   suggestionText: {
-    fontSize: 16,
+    fontSize: getResponsiveSize(16),
     fontFamily: 'Roboto-Regular',
     color: '#000000',
   },
   tag: {
-    fontSize: 16,
+    fontSize: getResponsiveSize(16),
     color: '#000000',
     fontFamily: 'MonaSans-Regular',
   },
@@ -256,97 +283,90 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   noteItem: {
-    paddingVertical: 16,
+    paddingVertical: getResponsiveSize(16),
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
-    marginBottom: 12,
+    marginBottom: getResponsiveSize(12),
   },
   noteTitle: {
-    fontSize: 20,
+    fontSize: getResponsiveSize(20),
     fontFamily: 'MonaSans-Regular',
     color: '#000000',
-    marginBottom: 4,
+    marginBottom: getResponsiveSize(4),
   },
   noteText: {
-    fontSize: 14,
+    fontSize: getResponsiveSize(14),
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
   },
   emptyStateCard: {
     backgroundColor: '#FFFFFF',
-    padding: 20,
+    padding: getResponsiveSize(20),
     borderWidth: 1,
     borderColor: '#E0E0E0',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    borderRadius: getResponsiveSize(12),
   },
   emptyStateTitle: {
-    fontSize: 20,
+    fontSize: getResponsiveSize(20),
     fontFamily: 'MonaSans-Medium',
     color: '#000000',
-    marginBottom: 24,
+    marginBottom: getResponsiveSize(24),
     textAlign: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
-    paddingBottom: 12,
+    paddingBottom: getResponsiveSize(12),
   },
   emptyStateSubtitle: {
-    fontSize: 16,
+    fontSize: getResponsiveSize(16),
     fontFamily: 'Roboto-Regular',
     color: '#666666',
-    marginBottom: 20,
+    marginBottom: getResponsiveSize(20),
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: getResponsiveSize(22),
   },
   examplesContainer: {
-    gap: 16,
-    marginBottom: 20,
+    gap: getResponsiveSize(16),
+    marginBottom: getResponsiveSize(20),
   },
   exampleItem: {
-    gap: 4,
+    gap: getResponsiveSize(4),
   },
   exampleText: {
-    fontSize: 16,
+    fontSize: getResponsiveSize(16),
     fontFamily: 'MonaSans-Regular',
     color: '#000000',
     fontStyle: 'italic',
   },
   exampleDescription: {
-    fontSize: 14,
+    fontSize: getResponsiveSize(14),
     fontFamily: 'Roboto-Regular',
     color: '#999999',
   },
   emptyStateFooter: {
-    fontSize: 16,
+    fontSize: getResponsiveSize(16),
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
     textAlign: 'center',
   },
   proTipsContainer: {
-    marginTop: 20,
-    paddingTop: 16,
+    marginTop: getResponsiveSize(20),
+    paddingTop: getResponsiveSize(16),
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
   },
   proTipsTitle: {
-    fontSize: 16,
+    fontSize: getResponsiveSize(16),
     fontFamily: 'MonaSans-Medium',
     color: '#000000',
-    marginBottom: 12,
+    marginBottom: getResponsiveSize(12),
   },
   tipItem: {
-    marginBottom: 8,
+    marginBottom: getResponsiveSize(8),
   },
   tipText: {
-    fontSize: 14,
+    fontSize: getResponsiveSize(14),
     fontFamily: 'Roboto-Regular',
     color: '#666666',
-    lineHeight: 20,
+    lineHeight: getResponsiveSize(20),
   },
 });

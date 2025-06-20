@@ -20,6 +20,37 @@ import { useRouter } from 'expo-router';
 import { useMemoryStore } from './store/memoryStore';
 import { Dimensions } from 'react-native';
 
+const { width, height } = Dimensions.get('window');
+
+// Responsive helper functions
+const getResponsiveSize = (size: number) => {
+  const baseWidth = 375; // iPhone 8 width as base
+  let scale = width / baseWidth;
+  
+  // More aggressive scaling for smaller screens
+  if (width < 350) {
+    scale = scale * 0.8; // Make 20% smaller for very small screens
+  } else if (width < 370) {
+    scale = scale * 0.9; // Make 10% smaller for small screens
+  }
+  
+  return scale * size;
+};
+
+const getResponsiveHeight = (size: number) => {
+  const baseHeight = 667; // iPhone 8 height as base
+  let scale = height / baseHeight;
+  
+  // More aggressive scaling for smaller screens
+  if (height < 600) {
+    scale = scale * 0.75; // Make 25% smaller for very small screens
+  } else if (height < 650) {
+    scale = scale * 0.85; // Make 15% smaller for small screens
+  }
+  
+  return scale * size;
+};
+
 const DetailsPage = () => {
   const router = useRouter();
   const { item: itemString } = useLocalSearchParams();
@@ -112,20 +143,20 @@ const DetailsPage = () => {
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-          <Ionicons name="arrow-back" size={28} color="#000000" />
+          <Ionicons name="arrow-back" size={getResponsiveSize(28)} color="#000000" />
         </TouchableOpacity>
 
         <View style={styles.headerActions}>
           {isLoading && <ActivityIndicator size="small" color="#666666" style={styles.loader} />}
           <TouchableOpacity onPress={handleDelete} style={styles.headerButton}>
-            <Ionicons name="trash-outline" size={28} color="#000000" />
+            <Ionicons name="trash-outline" size={getResponsiveSize(28)} color="#000000" />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Content with Keyboard Avoiding */}
       <KeyboardAvoidingView
-        style={[styles.keyboardAvoidingView, isEditing ? { maxHeight: Dimensions.get('window').height - 120 } : {}]}
+        style={[styles.keyboardAvoidingView, isEditing ? { maxHeight: height - getResponsiveHeight(120) } : {}]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
         <ScrollView
@@ -199,15 +230,15 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#fafafa',
-    paddingTop: 42,
+    paddingTop: getResponsiveHeight(28),
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 10,
+    paddingHorizontal: getResponsiveSize(24),
+    paddingTop: getResponsiveHeight(20),
+    paddingBottom: getResponsiveSize(10),
     borderBottomWidth: 1,
     backgroundColor: '#fafafa',
     borderBottomColor: '#E0E0E0',
@@ -216,58 +247,58 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    gap: 12,
+    gap: getResponsiveSize(12),
   },
   headerActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: getResponsiveSize(12),
   },
   loader: {
-    marginRight: 4,
+    marginRight: getResponsiveSize(4),
   },
   contentContainer: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 12,
+    paddingHorizontal: getResponsiveSize(24),
+    paddingTop: getResponsiveSize(12),
   },
   scrollContentContainer: {
-    paddingBottom: 120,
+    paddingBottom: getResponsiveSize(120),
   },
   titleInput: {
-    fontSize: 22,
+    fontSize: getResponsiveSize(22),
     fontFamily: 'MonaSans-Medium',
     color: '#000000',
-    paddingVertical: 8,
+    paddingVertical: getResponsiveSize(8),
     paddingHorizontal: 0,
   },
   tagsInput: {
-    fontSize: 14,
+    fontSize: getResponsiveSize(14),
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
     paddingHorizontal: 0,
-    paddingVertical: 8,
+    paddingVertical: getResponsiveSize(8),
     borderBottomWidth: 1,
     borderColor: '#E0E0E0',
-    marginBottom: 18,
+    marginBottom: getResponsiveSize(18),
   },
   contentInput: {
-    fontSize: 16,
+    fontSize: getResponsiveSize(16),
     fontFamily: 'MonaSans-Regular',
     color: '#000000',
-    lineHeight: 24,
-    minHeight: 200,
+    lineHeight: getResponsiveSize(24),
+    minHeight: getResponsiveHeight(200),
     paddingVertical: 0,
     paddingHorizontal: 0,
-    marginBottom: 32,
+    marginBottom: getResponsiveSize(32),
   },
   bottomInfo: {
-    paddingHorizontal: 24,
-    paddingVertical: 16,
+    paddingHorizontal: getResponsiveSize(24),
+    paddingVertical: getResponsiveSize(16),
     alignItems: 'center',
   },
   timestampText: {
-    fontSize: 12,
+    fontSize: getResponsiveSize(12),
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
   },

@@ -12,6 +12,9 @@ import {
   UIManager,
   TextInput,
   Alert,
+  Image,
+  KeyboardAvoidingView,
+  Dimensions,
 } from 'react-native';
 import React from 'react';
 import { useRouter } from 'expo-router';
@@ -20,6 +23,37 @@ import { useHabitStore } from './store/habitStore';
 import { HabitHistory } from './components/HabitHistory';
 import type { Habit } from '@/utils/database';
 import { DateTime } from 'luxon';
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive helper functions
+const getResponsiveSize = (size: number) => {
+  const baseWidth = 375; // iPhone 8 width as base
+  let scale = width / baseWidth;
+  
+  // More aggressive scaling for smaller screens
+  if (width < 350) {
+    scale = scale * 0.8; // Make 20% smaller for very small screens
+  } else if (width < 370) {
+    scale = scale * 0.9; // Make 10% smaller for small screens
+  }
+  
+  return scale * size;
+};
+
+const getResponsiveHeight = (size: number) => {
+  const baseHeight = 667; // iPhone 8 height as base
+  let scale = height / baseHeight;
+  
+  // More aggressive scaling for smaller screens
+  if (height < 600) {
+    scale = scale * 0.75; // Make 25% smaller for very small screens
+  } else if (height < 650) {
+    scale = scale * 0.85; // Make 15% smaller for small screens
+  }
+  
+  return scale * size;
+};
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android') {
@@ -34,6 +68,7 @@ export default function Habits() {
   const [expandedHabitId, setExpandedHabitId] = React.useState<number | null>(null);
   const [isAddingHabit, setIsAddingHabit] = React.useState(false);
   const [newHabitTitle, setNewHabitTitle] = React.useState('');
+  const scrollViewRef = React.useRef<ScrollView>(null);
   const { habits, updateHabitProgress, refreshHabits, getWeekProgress, addHabit, deleteHabit } =
     useHabitStore();
 
@@ -83,7 +118,7 @@ export default function Habits() {
               style={[
                 styles.circle,
                 progress[index] && { backgroundColor: habit.color },
-                !progress[index] && { backgroundColor: '#FFF0F3' }, // Light pink background for non-completed days
+                !progress[index] && { backgroundColor: '#fafafa' }, // Light pink background for non-completed days
               ]}
             />
           </View>
@@ -106,6 +141,14 @@ export default function Habits() {
     setNewHabitTitle('');
     setIsAddingHabit(false);
     refreshHabits();
+  };
+
+  const handleAddHabitPress = () => {
+    setIsAddingHabit(true);
+    // Scroll to bottom to ensure input is visible
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 100);
   };
 
   const handleDeleteHabit = async (habitId: number, habitTitle: string) => {
@@ -134,17 +177,29 @@ export default function Habits() {
       <StatusBar barStyle="dark-content" />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={28} color="#000000" />
+          <Ionicons name="arrow-back" size={getResponsiveSize(28)} color="#000000" />
           <Text style={styles.backText}>Habits</Text>
         </TouchableOpacity>
       </View>
-      <View style={styles.container}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
         <ScrollView
+          ref={scrollViewRef}
           style={styles.habitsList}
           showsVerticalScrollIndicator={false}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
           }>
+
+          {habits.length === 0 && (
+            <View style={styles.noHabitsContainer}>
+              <Text style={styles.noHabitsText}>No habits yet.</Text>
+              <Text style={styles.noHabitsText}>Start by adding a habit.</Text>
+            </View>
+          )}
+
           {habits.map(habit => (
             <View key={habit.id} style={styles.habitItem}>
               <TouchableOpacity
@@ -155,13 +210,13 @@ export default function Habits() {
                   <TouchableOpacity
                     onPress={() => habit.id && handleDeleteHabit(habit.id, habit.title)}
                     style={styles.deleteButton}>
-                    <Ionicons name="trash-outline" size={20} color="#000000" />
+                    <Ionicons name="trash-outline" size={getResponsiveSize(20)} color="#000000" />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.habitHeaderActions}>
                   <Ionicons
                     name={expandedHabitId === habit.id ? 'chevron-up' : 'chevron-down'}
-                    size={24}
+                    size={getResponsiveSize(24)}
                     color="#000000"
                   />
                 </View>
@@ -184,22 +239,28 @@ export default function Habits() {
                   style={styles.addHabitInput}
                   value={newHabitTitle}
                   onChangeText={setNewHabitTitle}
-                  placeholder="Enter habit name..."
+                  placeholder="Reading..."
                   autoFocus
                   onBlur={() => setIsAddingHabit(false)}
                   onSubmitEditing={handleAddHabit}
+                  onFocus={() => {
+                    // Ensure input stays visible when focused
+                    setTimeout(() => {
+                      scrollViewRef.current?.scrollToEnd({ animated: true });
+                    }, 100);
+                  }}
                 />
               </View>
             ) : (
               <TouchableOpacity
                 style={styles.addHabitButton}
-                onPress={() => setIsAddingHabit(true)}>
-                <Ionicons name="add-circle-outline" size={32} color="#000000" />
+                onPress={handleAddHabitPress}>
+                <Ionicons name="add-circle-outline" size={getResponsiveSize(32)} color="#000000" />
               </TouchableOpacity>
             )}
           </View>
         </ScrollView>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -208,15 +269,15 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#fafafa',
-    paddingTop: 42,
+    paddingTop: getResponsiveHeight(28),
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 10,
+    paddingHorizontal: getResponsiveSize(24),
+    paddingTop: getResponsiveHeight(20),
+    paddingBottom: getResponsiveSize(10),
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
@@ -224,70 +285,72 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    gap: 12,
+    gap: getResponsiveSize(12),
   },
   backText: {
-    fontSize: 24,
+    fontSize: getResponsiveSize(24),
     fontFamily: 'MonaSans-Medium',
     color: '#000000',
-    marginBottom: 3,
+    marginBottom: getResponsiveSize(3),
   },
   container: {
     flex: 1,
-    padding: 24,
+    paddingHorizontal: getResponsiveSize(20),
+    paddingTop: getResponsiveSize(24),
   },
   habitsList: {
     flex: 1,
   },
   habitItem: {
-    marginBottom: 24,
-    padding: 16,
+    marginBottom: getResponsiveSize(24),
+    padding: getResponsiveSize(16),
     borderWidth: 1,
     borderColor: '#E0E0E0',
+    borderRadius: getResponsiveSize(6),
   },
   habitHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: getResponsiveSize(24),
   },
   habitHeaderActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: getResponsiveSize(12),
   },
   habitHeaderContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
+    gap: getResponsiveSize(12),
   },
   habitTitle: {
-    fontSize: 24,
+    fontSize: getResponsiveSize(24),
     fontFamily: 'MonaSans-Regular',
     color: '#000000',
   },
   progressContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: 2,
+    padding: getResponsiveSize(2),
   },
   dayColumn: {
     alignItems: 'center',
   },
   dayLabel: {
-    fontSize: 12,
+    fontSize: getResponsiveSize(12),
     color: '#666',
-    marginBottom: 4,
+    marginBottom: getResponsiveSize(4),
   },
   circle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: getResponsiveSize(36),
+    height: getResponsiveSize(36),
+    borderRadius: getResponsiveSize(20),
     borderWidth: 1,
     borderColor: '#E0E0E0',
   },
   habitHistoryContainer: {
-    marginTop: 16,
+    marginTop: getResponsiveSize(16),
   },
   addHabitContainer: {
     marginTop: 0,
@@ -295,23 +358,36 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   addHabitButton: {
-    padding: 12,
+    padding: getResponsiveSize(12),
   },
   addHabitInputContainer: {
     width: '100%',
-    padding: 24,
+    padding: getResponsiveSize(24),
     borderWidth: 1,
     borderColor: '#E0E0E0',
     backgroundColor: '#ffffff',
+    borderRadius: getResponsiveSize(12),
+    marginBottom: getResponsiveSize(24),
   },
   addHabitInput: {
-    fontSize: 18,
+    fontSize: getResponsiveSize(18),
     fontFamily: 'MonaSans-Medium',
     color: '#000000',
   },
   deleteButton: {
-    padding: 4,
+    padding: getResponsiveSize(4),
     alignItems: 'flex-end',
-    marginBottom: -4,
+    marginBottom: getResponsiveSize(-4),
+  },
+  noHabitsContainer: {
+    flex: 1,
+    alignItems: 'center',
+    marginTop: getResponsiveHeight(100),
+    marginBottom: getResponsiveSize(24),
+  },
+  noHabitsText: {
+    fontSize: getResponsiveSize(16),
+    fontFamily: 'MonaSans-Regular',
+    color: '#666666',
   },
 });

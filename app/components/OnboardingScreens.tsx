@@ -7,10 +7,45 @@ import {
   SafeAreaView,
   StatusBar,
   TextInput,
+  Image,
+  Dimensions,
+  KeyboardAvoidingView,
   ScrollView,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useUserStore } from '../store/userStore';
+
+const { width, height } = Dimensions.get('window');
+
+// Responsive helper functions
+const getResponsiveSize = (size: number) => {
+  const baseWidth = 375; // iPhone 8 width as base
+  let scale = width / baseWidth;
+
+  // More aggressive scaling for smaller screens
+  if (width < 350) {
+    scale = scale * 0.8; // Make 20% smaller for very small screens
+  } else if (width < 370) {
+    scale = scale * 0.9; // Make 10% smaller for small screens
+  }
+
+  return scale * size;
+};
+
+const getResponsiveHeight = (size: number) => {
+  const baseHeight = 667; // iPhone 8 height as base
+  let scale = height / baseHeight;
+
+  // More aggressive scaling for smaller screens
+  if (height < 600) {
+    scale = scale * 0.75; // Make 25% smaller for very small screens
+  } else if (height < 650) {
+    scale = scale * 0.85; // Make 15% smaller for small screens
+  }
+
+  return scale * size;
+};
 
 interface OnboardingScreensProps {
   onComplete: (username: string) => void;
@@ -42,252 +77,205 @@ export const OnboardingScreens: React.FC<OnboardingScreensProps> = ({ onComplete
 
   const renderUsernameScreen = () => (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.container}>
-        <View style={styles.centerContent}>
-          <Ionicons name="sparkles" size={48} color="#000000" style={styles.icon} />
-          <Text style={styles.title}>Welcome to Lumi</Text>
-          <Text style={styles.subtitle}>What should we call you?</Text>
+      <StatusBar barStyle="dark-content" backgroundColor="#fafafa" />
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContainer}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
+          <View style={styles.welcomeContainer}>
+            <View style={styles.welcomeHeader}>
+              <Image
+                source={require('@/assets/images/icon.png')}
+                style={styles.welcomeIcon}
+                resizeMode="contain"
+              />
+              <View style={styles.welcomeTextContainer}>
+                <Text style={styles.welcomeTitle}>Welcome to Lumi</Text>
+                <Text style={styles.welcomeSubtitle}>Your personal productivity companion</Text>
+              </View>
+              <View style={styles.usernameSection}>
+                <View style={styles.inputContainer}>
+                  <TextInput
+                    style={styles.usernameInput}
+                    value={username}
+                    onChangeText={setUsername}
+                    placeholder="Enter your name"
+                    placeholderTextColor="#999999"
+                    autoFocus
+                    onSubmitEditing={handleUsernameSubmit}
+                  />
+                </View>
 
-          <TextInput
-            style={styles.input}
-            value={username}
-            onChangeText={setUsername}
-            placeholder="Choose a username"
-            autoFocus
-            onSubmitEditing={handleUsernameSubmit}
-          />
+                <TouchableOpacity
+                  style={[styles.continueButton, !username.trim() && styles.continueButtonDisabled]}
+                  onPress={handleUsernameSubmit}
+                  disabled={!username.trim()}>
+                  <Text
+                    style={[
+                      styles.continueButtonText,
+                      !username.trim() && styles.continueButtonTextDisabled,
+                    ]}>
+                    Continue
+                  </Text>
+                  <Ionicons
+                    name="arrow-forward"
+                    size={getResponsiveSize(20)}
+                    color={username.trim() ? '#FFFFFF' : '#CCCCCC'}
+                    style={styles.continueButtonIcon}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
 
-          <TouchableOpacity
-            style={[styles.button, !username.trim() && styles.buttonDisabled]}
-            onPress={handleUsernameSubmit}
-            disabled={!username.trim()}>
-            <Text style={styles.buttonText}>Continue</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+            <View style={styles.welcomeFooter}>
+              <Text style={styles.footerText}>Let's build better habits together ✨</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 
   const renderFeatureScreen = (
     title: string,
     description: string,
-    mockupComponent: React.ReactNode,
+    backgroundColor: string,
+    illustration: React.ReactNode,
     isLast: boolean = false
   ) => (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+    <SafeAreaView style={[styles.featureSafeArea, { backgroundColor }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={backgroundColor} />
+      <View style={styles.featureContainer}>
+        <TouchableOpacity style={styles.skipButton} onPress={handleSkipTour}>
+          <Text style={styles.skipText}>Skip</Text>
+        </TouchableOpacity>
+
+        <View style={styles.heroSection}>{illustration}</View>
+
+        <View style={styles.contentSection}>
           <Text style={styles.featureTitle}>{title}</Text>
           <Text style={styles.featureDescription}>{description}</Text>
 
-          <View style={styles.mockupContainer}>{mockupComponent}</View>
-        </ScrollView>
+          <View style={styles.progressContainer}>
+            <View style={styles.progressDots}>
+              {[1, 2, 3, 4].map(dot => (
+                <View
+                  key={dot}
+                  style={[styles.progressDot, currentScreen === dot && styles.progressDotActive]}
+                />
+              ))}
+            </View>
 
-        <View style={styles.buttonContainer}>
-          <TouchableOpacity style={styles.skipButton} onPress={handleSkipTour}>
-            <Text style={styles.skipText}>Skip Tour</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.button} onPress={handleNext}>
-            <Text style={styles.buttonText}>{isLast ? 'Get Started' : 'Next'}</Text>
-          </TouchableOpacity>
+            <TouchableOpacity style={styles.nextButton} onPress={handleNext}>
+              <Ionicons name="arrow-forward" size={getResponsiveSize(24)} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </SafeAreaView>
   );
 
-  const TasksMockup = () => (
-    <View style={styles.mockup}>
-      <View style={styles.mockupHeader}>
-        <Ionicons name="arrow-back" size={24} color="#000000" />
-        <Text style={styles.mockupHeaderText}>Tasks</Text>
+  const TasksIllustration = () => (
+    <View style={styles.illustrationContainer}>
+      <View style={styles.imageContainer}>
+        <Image
+          source={require('@/assets/images/onboarding/tasks.png')}
+          style={styles.illustrationImage}
+          resizeMode="contain"
+        />
       </View>
-      <View style={styles.mockupContent}>
-        <View style={styles.taskItem}>
-          <View style={styles.taskContent}>
-            <Text style={styles.taskText}>Buy groceries</Text>
-            <Text style={styles.taskDate}>Today, 6:00 PM</Text>
-          </View>
-          <View style={styles.checkbox} />
-        </View>
-        <View style={styles.taskItem}>
-          <View style={styles.taskContent}>
-            <Text style={styles.taskText}>Call mom</Text>
-            <Text style={styles.taskDate}>Tomorrow, 2:00 PM</Text>
-          </View>
-          <View style={styles.checkbox} />
-        </View>
-        <View style={styles.taskItem}>
-          <View style={styles.taskContent}>
-            <Text style={[styles.taskText, styles.completedTask]}>Morning workout</Text>
-            <Text style={styles.taskDate}>Today, 7:00 AM</Text>
-          </View>
-          <View style={[styles.checkbox, styles.checkedBox]}>
-            <Ionicons name="checkmark" size={16} color="#FFFFFF" />
+      <View style={styles.demoContainer}>
+        <View style={styles.appMockup}>
+          <View style={styles.taskInputDemo}>
+            <Text style={styles.taskInputText}>call mom tomorrow at 2pm</Text>
           </View>
         </View>
-      </View>
-      <View style={styles.mockupInput}>
-        <Text style={styles.inputPlaceholder}>do this at 9pm tom</Text>
       </View>
     </View>
   );
 
-  const NotesMockup = () => (
-    <View style={styles.mockup}>
-      <View style={styles.mockupHeader}>
-        <Ionicons name="arrow-back" size={24} color="#000000" />
-        <Text style={styles.mockupHeaderText}>Notes</Text>
+  const NotesIllustration = () => (
+    <View style={styles.illustrationContainer}>
+      <View style={styles.imageContainer}>
+        <Image
+          source={require('@/assets/images/onboarding/notes.png')}
+          style={styles.illustrationImage}
+          resizeMode="contain"
+        />
       </View>
-      <View style={styles.tagsList}>
-        <View style={styles.tag}>
-          <Text style={styles.tagText}>personal</Text>
+      <View style={styles.demoContainer}>
+        <View style={styles.appMockup}>
+          <View style={styles.tagDemo}>
+            <View style={[styles.tagPill, styles.activeTag]}>
+              <Text style={styles.activeTagText}>work</Text>
+            </View>
+            <View style={styles.tagPill}>
+              <Text style={styles.tagText}>personal</Text>
+            </View>
+            <View style={styles.tagPill}>
+              <Text style={styles.tagText}>ideas</Text>
+            </View>
+          </View>
         </View>
-        <View style={styles.tag}>
-          <Text style={styles.tagText}>work</Text>
-        </View>
-        <View style={styles.tag}>
-          <Text style={styles.tagText}>ideas</Text>
-        </View>
-      </View>
-      <View style={styles.mockupContent}>
-        <View style={styles.noteItem}>
-          <Text style={styles.noteTitle}>Weekend trip ideas</Text>
-          <Text style={styles.notePreview}>Maybe visit the mountains or...</Text>
-        </View>
-        <View style={styles.noteItem}>
-          <Text style={styles.noteTitle}>Book recommendations</Text>
-          <Text style={styles.notePreview}>Fiction: The Seven Husbands of...</Text>
-        </View>
-        <View style={styles.noteItem}>
-          <Text style={styles.noteTitle}>Recipe for pasta</Text>
-          <Text style={styles.notePreview}>Ingredients: tomatoes, basil...</Text>
-        </View>
-      </View>
-      <View style={styles.mockupInput}>
-        <Text style={styles.inputPlaceholder}>personal: note about something</Text>
       </View>
     </View>
   );
 
-  const HabitsMockup = () => (
-    <View style={styles.mockup}>
-      <View style={styles.mockupHeader}>
-        <Ionicons name="arrow-back" size={24} color="#000000" />
-        <Text style={styles.mockupHeaderText}>Habits</Text>
+  const HabitsIllustration = () => (
+    <View style={styles.illustrationContainer}>
+      <View style={styles.imageContainer}>
+        <Image
+          source={require('@/assets/images/onboarding/habits.png')}
+          style={styles.illustrationImage}
+          resizeMode="contain"
+        />
       </View>
-      <View style={styles.mockupContent}>
-        <View style={styles.habitItem}>
-          <View style={styles.habitHeader}>
-            <Text style={styles.habitTitle}>Morning meditation</Text>
-            <Ionicons name="chevron-down" size={20} color="#000000" />
-          </View>
-          <View style={styles.habitProgress}>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>M</Text>
-              <View style={[styles.circle, styles.completedCircle]} />
+      <View style={styles.demoContainer}>
+        <View style={styles.appMockup}>
+          <View style={styles.habitItem}>
+            <View style={styles.habitHeader}>
+              <Text style={styles.habitName}>Morning meditation</Text>
+              <Ionicons name="chevron-down" size={getResponsiveSize(20)} color="#000" />
             </View>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>T</Text>
-              <View style={[styles.circle, styles.completedCircle]} />
-            </View>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>W</Text>
-              <View style={styles.circle} />
-            </View>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>T</Text>
-              <View style={styles.circle} />
-            </View>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>F</Text>
-              <View style={styles.circle} />
-            </View>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>S</Text>
-              <View style={styles.circle} />
-            </View>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>S</Text>
-              <View style={styles.circle} />
+            <View style={styles.weekGrid}>
+              {['M', 'T', 'W', 'T', 'F', 'S', 'S'].map((day, index) => {
+                // More random completion pattern: completed on M, T, F (indices 0, 1, 4)
+                const isCompleted = [0, 1, 3, 4, 6].includes(index);
+                return (
+                  <View key={index} style={styles.dayItem}>
+                    <Text style={styles.dayLabel}>{day}</Text>
+                    <View style={[styles.habitCircle, isCompleted && styles.completedCircle]} />
+                  </View>
+                );
+              })}
             </View>
           </View>
         </View>
-        <View style={styles.habitItem}>
-          <View style={styles.habitHeader}>
-            <Text style={styles.habitTitle}>Running</Text>
-            <Ionicons name="chevron-down" size={20} color="#000000" />
-          </View>
-          <View style={styles.habitProgress}>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>M</Text>
-              <View style={styles.circle} />
-            </View>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>T</Text>
-              <View style={styles.circle} />
-            </View>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>W</Text>
-              <View style={styles.circle} />
-            </View>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>T</Text>
-              <View style={styles.circle} />
-            </View>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>F</Text>
-              <View style={styles.circle} />
-            </View>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>S</Text>
-              <View style={styles.circle} />
-            </View>
-            <View style={styles.dayColumn}>
-              <Text style={styles.dayLabel}>S</Text>
-              <View style={styles.circle} />
-            </View>
-          </View>
-        </View>
-      </View>
-      <View style={styles.addHabitButton}>
-        <Ionicons name="add-circle-outline" size={32} color="#000000" style={styles.addIcon} />
       </View>
     </View>
   );
 
-  const ReflectionsMockup = () => (
-    <View style={styles.mockup}>
-      <View style={styles.mockupHeader}>
-        <Ionicons name="arrow-back" size={24} color="#000000" />
-        <Text style={styles.mockupHeaderText}>Reflections</Text>
+  const ReflectionsIllustration = () => (
+    <View style={styles.illustrationContainer}>
+      <View style={styles.imageContainer}>
+        <Image
+          source={require('@/assets/images/onboarding/reflections.png')}
+          style={styles.illustrationImage}
+          resizeMode="contain"
+        />
       </View>
-      <View style={styles.promptSection}>
-        <Text style={styles.promptLabel}>Try this prompt?</Text>
-        <View style={styles.promptContainer}>
-          <Text style={styles.promptText}>What was the best thing you saw on your phone or computer today?</Text>
-          <Ionicons name="refresh" size={20} color="#666666" />
+      <View style={styles.demoContainer}>
+        <View style={styles.promptDemo}>
+          <Text style={styles.promptQuestion}>What made you smile today?</Text>
         </View>
-      </View>
-      <View style={styles.mockupContent}>
-        <View style={styles.reflectionItem}>
-          <Text style={styles.reflectionDate}>May 21, 2025</Text>
-          <Text style={styles.reflectionPreview}>
-            prompt: What's one thing you created or accomplished today that made you feel good?...
-          </Text>
+        <View style={styles.promptDemoInput}>
+          <Text style={styles.demoInputText}>had a great chat with...</Text>
+          <Ionicons name="mic" size={getResponsiveSize(16)} color="#999" />
         </View>
-        <View style={styles.reflectionItem}>
-          <Text style={styles.reflectionDate}>May 20, 2025</Text>
-          <Text style={styles.reflectionPreview}>
-            Today was a good day. I managed to finish my morning routine...
-          </Text>
-        </View>
-      </View>
-      <View style={styles.mockupInput}>
-        <Text style={styles.inputPlaceholder}>reflection</Text>
-        <Ionicons name="mic" size={20} color="#666666" />
       </View>
     </View>
   );
@@ -298,28 +286,28 @@ export const OnboardingScreens: React.FC<OnboardingScreensProps> = ({ onComplete
 
   const screens = [
     {
-      title: 'Manage Your Tasks',
-      description:
-        "Add tasks with natural language. Say 'do this at 9pm tomorrow' and Lumi will understand the time and date automatically.",
-      component: <TasksMockup />,
+      title: 'Natural Language Tasks',
+      description: 'Just type naturally and Lumi understands when and what you need to do.',
+      backgroundColor: '#ffffff',
+      illustration: <TasksIllustration />,
     },
     {
-      title: 'Organize Your Notes',
-      description:
-        "Capture thoughts and ideas with tags. Use 'personal: note content' to automatically organize your notes by category.",
-      component: <NotesMockup />,
+      title: 'Effortless Notes',
+      description: 'Add notes instantly with tags. Filter and find everything in seconds.',
+      backgroundColor: '#ffffff',
+      illustration: <NotesIllustration />,
     },
     {
-      title: 'Track Your Habits',
-      description:
-        'Build consistent routines by tracking daily habits. See your progress at a glance with weekly views.',
-      component: <HabitsMockup />,
+      title: 'Visual Habit Tracking',
+      description: 'Build streaks and see your progress with beautiful weekly views.',
+      backgroundColor: '#ffffff',
+      illustration: <HabitsIllustration />,
     },
     {
-      title: 'Daily Reflections',
-      description:
-        'End each day with mindful reflection. Capture your thoughts, learnings, and gratitude in a private journal.',
-      component: <ReflectionsMockup />,
+      title: 'Daily Reflection',
+      description: 'Guided prompts help you reflect and grow every single day.',
+      backgroundColor: '#ffffff',
+      illustration: <ReflectionsIllustration />,
     },
   ];
 
@@ -328,312 +316,345 @@ export const OnboardingScreens: React.FC<OnboardingScreensProps> = ({ onComplete
   return renderFeatureScreen(
     currentScreenData.title,
     currentScreenData.description,
-    currentScreenData.component,
+    currentScreenData.backgroundColor,
+    currentScreenData.illustration,
     currentScreen === 4
   );
 };
 
 const styles = StyleSheet.create({
+  // Welcome screen styles
   safeArea: {
     flex: 1,
     backgroundColor: '#fafafa',
-    paddingTop: 40,
-    paddingBottom: 50,
   },
-  container: {
+  welcomeContainer: {
     flex: 1,
-    padding: 24,
+    padding: getResponsiveSize(32),
+    justifyContent: 'space-between',
   },
-  centerContent: {
+  welcomeHeader: {
+    alignItems: 'center',
+    paddingTop: getResponsiveHeight(30),
+  },
+  welcomeIcon: {
+    width: Math.min(getResponsiveSize(240), width * 0.6),
+    height: Math.min(getResponsiveSize(240), width * 0.6),
+    marginBottom: getResponsiveHeight(-24),
+  },
+  welcomeTextContainer: {
+    alignItems: 'center',
+  },
+  welcomeTitle: {
+    fontSize: getResponsiveSize(36),
+    fontFamily: 'MonaSans-Bold',
+    color: '#000000',
+    textAlign: 'center',
+    marginBottom: getResponsiveSize(8),
+  },
+  welcomeSubtitle: {
+    fontSize: getResponsiveSize(16),
+    fontFamily: 'MonaSans-Regular',
+    color: '#666666',
+    textAlign: 'center',
+  },
+  usernameSection: {
+    marginTop: getResponsiveSize(32),
+    justifyContent: 'center',
+    width: '100%',
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: getResponsiveSize(16),
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: getResponsiveSize(12),
+    marginBottom: getResponsiveSize(24),
+  },
+  usernameInput: {
     flex: 1,
+    fontSize: getResponsiveSize(16),
+    fontFamily: 'MonaSans-Regular',
+    color: '#000000',
+  },
+  continueButton: {
+    backgroundColor: '#000000',
+    paddingVertical: getResponsiveSize(18),
+    paddingHorizontal: getResponsiveSize(32),
+    borderRadius: getResponsiveSize(16),
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 24,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingTop: 40,
-  },
-  icon: {
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 32,
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 18,
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-    textAlign: 'center',
-  },
-  input: {
-    width: '100%',
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 12,
-    fontSize: 18,
-    fontFamily: 'MonaSans-Regular',
-    backgroundColor: '#ffffff',
-  },
-  button: {
-    backgroundColor: '#000000',
-    paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 12,
-    minWidth: 120,
-  },
-  buttonDisabled: {
-    backgroundColor: '#cccccc',
-  },
-  buttonText: {
-    color: '#ffffff',
-    fontSize: 16,
-    fontFamily: 'MonaSans-Medium',
-    textAlign: 'center',
-  },
-  featureTitle: {
-    fontSize: 28,
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    marginBottom: 12,
-  },
-  featureDescription: {
-    fontSize: 16,
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-    lineHeight: 24,
-    marginBottom: 32,
-  },
-  mockupContainer: {
-    flex: 1,
-    justifyContent: 'flex-start',
-  },
-  buttonContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  skipButton: {
-    paddingVertical: 16,
-    paddingHorizontal: 24,
-  },
-  skipText: {
-    fontSize: 16,
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-  },
-
-  // Mockup styles
-  mockup: {
-    backgroundColor: '#ffffff',
-    borderRadius: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
     elevation: 4,
   },
-  mockupHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    marginBottom: 16,
+  continueButtonDisabled: {
+    backgroundColor: '#F0F0F0',
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  mockupHeaderText: {
-    fontSize: 20,
+  continueButtonText: {
+    color: '#ffffff',
+    fontSize: getResponsiveSize(18),
+    fontFamily: 'MonaSans-Medium',
+  },
+  continueButtonTextDisabled: {
+    color: '#CCCCCC',
+  },
+  continueButtonIcon: {
+    marginLeft: getResponsiveSize(8),
+  },
+  welcomeFooter: {
+    alignItems: 'center',
+    paddingBottom: getResponsiveSize(20),
+  },
+  footerText: {
+    fontSize: getResponsiveSize(14),
+    fontFamily: 'MonaSans-Regular',
+    color: '#999999',
+    textAlign: 'center',
+  },
+
+  // Feature screen styles
+  featureSafeArea: {
+    flex: 1,
+  },
+  featureContainer: {
+    flex: 1,
+    paddingTop: getResponsiveHeight(40),
+  },
+  skipButton: {
+    position: 'absolute',
+    top: getResponsiveHeight(50),
+    right: getResponsiveSize(24),
+    zIndex: 10,
+    paddingVertical: getResponsiveSize(8),
+    paddingHorizontal: getResponsiveSize(16),
+  },
+  skipText: {
+    fontSize: getResponsiveSize(16),
     fontFamily: 'MonaSans-Medium',
     color: '#000000',
+    opacity: 0.7,
   },
-  mockupContent: {
-    gap: 12,
-    marginBottom: 16,
-    padding: 8,
+  heroSection: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: getResponsiveSize(24),
+    paddingTop: getResponsiveHeight(32),
   },
-  mockupInput: {
-    padding: 12,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: 8,
-    backgroundColor: '#f8f8f8',
+  contentSection: {
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: getResponsiveSize(32),
+    borderTopRightRadius: getResponsiveSize(32),
+    paddingHorizontal: getResponsiveSize(32),
+    paddingTop: getResponsiveSize(24),
+    paddingBottom: getResponsiveSize(32),
+  },
+  featureTitle: {
+    fontSize: getResponsiveSize(28),
+    fontFamily: 'MonaSans-Bold',
+    color: '#000000',
+    textAlign: 'center',
+    marginBottom: getResponsiveSize(16),
+  },
+  featureDescription: {
+    fontSize: getResponsiveSize(16),
+    fontFamily: 'MonaSans-Regular',
+    color: '#666666',
+    textAlign: 'center',
+    lineHeight: getResponsiveSize(24),
+    marginBottom: getResponsiveSize(40),
+  },
+  progressContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  inputPlaceholder: {
-    fontSize: 14,
-    fontFamily: 'MonaSans-Regular',
-    color: '#999999',
+  progressDots: {
+    flexDirection: 'row',
+    gap: getResponsiveSize(8),
+  },
+  progressDot: {
+    width: getResponsiveSize(12),
+    height: getResponsiveSize(12),
+    borderRadius: getResponsiveSize(6),
+    backgroundColor: '#E0E0E0',
+    marginLeft: getResponsiveSize(8),
+  },
+  progressDotActive: {
+    backgroundColor: '#000000',
+    width: getResponsiveSize(24),
+  },
+  nextButton: {
+    width: getResponsiveSize(56),
+    height: getResponsiveSize(56),
+    borderRadius: getResponsiveSize(28),
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 8,
   },
 
-  // Task mockup styles
-  taskItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-    paddingVertical: 8,
+  // Illustration styles
+  illustrationContainer: {
+    width: width - getResponsiveSize(48),
+    height: Math.min(getResponsiveHeight(280), height * 0.35),
+    position: 'relative',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  taskContent: {
+  imageContainer: {
+    flex: 2,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: getResponsiveSize(24),
+  },
+  illustrationImage: {
+    width: Math.min(getResponsiveSize(240), width * 0.7),
+    height: Math.min(getResponsiveSize(240), width * 0.7),
+  },
+  demoContainer: {
     flex: 1,
+    width: '100%',
+    padding: getResponsiveSize(16),
+    justifyContent: 'center',
+    marginTop: getResponsiveSize(24),
   },
-  taskText: {
-    fontSize: 16,
+  demoInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: getResponsiveSize(16),
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: getResponsiveSize(12),
+  },
+  demoInputText: {
+    flex: 1,
+    fontSize: getResponsiveSize(16),
     fontFamily: 'MonaSans-Regular',
     color: '#000000',
-    marginBottom: 4,
   },
-  completedTask: {
-    textDecorationLine: 'line-through',
-    color: '#666666',
-  },
-  taskDate: {
-    fontSize: 12,
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-  },
-  checkbox: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: '#000000',
+  tagDemo: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
+    gap: getResponsiveSize(8),
   },
-  checkedBox: {
+  tagPill: {
+    padding: getResponsiveSize(8),
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: getResponsiveSize(12),
+  },
+  activeTag: {
     backgroundColor: '#000000',
   },
-
-  // Notes mockup styles
-  tagsList: {
-    flexDirection: 'row',
-    gap: 8,
-    marginBottom: 16,
-  },
-  tag: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 12,
-    backgroundColor: '#f0f0f0',
+  activeTagText: {
+    fontSize: getResponsiveSize(16),
+    fontFamily: 'MonaSans-Medium',
+    color: '#ffffff',
   },
   tagText: {
-    fontSize: 12,
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-  },
-  noteItem: {
-    paddingVertical: 8,
-  },
-  noteTitle: {
-    fontSize: 16,
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-    marginBottom: 4,
-  },
-  notePreview: {
-    fontSize: 12,
+    fontSize: getResponsiveSize(16),
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
   },
-
-  // Habits mockup styles
+  promptDemo: {
+    margin: getResponsiveSize(18),
+  },
+  promptDemoInput: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: getResponsiveSize(16),
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: getResponsiveSize(12),
+  },
+  promptQuestion: {
+    fontSize: getResponsiveSize(16),
+    fontFamily: 'MonaSans-Regular',
+    color: '#666666',
+    textAlign: 'center',
+  },
+  taskInputDemo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: getResponsiveSize(16),
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    borderRadius: getResponsiveSize(12),
+  },
+  taskInputText: {
+    flex: 1,
+    fontSize: getResponsiveSize(16),
+    fontFamily: 'MonaSans-Regular',
+    color: '#000000',
+  },
+  appMockup: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   habitItem: {
-    paddingVertical: 12,
-    marginBottom: 16,
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+    width: '100%',
+    paddingTop: getResponsiveSize(16),
   },
   habitHeader: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 12,
-  },
-  habitTitle: {
-    fontSize: 20,
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-  },
-  habitProgress: {
-    flexDirection: 'row',
     justifyContent: 'space-between',
+    width: '100%',
+    paddingHorizontal: getResponsiveSize(16),
+    marginBottom: getResponsiveSize(18),
   },
-  dayColumn: {
-    alignItems: 'center',
-    gap: 4,
-  },
-  dayLabel: {
-    fontSize: 10,
-    color: '#666666',
-  },
-  circle: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    backgroundColor: '#FFF0F3',
-  },
-  completedCircle: {
-    backgroundColor: '#FFB3BA',
-  },
-
-  // Reflections mockup styles
-  reflectionItem: {
-    paddingVertical: 8,
-  },
-  reflectionDate: {
-    fontSize: 14,
+  habitName: {
+    fontSize: getResponsiveSize(18),
     fontFamily: 'MonaSans-Medium',
     color: '#000000',
-    marginBottom: 4,
   },
-  reflectionPreview: {
-    fontSize: 12,
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-    lineHeight: 18,
-  },
-
-  // New styles for the updated mockups
-  promptSection: {
-    padding: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  promptLabel: {
-    fontSize: 14,
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-    marginBottom: 8,
-  },
-  promptContainer: {
+  weekGrid: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 12,
-    backgroundColor: '#f8f8f8',
-    borderRadius: 8,
+    width: '100%',
+    paddingHorizontal: getResponsiveSize(16),
+    minHeight: getResponsiveSize(100),
   },
-  promptText: {
-    flex: 1,
-    fontSize: 14,
+  dayItem: {
+    alignItems: 'center',
+    gap: getResponsiveSize(12),
+  },
+  dayLabel: {
+    fontSize: getResponsiveSize(14),
     fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-  },
-  addHabitButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  addIcon: {
     color: '#666666',
+  },
+  habitCircle: {
+    width: getResponsiveSize(28),
+    height: getResponsiveSize(28),
+    borderRadius: getResponsiveSize(14),
+    backgroundColor: '#F0F0F0',
+  },
+  completedCircle: {
+    backgroundColor: '#FF9AA2',
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
+  scrollContainer: {
+    flexGrow: 1,
   },
 });

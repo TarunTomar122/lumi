@@ -26,6 +26,37 @@ import { parseTaskInput } from '@/utils/taskParser';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
 import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS } from 'react-native-reanimated';
 
+const { width, height } = Dimensions.get('window');
+
+// Responsive helper functions
+const getResponsiveSize = (size: number) => {
+  const baseWidth = 375; // iPhone 8 width as base
+  let scale = width / baseWidth;
+  
+  // More aggressive scaling for smaller screens
+  if (width < 350) {
+    scale = scale * 0.8; // Make 20% smaller for very small screens
+  } else if (width < 370) {
+    scale = scale * 0.9; // Make 10% smaller for small screens
+  }
+  
+  return scale * size;
+};
+
+const getResponsiveHeight = (size: number) => {
+  const baseHeight = 667; // iPhone 8 height as base
+  let scale = height / baseHeight;
+  
+  // More aggressive scaling for smaller screens
+  if (height < 600) {
+    scale = scale * 0.75; // Make 25% smaller for very small screens
+  } else if (height < 650) {
+    scale = scale * 0.85; // Make 15% smaller for small screens
+  }
+  
+  return scale * size;
+};
+
 const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoComplete }: any) => {
   const translateX = useSharedValue(0);
   const itemHeight = useSharedValue(0);
@@ -35,8 +66,8 @@ const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoCom
   const DELETE_THRESHOLD = 0.3; // 30% of screen width to trigger delete
   const REVEAL_THRESHOLD = 0.15; // 15% of screen width to reveal delete button
 
-  const handleDelete = () => {
-    onDelete(task.id);
+  const handleDelete = async () => {
+    await onDelete(task.id);
   };
 
   // Demo animation effect
@@ -111,11 +142,11 @@ const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoCom
       <View style={styles.swipeContainer}>
         {/* Delete button background */}
         <Animated.View style={[styles.deleteBackground, deleteButtonStyle]}>
-          <TouchableOpacity
-            style={styles.deleteButtonTouchable}
-            onPress={handleDelete}>
-            <Ionicons name="trash-outline" size={24} color="#OOOOOO" />
-          </TouchableOpacity>
+                      <TouchableOpacity
+              style={styles.deleteButtonTouchable}
+              onPress={handleDelete}>
+              <Ionicons name="trash-outline" size={getResponsiveSize(24)} color="#OOOOOO" />
+            </TouchableOpacity>
         </Animated.View>
 
         {/* Main task item */}
@@ -132,7 +163,7 @@ const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoCom
             <TouchableOpacity
               style={[styles.taskCheckbox, task.status === 'done' && styles.taskCheckboxChecked]}
               onPress={() => onToggle(task.id, task.status)}>
-              {task.status === 'done' && <Ionicons name="checkmark" size={20} color="#FFFFFF" />}
+              {task.status === 'done' && <Ionicons name="checkmark" size={getResponsiveSize(20)} color="#FFFFFF" />}
             </TouchableOpacity>
           </Animated.View>
         </GestureDetector>
@@ -147,18 +178,65 @@ export default function Tasks() {
   const [isRecording, setIsRecording] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
   const { tasks, updateTask, refreshTasks, deleteTask } = useTaskStore();
-  const { messageHistory, updateMessageHistory, clearMessageHistory } = useMessageStore();
-  const [assistantResponse, setAssistantResponse] = React.useState('');
-  const [isThinking, setIsThinking] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(false);
   const [activeContent, setActiveContent] = React.useState<string>('home');
   const [showDemo, setShowDemo] = React.useState(false);
   const [demoCount, setDemoCount] = React.useState(0);
+  const [groupedTasks, setGroupedTasks] = React.useState<{ [key: string]: typeof tasks }>({});
+  const [shouldRegroup, setShouldRegroup] = React.useState(true);
 
   React.useEffect(() => {
     refreshTasks();
     loadDemoCount();
   }, []);
+
+  // Group and sort tasks when needed
+  React.useEffect(() => {
+    if (shouldRegroup) {
+      const grouped: { [key: string]: typeof tasks } = {};
+      const today = DateTime.now().setZone('Asia/Kolkata').startOf('day');
+
+      tasks.forEach(task => {
+        const taskDateStr = task.due_date || task.reminder_date;
+        let groupKey = 'No Date';
+
+        if (taskDateStr) {
+          const taskDate = DateTime.fromISO(taskDateStr)
+            .setZone('Asia/Kolkata')
+            .startOf('day');
+          const diffDays = Math.floor(taskDate.diff(today, 'days').days);
+
+          if (diffDays === 0) {
+            groupKey = 'Today';
+          } else if (diffDays === 1) {
+            groupKey = 'Tomorrow';
+          } else if (diffDays > 1 && diffDays <= 7) {
+            groupKey = taskDate.toFormat('cccc'); // Day name (e.g., "Monday")
+          } else {
+            groupKey = taskDate.toFormat('MMM dd'); // e.g., "Jan 15"
+          }
+        }
+
+        if (!grouped[groupKey]) {
+          grouped[groupKey] = [];
+        }
+        grouped[groupKey].push(task);
+      });
+
+      // Sort tasks within each group: incomplete tasks first, completed tasks last
+      Object.keys(grouped).forEach(groupKey => {
+        grouped[groupKey].sort((a, b) => {
+          // If one task is done and the other isn't, put the incomplete task first
+          if (a.status === 'done' && b.status !== 'done') return 1;
+          if (a.status !== 'done' && b.status === 'done') return -1;
+          // If both have the same status, maintain original order
+          return 0;
+        });
+      });
+
+      setGroupedTasks(grouped);
+      setShouldRegroup(false);
+    }
+  }, [tasks, shouldRegroup]);
 
   const loadDemoCount = async () => {
     try {
@@ -194,22 +272,24 @@ export default function Tasks() {
     setRefreshing(true);
     try {
       await refreshTasks();
+      setShouldRegroup(true); // Trigger regrouping on manual refresh
     } catch (error) {
       console.error('Error refreshing tasks:', error);
     }
     setRefreshing(false);
   }, []);
 
-  const handleSubmit = async () => {
+    const handleSubmit = async () => {
     if (!userResponse.trim()) return; // Don't create task if no input
 
     try {
       // Parse the user input using the utility function
       const taskData = parseTaskInput(userResponse);
-      
+
       // Save the task
       await clientTools.addTask(taskData);
-      refreshTasks();
+      await refreshTasks();
+      setShouldRegroup(true); // Trigger regrouping when new task is added
       
       // Clear the input
       setUserResponse('');
@@ -223,8 +303,18 @@ export default function Tasks() {
     try {
       const newStatus = currentStatus === 'done' ? 'todo' : 'done';
       await updateTask(id, { status: newStatus });
+      // Don't trigger regrouping on toggle - only on manual refresh
     } catch (error) {
       console.error('Failed to update task:', error);
+    }
+  };
+
+  const handleTaskDelete = async (id: number) => {
+    try {
+      await deleteTask(id);
+      setShouldRegroup(true); // Trigger regrouping after deletion
+    } catch (error) {
+      console.error('Failed to delete task:', error);
     }
   };
 
@@ -234,7 +324,7 @@ export default function Tasks() {
         <StatusBar barStyle="dark-content" />
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={28} color="#000000" />
+            <Ionicons name="arrow-back" size={getResponsiveSize(28)} color="#000000" />
             <Text style={styles.backText}>Tasks</Text>
           </TouchableOpacity>
         </View>
@@ -277,37 +367,9 @@ export default function Tasks() {
               refreshControl={
                 <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
               }>
-              {(() => {
-                // Group tasks by date
-                const groupedTasks: { [key: string]: typeof tasks } = {};
+                            {(() => {
+                // Use the grouped tasks from state
                 const today = DateTime.now().setZone('Asia/Kolkata').startOf('day');
-
-                tasks.forEach(task => {
-                  const taskDateStr = task.due_date || task.reminder_date;
-                  let groupKey = 'No Date';
-
-                  if (taskDateStr) {
-                    const taskDate = DateTime.fromISO(taskDateStr)
-                      .setZone('Asia/Kolkata')
-                      .startOf('day');
-                    const diffDays = Math.floor(taskDate.diff(today, 'days').days);
-
-                    if (diffDays === 0) {
-                      groupKey = 'Today';
-                    } else if (diffDays === 1) {
-                      groupKey = 'Tomorrow';
-                    } else if (diffDays > 1 && diffDays <= 7) {
-                      groupKey = taskDate.toFormat('cccc'); // Day name (e.g., "Monday")
-                    } else {
-                      groupKey = taskDate.toFormat('MMM dd'); // e.g., "Jan 15"
-                    }
-                  }
-
-                  if (!groupedTasks[groupKey]) {
-                    groupedTasks[groupKey] = [];
-                  }
-                  groupedTasks[groupKey].push(task);
-                });
 
                 // Create a map of section keys to their actual dates for proper sorting
                 const sectionDates: { [key: string]: DateTime | null } = {};
@@ -321,12 +383,14 @@ export default function Tasks() {
                     sectionDates[sectionKey] = null; // Will be sorted last
                   } else {
                     // For day names and specific dates, find the actual date from the first task in that group
-                    const firstTask = groupedTasks[sectionKey][0];
-                    const taskDateStr = firstTask.due_date || firstTask.reminder_date;
-                    if (taskDateStr) {
-                      sectionDates[sectionKey] = DateTime.fromISO(taskDateStr).setZone('Asia/Kolkata').startOf('day');
-                    } else {
-                      sectionDates[sectionKey] = null;
+                    const firstTask = groupedTasks[sectionKey]?.[0];
+                    if (firstTask) {
+                      const taskDateStr = firstTask.due_date || firstTask.reminder_date;
+                      if (taskDateStr) {
+                        sectionDates[sectionKey] = DateTime.fromISO(taskDateStr).setZone('Asia/Kolkata').startOf('day');
+                      } else {
+                        sectionDates[sectionKey] = null;
+                      }
                     }
                   }
                 });
@@ -355,19 +419,23 @@ export default function Tasks() {
                           ]}>
                           {sectionKey}
                         </Text>
-                        {groupedTasks[sectionKey].map((task, index) => (
-                          <SwipeableTaskItem
-                            key={`${sectionKey}-${index}`}
-                            task={task}
-                            onToggle={handleTaskToggle}
-                            onDelete={deleteTask}
-                            isDemo={showDemo && sectionIndex === 0 && index === 0}
-                            onDemoComplete={() => {
-                              setShowDemo(false);
-                              incrementDemoCount();
-                            }}
-                          />
-                        ))}
+                        {groupedTasks[sectionKey].map((cachedTask, index) => {
+                          // Get current task data from store for real-time status updates
+                          const currentTask = tasks.find(t => t.id === cachedTask.id) || cachedTask;
+                          return (
+                            <SwipeableTaskItem
+                              key={`${cachedTask.id}-${sectionKey}-${index}`}
+                              task={currentTask}
+                              onToggle={handleTaskToggle}
+                              onDelete={handleTaskDelete}
+                              isDemo={showDemo && sectionIndex === 0 && index === 0}
+                              onDemoComplete={() => {
+                                setShowDemo(false);
+                                incrementDemoCount();
+                              }}
+                            />
+                          );
+                        })}
                       </>
                     )}
                   </View>
@@ -398,24 +466,24 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#fafafa',
-    paddingTop: 42,
+    paddingTop: getResponsiveHeight(28),
   },
   container: {
     flex: 1,
-    padding: 24,
+    padding: getResponsiveSize(24),
   },
   noTasksContainer: {
     flex: 1,
-    gap: 12,
+    gap: getResponsiveSize(12),
   },
   noTasksText: {
-    fontSize: 18,
+    fontSize: getResponsiveSize(18),
     fontFamily: 'MonaSans-Regular',
     color: '#000000',
-    marginBottom: 4,
+    marginBottom: getResponsiveSize(4),
   },
   suggestionText: {
-    fontSize: 16,
+    fontSize: getResponsiveSize(16),
     fontFamily: 'Roboto-Regular',
     color: '#000000',
   },
@@ -423,9 +491,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 10,
+    paddingHorizontal: getResponsiveSize(24),
+    paddingTop: getResponsiveHeight(20),
+    paddingBottom: getResponsiveSize(10),
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
   },
@@ -433,39 +501,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-start',
-    gap: 12,
+    gap: getResponsiveSize(12),
   },
   backText: {
-    fontSize: 24,
+    fontSize: getResponsiveSize(24),
     fontFamily: 'MonaSans-Medium',
     color: '#000000',
-    marginBottom: 3,
+    marginBottom: getResponsiveSize(3),
   },
   title: {
-    fontSize: 32,
+    fontSize: getResponsiveSize(32),
     fontFamily: 'MonaSans-Bold',
     color: '#000000',
   },
   taskList: {
     flex: 1,
-    paddingRight: 8,
+    paddingRight: getResponsiveSize(8),
   },
   taskItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    paddingVertical: 12,
+    paddingVertical: getResponsiveSize(12),
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
-    gap: 12,
-    marginBottom: 12,
+    gap: getResponsiveSize(12),
+    marginBottom: getResponsiveSize(12),
   },
   taskCheckbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 4,
+    width: getResponsiveSize(28),
+    height: getResponsiveSize(28),
+    borderRadius: getResponsiveSize(4),
     borderWidth: 1,
     borderColor: '#000000',
-    marginTop: 4,
+    marginTop: getResponsiveSize(4),
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -476,30 +544,30 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   taskText: {
-    fontSize: 20,
+    fontSize: getResponsiveSize(20),
     fontFamily: 'MonaSans-Regular',
     color: '#000000',
-    marginBottom: 4,
+    marginBottom: getResponsiveSize(4),
   },
   taskTextCompleted: {
     textDecorationLine: 'line-through',
     color: '#666666',
   },
   taskDate: {
-    fontSize: 14,
+    fontSize: getResponsiveSize(14),
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
   },
   inputContainer: {
-    paddingHorizontal: 24,
-    marginBottom: 24,
+    paddingHorizontal: getResponsiveSize(24),
+    marginBottom: getResponsiveSize(24),
   },
   sectionHeader: {
-    fontSize: 16,
+    fontSize: getResponsiveSize(16),
     fontFamily: 'MonaSans-Medium',
     color: '#666666',
-    marginTop: 24,
-    marginBottom: 12,
+    marginTop: getResponsiveSize(24),
+    marginBottom: getResponsiveSize(12),
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
@@ -508,7 +576,7 @@ const styles = StyleSheet.create({
   },
   swipeContainer: {
     position: 'relative',
-    marginBottom: 12,
+    marginBottom: getResponsiveSize(12),
   },
   deleteBackground: {
     position: 'absolute',
@@ -525,11 +593,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'flex-start',
     width: '100%',
-    paddingLeft: 24,
+    paddingLeft: getResponsiveSize(24),
   },
   emptyStateCard: {
     backgroundColor: '#FFFFFF',
-    padding: 20,
+    padding: getResponsiveSize(20),
     borderWidth: 1,
     borderColor: '#E0E0E0',
     shadowColor: '#000',
@@ -542,43 +610,43 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   emptyStateTitle: {
-    fontSize: 20,
+    fontSize: getResponsiveSize(20),
     fontFamily: 'MonaSans-Medium',
     color: '#000000',
-    marginBottom: 24,
+    marginBottom: getResponsiveSize(24),
     textAlign: 'center',
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
-    paddingBottom: 12,
+    paddingBottom: getResponsiveSize(12),
   },
   emptyStateSubtitle: {
-    fontSize: 16,
+    fontSize: getResponsiveSize(16),
     fontFamily: 'Roboto-Regular',
     color: '#666666',
-    marginBottom: 20,
+    marginBottom: getResponsiveSize(20),
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: getResponsiveSize(22),
   },
   examplesContainer: {
-    gap: 16,
-    marginBottom: 20,
+    gap: getResponsiveSize(16),
+    marginBottom: getResponsiveSize(20),
   },
   exampleItem: {
-    gap: 4,
+    gap: getResponsiveSize(4),
   },
   exampleText: {
-    fontSize: 16,
+    fontSize: getResponsiveSize(16),
     fontFamily: 'MonaSans-Regular',
     color: '#000000',
     fontStyle: 'italic',
   },
   exampleDescription: {
-    fontSize: 14,
+    fontSize: getResponsiveSize(14),
     fontFamily: 'Roboto-Regular',
     color: '#999999',
   },
   emptyStateFooter: {
-    fontSize: 16,
+    fontSize: getResponsiveSize(16),
     fontFamily: 'MonaSans-Regular',
     color: '#666666',
     textAlign: 'center',

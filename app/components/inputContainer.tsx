@@ -130,6 +130,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     padding: 8,
     marginBottom: 16,
+    borderRadius: 12,
   },
   textInput: {
     flex: 1,
