@@ -1,13 +1,11 @@
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
   RefreshControl,
   StatusBar,
-  Dimensions,
 } from 'react-native';
 import React from 'react';
 import { useRouter } from 'expo-router';
@@ -17,9 +15,11 @@ import { useReflectionStore } from './store/reflectionStore';
 import InputContainer from './components/inputContainer';
 import { ReflectionPrompt } from './components/ReflectionPrompt';
 import { getResponsiveSize, getResponsiveHeight } from '../utils/responsive';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function Reflections() {
   const router = useRouter();
+  const { colors, createThemedStyles } = useTheme();
   const [refreshing, setRefreshing] = React.useState(false);
   const [userResponse, setUserResponse] = React.useState('');
   const [selectedPrompt, setSelectedPrompt] = React.useState<string | undefined>();
@@ -112,12 +112,80 @@ export default function Reflections() {
     setSelectedPrompt(prompt === selectedPrompt ? undefined : prompt);
   };
 
+  const styles = createThemedStyles(colors => ({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: getResponsiveHeight(28),
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: getResponsiveSize(24),
+      paddingTop: getResponsiveHeight(20),
+      paddingBottom: getResponsiveHeight(10),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: getResponsiveSize(12),
+    },
+    backText: {
+      fontSize: getResponsiveSize(24),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+      marginBottom: getResponsiveSize(3),
+    },
+    container: {
+      flex: 1,
+      padding: getResponsiveSize(24),
+    },
+    noReflectionsContainer: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+      paddingTop: getResponsiveHeight(100),
+    },
+    noReflectionsText: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+    },
+    reflectionsList: {
+      flex: 1,
+      marginTop: getResponsiveHeight(12),
+    },
+    reflectionItem: {
+      marginBottom: getResponsiveHeight(16),
+      paddingVertical: getResponsiveHeight(6),
+      borderRadius: getResponsiveSize(12),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    reflectionDate: {
+      fontSize: getResponsiveSize(18),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+      marginBottom: getResponsiveHeight(8),
+    },
+    reflectionPreview: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+      lineHeight: getResponsiveSize(22),
+    },
+  }));
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={colors.statusBarStyle} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={getResponsiveSize(28)} color="#000000" />
+          <Ionicons name="arrow-back" size={getResponsiveSize(28)} color={colors.text} />
           <Text style={styles.backText}>Reflections</Text>
         </TouchableOpacity>
       </View>
@@ -133,7 +201,7 @@ export default function Reflections() {
           style={styles.reflectionsList}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text} />
           }>
           {reflections.map(reflection => {
             const { response } = parseContent(reflection.content);
@@ -162,71 +230,3 @@ export default function Reflections() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fafafa',
-    paddingTop: getResponsiveHeight(28),
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: getResponsiveSize(24),
-    paddingTop: getResponsiveHeight(20),
-    paddingBottom: getResponsiveHeight(10),
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: getResponsiveSize(12),
-  },
-  backText: {
-    fontSize: getResponsiveSize(24),
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    marginBottom: getResponsiveSize(3),
-  },
-  container: {
-    flex: 1,
-    padding: getResponsiveSize(24),
-  },
-  noReflectionsContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: getResponsiveHeight(100),
-  },
-  noReflectionsText: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-  },
-  reflectionsList: {
-    flex: 1,
-    marginTop: getResponsiveHeight(12),
-  },
-  reflectionItem: {
-    marginBottom: getResponsiveHeight(16),
-    paddingVertical: getResponsiveHeight(6),
-    borderRadius: getResponsiveSize(12),
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  reflectionDate: {
-    fontSize: getResponsiveSize(18),
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    marginBottom: getResponsiveHeight(8),
-  },
-  reflectionPreview: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-    lineHeight: getResponsiveSize(22),
-  },
-});

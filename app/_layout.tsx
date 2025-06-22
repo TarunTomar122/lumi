@@ -8,14 +8,17 @@ import { db } from '../utils/database';
 import { Slot } from 'expo-router';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useUserStore } from './store/userStore';
+import { useThemeStore } from './store/themeStore';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 function NavigatorContent() {
+  const { colors } = useThemeStore();
+  
   return (
-    <View style={{ flex: 1, backgroundColor: '#FAFAFA' }}>
-      <StatusBar style="light" backgroundColor="#FAFAFA" />
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
+      <StatusBar style={colors.statusBarStyle} backgroundColor={colors.statusBarBackground} />
       <Slot />
     </View>
   );
@@ -24,6 +27,7 @@ function NavigatorContent() {
 export default function RootLayout() {
   const { checkPermissions } = useVoiceRecognition();
   const { initializeUser, isLoading } = useUserStore();
+  const { initializeTheme } = useThemeStore();
   const [loaded] = useFonts({
     'MonaSans-Regular': require('../assets/fonts/MonaSans-Regular.ttf'),
     'MonaSans-Medium': require('../assets/fonts/MonaSans-Medium.ttf'),
@@ -33,6 +37,10 @@ export default function RootLayout() {
 
   useEffect(() => {
     initializeUser();
+    
+    // Initialize theme system
+    const themeSubscription = initializeTheme();
+    
     const initializeApp = async () => {
       try {
         // check for audio permissions
@@ -50,6 +58,11 @@ export default function RootLayout() {
     if (loaded && !isLoading) {
       SplashScreen.hideAsync();
     }
+
+    // Cleanup theme subscription
+    return () => {
+      themeSubscription?.remove();
+    };
   }, [loaded, isLoading]);
 
   if (!loaded || isLoading) {

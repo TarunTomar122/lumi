@@ -30,6 +30,7 @@ import { UsageChart } from './components/UsageChart';
 import BackgroundFetch from 'react-native-background-fetch';
 import { DateTime } from 'luxon';
 import { getResponsiveSize, getResponsiveHeight } from '../utils/responsive';
+import { useTheme } from '@/hooks/useTheme';
 
 const MAX_HISTORY = 50;
 
@@ -47,6 +48,7 @@ export default function Page() {
   const { refreshMemories } = useMemoryStore();
   const { usageData, refreshUsageData } = useUsageStore();
   const { username, hasCompletedOnboarding, isLoading } = useUserStore();
+  const { colors, createThemedStyles, isDark, setTheme } = useTheme();
   const resultsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const [isThinking, setIsThinking] = React.useState(false);
   const [assistantResponse, setAssistantResponse] = React.useState('');
@@ -237,18 +239,101 @@ export default function Page() {
     };
   }, []);
 
+  const styles = createThemedStyles((colors) => ({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: getResponsiveHeight(20),
+      gap: getResponsiveSize(48),
+    },
+    container: {
+      flex: 1,
+      padding: getResponsiveSize(24),
+    },
+    mainArea: {
+      flex: 1,
+      gap: getResponsiveSize(16),
+    },
+    agentChatContainer: {
+      flex: 1,
+      padding: getResponsiveSize(32),
+    },
+    inputContainer: {
+      padding: getResponsiveSize(24),
+    },
+    header: {
+      marginTop: getResponsiveHeight(20),
+      marginBottom: getResponsiveHeight(32),
+      display: 'flex',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      gap: getResponsiveSize(16),
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: getResponsiveSize(16),
+    },
+    chatHeader: {
+      marginVertical: getResponsiveHeight(30),
+      display: 'flex',
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    chatHeaderText: {
+      fontSize: getResponsiveSize(28),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+    },
+    greeting: {
+      fontSize: getResponsiveSize(32),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+    },
+    cardsContainer: {
+      gap: getResponsiveSize(16),
+    },
+    row: {
+      flexDirection: 'row',
+      gap: getResponsiveSize(16),
+    },
+    disabledRow: {
+      opacity: 0.5,
+    },
+    messageContainer: {
+      flex: 1,
+    },
+    messageContentContainer: {
+      paddingBottom: getResponsiveSize(20),
+    },
+    messagesWrapper: {
+      flex: 1,
+      justifyContent: 'flex-start',
+    },
+  }));
+
   if (!hasCompletedOnboarding) {
     return <OnboardingScreens onComplete={handleOnboardingComplete} />;
   }
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={colors.statusBarStyle} />
       {activeContent === 'home' && (
         <ScrollView style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.greeting}>Hello {username}</Text>
-            <Ionicons name="sparkles-outline" size={getResponsiveSize(24)} color="#000000" />
+            <View style={styles.headerActions}>
+              <TouchableOpacity onPress={() => setTheme(isDark ? 'light' : 'dark')}>
+                <Ionicons 
+                  name={isDark ? 'sunny-outline' : 'moon-outline'} 
+                  size={getResponsiveSize(24)} 
+                  color={colors.text} 
+                />
+              </TouchableOpacity>
+            </View>
           </View>
           <View style={styles.mainArea}>
             <View style={styles.cardsContainer}>
@@ -293,72 +378,4 @@ export default function Page() {
   );
 }
 
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fafafa',
-    paddingTop: getResponsiveHeight(20),
-    gap: getResponsiveSize(48),
-  },
-  container: {
-    flex: 1,
-    padding: getResponsiveSize(24),
-  },
-  mainArea: {
-    flex: 1,
-    gap: getResponsiveSize(16),
-  },
-  agentChatContainer: {
-    flex: 1,
-    padding: getResponsiveSize(32),
-  },
-  inputContainer: {
-    padding: getResponsiveSize(24),
-  },
-  header: {
-    marginTop: getResponsiveHeight(20),
-    marginBottom: getResponsiveHeight(32),
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
-    alignItems: 'center',
-    gap: getResponsiveSize(16),
-  },
-  chatHeader: {
-    marginVertical: getResponsiveHeight(30),
-    display: 'flex',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  chatHeaderText: {
-    fontSize: getResponsiveSize(28),
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-  },
-  greeting: {
-    fontSize: getResponsiveSize(32),
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-  },
-  cardsContainer: {
-    gap: getResponsiveSize(16),
-  },
-  row: {
-    flexDirection: 'row',
-    gap: getResponsiveSize(16),
-  },
-  disabledRow: {
-    opacity: 0.5,
-  },
-  messageContainer: {
-    flex: 1,
-  },
-  messageContentContainer: {
-    paddingBottom: getResponsiveSize(20),
-  },
-  messagesWrapper: {
-    flex: 1,
-    justifyContent: 'flex-start',
-  },
-});
+

@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { getResponsiveSize } from '../../utils/responsive';
+import { useTheme } from '@/hooks/useTheme';
 
 const PROMPTS = [
   'Describe one specific moment today that made you smile - what exactly happened?',
@@ -65,6 +66,7 @@ export const ReflectionPrompt: React.FC<ReflectionPromptProps> = ({
   onPromptSelect,
   selectedPrompt,
 }) => {
+  const { colors, createThemedStyles } = useTheme();
   const [currentPrompt, setCurrentPrompt] = React.useState(
     () => PROMPTS[Math.floor(Math.random() * PROMPTS.length)]
   );
@@ -81,6 +83,43 @@ export const ReflectionPrompt: React.FC<ReflectionPromptProps> = ({
     onPromptSelect(currentPrompt);
   }, [currentPrompt]);
 
+  const styles = createThemedStyles(colors => ({
+    container: {
+      backgroundColor: colors.background,
+      padding: 16,
+      marginHorizontal: -8,
+      marginTop: -8,
+      marginBottom: 8,
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    content: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      justifyContent: 'space-between',
+      gap: 12,
+    },
+    promptText: {
+      flex: 1,
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+      lineHeight: getResponsiveSize(22),
+    },
+    refreshButton: {
+      padding: 4,
+    },
+    tapHint: {
+      fontSize: 12,
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+      marginBottom: 8,
+    },
+    selectedTapHint: {
+      color: colors.text,
+    },
+  }));
+
   return (
     <View style={[styles.container]}>
       <Text style={[styles.tapHint]}>Try this prompt?</Text>
@@ -94,46 +133,11 @@ export const ReflectionPrompt: React.FC<ReflectionPromptProps> = ({
             getNewPrompt();
           }}
           style={styles.refreshButton}>
-          <Ionicons name="refresh" size={24} color="#666666" />
+          <Ionicons name="refresh" size={24} color={colors.textSecondary} />
         </TouchableOpacity>
       </View>
     </View>
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#fafafa',
-    padding: 16,
-    marginHorizontal: -8,
-    marginTop: -8,
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  content: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  promptText: {
-    flex: 1,
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'MonaSans-Regular',
-    color: '#333333',
-    lineHeight: getResponsiveSize(22),
-  },
-  refreshButton: {
-    padding: 4,
-  },
-  tapHint: {
-    fontSize: 12,
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-    marginBottom: 8,
-  },
-  selectedTapHint: {
-    color: '#000000',
-  },
-});
+

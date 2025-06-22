@@ -2,6 +2,7 @@ import { TextInput, View, StyleSheet, TouchableOpacity, ActivityIndicator } from
 import React from 'react';
 import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { Ionicons } from '@expo/vector-icons';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function InputContainer({
   userResponse,
@@ -22,6 +23,7 @@ export default function InputContainer({
   onlyRecording?: boolean;
   placeholder?: string;
 }) {
+  const { colors, createThemedStyles } = useTheme();
   const processedResultsRef = React.useRef<Set<string>>(new Set());
   const { state, startRecognizing, stopRecognizing, resetState } = useVoiceRecognition();
 
@@ -55,6 +57,33 @@ export default function InputContainer({
     }
   }, [state.results]);
 
+  const styles = createThemedStyles(colors => ({
+    inputContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      padding: 8,
+      marginBottom: 16,
+      borderRadius: 12,
+    },
+    textInput: {
+      flex: 1,
+      fontSize: 16,
+      color: colors.text,
+      fontFamily: 'MonaSans-Medium',
+      paddingHorizontal: 16,
+      paddingVertical: 2,
+    },
+    micButton: {
+      borderRadius: 20,
+      padding: 12,
+      marginLeft: 8,
+    },
+  }));
+
   if (onlyRecording) {
     return (
       <TouchableOpacity
@@ -74,7 +103,7 @@ export default function InputContainer({
             processedResultsRef.current.clear();
           }
         }}>
-        <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={26} color="#000000" />
+        <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={26} color={colors.text} />
       </TouchableOpacity>
     );
   }
@@ -84,7 +113,7 @@ export default function InputContainer({
       <TextInput
         style={styles.textInput}
         placeholder={isRecording ? 'Listening...' : placeholder || 'Ask anything'}
-        placeholderTextColor="#A1887F"
+        placeholderTextColor={colors.textSecondary}
         onChangeText={setUserResponse}
         value={userResponse}
         multiline={true}
@@ -109,40 +138,13 @@ export default function InputContainer({
           }
         }}>
         {loading ? (
-          <ActivityIndicator size="small" color="#000000" />
+          <ActivityIndicator size="small" color={colors.text} />
         ) : userResponse ? (
-          <Ionicons name="send" size={26} color="#000000" />
+          <Ionicons name="send" size={26} color={colors.text} />
         ) : (
-          <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={26} color="#000000" />
+          <Ionicons name={isRecording ? 'mic' : 'mic-outline'} size={26} color={colors.text} />
         )}
       </TouchableOpacity>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    backgroundColor: '#FFFFFF',
-    padding: 8,
-    marginBottom: 16,
-    borderRadius: 12,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 16,
-    color: '#000000',
-    fontFamily: 'MonaSans-Medium',
-    paddingHorizontal: 16,
-    paddingVertical: 2,
-  },
-  micButton: {
-    borderRadius: 20,
-    padding: 12,
-    marginLeft: 8,
-  },
-});

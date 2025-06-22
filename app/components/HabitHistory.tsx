@@ -4,6 +4,7 @@ import { Calendar } from 'react-native-calendars';
 import { useHabitStore } from '@/app/store/habitStore';
 import type { Habit } from '@/utils/database';
 import { DateTime } from 'luxon';
+import { useTheme } from '@/hooks/useTheme';
 
 interface HabitHistoryProps {
   habit: Habit;
@@ -11,6 +12,7 @@ interface HabitHistoryProps {
 }
 
 export const HabitHistory: React.FC<HabitHistoryProps> = ({ habit }) => {
+  const { colors, createThemedStyles } = useTheme();
   const updateProgress = useHabitStore(state => state.updateHabitProgress);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -56,6 +58,14 @@ export const HabitHistory: React.FC<HabitHistoryProps> = ({ habit }) => {
     }
   };
 
+  const styles = createThemedStyles(colors => ({
+    container: {
+      backgroundColor: colors.surface,
+      borderRadius: 12,
+      overflow: 'hidden',
+    },
+  }));
+
   return (
     <View style={styles.container}>
       <Calendar
@@ -64,16 +74,16 @@ export const HabitHistory: React.FC<HabitHistoryProps> = ({ habit }) => {
         markedDates={markedDates}
         firstDay={1}
         theme={{
-          backgroundColor: '#ffffff',
-          calendarBackground: '#fafafa',
-          textSectionTitleColor: '#666666',
+          backgroundColor: colors.surface,
+          calendarBackground: colors.background,
+          textSectionTitleColor: colors.textSecondary,
           selectedDayBackgroundColor: habit.color,
-          selectedDayTextColor: '#ffffff',
-          todayTextColor: '#000000',
-          dayTextColor: '#000000',
-          textDisabledColor: '#d9e1e8',
+          selectedDayTextColor: colors.primaryText,
+          todayTextColor: colors.text,
+          dayTextColor: colors.text,
+          textDisabledColor: colors.textTertiary,
           dotColor: habit.color,
-          monthTextColor: '#000000',
+          monthTextColor: colors.text,
           textMonthFontFamily: 'MonaSans-Medium',
           textDayFontFamily: 'MonaSans-Regular',
           textDayHeaderFontFamily: 'MonaSans-Regular',
@@ -87,10 +97,4 @@ export const HabitHistory: React.FC<HabitHistoryProps> = ({ habit }) => {
   );
 };
 
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    overflow: 'hidden',
-  },
-}); 
+ 

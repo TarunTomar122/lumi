@@ -17,9 +17,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useReflectionStore } from '../store/reflectionStore';
 import { DateTime } from 'luxon';
 import { getResponsiveSize, getResponsiveHeight } from '../../utils/responsive';
+import { useTheme } from '@/hooks/useTheme';
 
 const ReflectionDetails = () => {
   const router = useRouter();
+  const { colors, createThemedStyles } = useTheme();
   const { id } = useLocalSearchParams();
   const reflections = useReflectionStore(state => state.reflections);
   const { updateReflection, deleteReflection } = useReflectionStore();
@@ -105,12 +107,117 @@ const ReflectionDetails = () => {
     debouncedSave(fullContent);
   };
 
+  const styles = createThemedStyles(colors => ({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: getResponsiveHeight(28),
+    },
+    container: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    errorText: {
+      fontSize: getResponsiveSize(18),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: getResponsiveSize(24),
+      paddingTop: getResponsiveHeight(20),
+      paddingBottom: getResponsiveSize(10),
+      borderBottomWidth: 1,
+      backgroundColor: colors.background,
+      borderBottomColor: colors.border,
+    },
+    headerLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: getResponsiveSize(12),
+    },
+    headerTitle: {
+      fontSize: getResponsiveSize(24),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+    },
+    headerButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: getResponsiveSize(12),
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: getResponsiveSize(12),
+    },
+    loader: {
+      marginRight: getResponsiveSize(4),
+    },
+    contentContainer: {
+      flex: 1,
+      paddingHorizontal: getResponsiveSize(20),
+      paddingTop: getResponsiveSize(12),
+    },
+    dateTitle: {
+      fontSize: getResponsiveSize(22),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+      marginBottom: getResponsiveSize(16),
+      paddingVertical: getResponsiveSize(8),
+    },
+    contentInput: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+      lineHeight: getResponsiveSize(24),
+      minHeight: getResponsiveHeight(200),
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+    },
+    bottomInfo: {
+      paddingHorizontal: getResponsiveSize(24),
+      paddingVertical: getResponsiveSize(16),
+      alignItems: 'center',
+    },
+    timestampText: {
+      fontSize: getResponsiveSize(12),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+    },
+    promptContainer: {
+      backgroundColor: colors.background,
+      padding: getResponsiveSize(16),
+      marginBottom: getResponsiveSize(20),
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    promptLabel: {
+      fontSize: getResponsiveSize(14),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.primary,
+      marginBottom: getResponsiveSize(8),
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    promptText: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+      lineHeight: getResponsiveSize(22),
+    },
+  }));
+
   if (!reflection) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-            <Ionicons name="arrow-back" size={getResponsiveSize(28)} color="#000000" />
+            <Ionicons name="arrow-back" size={getResponsiveSize(28)} color={colors.text} />
           </TouchableOpacity>
         </View>
         <View style={styles.container}>
@@ -122,13 +229,13 @@ const ReflectionDetails = () => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fafafa" />
+      <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.statusBarBackground} />
 
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-            <Ionicons name="arrow-back" size={getResponsiveSize(28)} color="#000000" />
+            <Ionicons name="arrow-back" size={getResponsiveSize(28)} color={colors.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>
             {' '}
@@ -136,9 +243,9 @@ const ReflectionDetails = () => {
           </Text>
         </View>
         <View style={styles.headerActions}>
-          {isLoading && <ActivityIndicator size="small" color="#666666" style={styles.loader} />}
+          {isLoading && <ActivityIndicator size="small" color={colors.textSecondary} style={styles.loader} />}
           <TouchableOpacity onPress={handleDelete} style={styles.headerButton}>
-            <Ionicons name="trash-outline" size={getResponsiveSize(28)} color="#000000" />
+            <Ionicons name="trash-outline" size={getResponsiveSize(28)} color={colors.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -165,7 +272,7 @@ const ReflectionDetails = () => {
           value={responseContent}
           onChangeText={handleTextChange}
           placeholder={prompt ? 'Your response...' : 'How was your day?'}
-          placeholderTextColor="#999999"
+          placeholderTextColor={colors.textTertiary}
           textAlignVertical="top"
           scrollEnabled={false}
         />
@@ -187,111 +294,5 @@ const ReflectionDetails = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fafafa',
-    paddingTop: getResponsiveHeight(28),
-  },
-  container: {
-    flex: 1,
-    padding: getResponsiveSize(24),
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  errorText: {
-    fontSize: getResponsiveSize(18),
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: getResponsiveSize(24),
-    paddingTop: getResponsiveHeight(20),
-    paddingBottom: getResponsiveSize(10),
-    borderBottomWidth: 1,
-    backgroundColor: '#fafafa',
-    borderBottomColor: '#E0E0E0',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: getResponsiveSize(12),
-  },
-  headerTitle: {
-    fontSize: getResponsiveSize(24),
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-  },
-  headerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: getResponsiveSize(12),
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: getResponsiveSize(12),
-  },
-  loader: {
-    marginRight: getResponsiveSize(4),
-  },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: getResponsiveSize(24),
-    paddingTop: getResponsiveSize(12),
-  },
-  dateTitle: {
-    fontSize: getResponsiveSize(22),
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    marginBottom: getResponsiveSize(16),
-    paddingVertical: getResponsiveSize(8),
-  },
-  contentInput: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-    lineHeight: getResponsiveSize(24),
-    minHeight: getResponsiveHeight(200),
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-  },
-  bottomInfo: {
-    paddingHorizontal: getResponsiveSize(24),
-    paddingVertical: getResponsiveSize(16),
-    alignItems: 'center',
-  },
-  timestampText: {
-    fontSize: getResponsiveSize(12),
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-  },
-  promptContainer: {
-    backgroundColor: '#fafafa',
-    padding: getResponsiveSize(16),
-    marginBottom: getResponsiveSize(20),
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  promptLabel: {
-    fontSize: getResponsiveSize(14),
-    fontFamily: 'MonaSans-Medium',
-    color: '#007AFF',
-    marginBottom: getResponsiveSize(8),
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  promptText: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'MonaSans-Regular',
-    color: '#333333',
-    lineHeight: getResponsiveSize(22),
-  },
-});
 
 export default ReflectionDetails;

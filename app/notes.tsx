@@ -17,9 +17,11 @@ import InputContainer from './components/inputContainer';
 import { useMessageStore } from './store/messageStore';
 import { clientTools } from '@/utils/tools';
 import { getResponsiveSize, getResponsiveHeight } from '../utils/responsive';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function Notes() {
   const router = useRouter();
+  const { colors, createThemedStyles } = useTheme();
   const [userResponse, setUserResponse] = React.useState('');
   const [isRecording, setIsRecording] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -27,11 +29,6 @@ export default function Notes() {
   const { tag } = useLocalSearchParams();
   const [filteredMemories, setFilteredMemories] = React.useState(memories);
   const [uniqueTags, setUniqueTags] = React.useState<string[]>([]);
-  const { messageHistory, updateMessageHistory, clearMessageHistory } = useMessageStore();
-  const [assistantResponse, setAssistantResponse] = React.useState('');
-  const [isThinking, setIsThinking] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(false);
-  const [activeContent, setActiveContent] = React.useState<string>('home');
 
   React.useEffect(() => {
     const tags = memories.map(memory => memory.tags).flat();
@@ -94,12 +91,173 @@ export default function Notes() {
     refreshMemories();
   };
 
+  const styles = createThemedStyles(colors => ({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: getResponsiveHeight(28),
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: getResponsiveSize(24),
+      paddingTop: getResponsiveHeight(20),
+      paddingBottom: getResponsiveSize(10),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: getResponsiveSize(12),
+    },
+    backText: {
+      fontSize: getResponsiveSize(24),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+      marginBottom: getResponsiveSize(3),
+    },
+    container: {
+      flex: 1,
+      padding: getResponsiveSize(24),
+    },
+    title: {
+      fontSize: getResponsiveSize(32),
+      fontFamily: 'MonaSans-Bold',
+      color: colors.text,
+    },
+    tagsList: {
+      paddingRight: getResponsiveSize(12),
+      maxHeight: getResponsiveSize(40),
+    },
+    tagContainer: {
+      marginTop: getResponsiveSize(2),
+      marginRight: getResponsiveSize(8),
+      paddingHorizontal: getResponsiveSize(12),
+      paddingVertical: getResponsiveSize(8),
+      borderRadius: getResponsiveSize(16),
+      backgroundColor: colors.divider,
+    },
+    activeTagContainer: {
+      backgroundColor: colors.primary,
+    },
+    noNotesContainer: {
+      flex: 1,
+      gap: getResponsiveSize(12),
+    },
+    noNotesText: {
+      fontSize: getResponsiveSize(18),
+    },
+    suggestionText: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'Roboto-Regular',
+      color: colors.text,
+    },
+    tag: {
+      fontSize: getResponsiveSize(16),
+      color: colors.text,
+      fontFamily: 'MonaSans-Regular',
+    },
+    notesList: {
+      flex: 1,
+    },
+    noteItem: {
+      paddingVertical: getResponsiveSize(16),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      marginBottom: getResponsiveSize(12),
+    },
+    noteTitle: {
+      fontSize: getResponsiveSize(20),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+      marginBottom: getResponsiveSize(4),
+    },
+    noteText: {
+      fontSize: getResponsiveSize(14),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+    },
+    emptyStateCard: {
+      backgroundColor: colors.card,
+      padding: getResponsiveSize(20),
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: getResponsiveSize(12),
+    },
+    emptyStateTitle: {
+      fontSize: getResponsiveSize(20),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+      marginBottom: getResponsiveSize(24),
+      textAlign: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      paddingBottom: getResponsiveSize(12),
+    },
+    emptyStateSubtitle: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'Roboto-Regular',
+      color: colors.textSecondary,
+      marginBottom: getResponsiveSize(20),
+      textAlign: 'center',
+      lineHeight: getResponsiveSize(22),
+    },
+    examplesContainer: {
+      gap: getResponsiveSize(16),
+      marginBottom: getResponsiveSize(20),
+    },
+    exampleItem: {
+      gap: getResponsiveSize(4),
+    },
+    exampleText: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+      fontStyle: 'italic',
+    },
+    exampleDescription: {
+      fontSize: getResponsiveSize(14),
+      fontFamily: 'Roboto-Regular',
+      color: colors.textTertiary,
+    },
+    emptyStateFooter: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+    proTipsContainer: {
+      marginTop: getResponsiveSize(20),
+      paddingTop: getResponsiveSize(16),
+      borderTopWidth: 1,
+      borderTopColor: colors.divider,
+    },
+    proTipsTitle: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+      marginBottom: getResponsiveSize(12),
+    },
+    tipItem: {
+      marginBottom: getResponsiveSize(8),
+    },
+    tipText: {
+      fontSize: getResponsiveSize(14),
+      fontFamily: 'Roboto-Regular',
+      color: colors.textSecondary,
+      lineHeight: getResponsiveSize(20),
+    },
+  }));
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={colors.statusBarStyle} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={getResponsiveSize(28)} color="#000000" />
+          <Ionicons name="arrow-back" size={getResponsiveSize(28)} color={colors.text} />
           <Text style={styles.backText}>Notes</Text>
         </TouchableOpacity>
       </View>
@@ -139,7 +297,7 @@ export default function Notes() {
                   });
                 }
               }}>
-              <Text style={styles.tag}>{currTag}</Text>
+              <Text style={[styles.tag, tag === currTag && { color: colors.primaryText }]}>{currTag}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -147,7 +305,7 @@ export default function Notes() {
           style={styles.notesList}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text} />
           }>
           {filteredMemories.map((note, index) => (
             <TouchableOpacity
@@ -179,164 +337,3 @@ export default function Notes() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fafafa',
-    paddingTop: getResponsiveHeight(28),
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: getResponsiveSize(24),
-    paddingTop: getResponsiveHeight(20),
-    paddingBottom: getResponsiveSize(10),
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: getResponsiveSize(12),
-  },
-  backText: {
-    fontSize: getResponsiveSize(24),
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    marginBottom: getResponsiveSize(3),
-  },
-  container: {
-    flex: 1,
-    padding: getResponsiveSize(24),
-  },
-  title: {
-    fontSize: getResponsiveSize(32),
-    fontFamily: 'MonaSans-Bold',
-    color: '#000000',
-  },
-  tagsList: {
-    paddingRight: getResponsiveSize(12),
-    maxHeight: getResponsiveSize(40),
-  },
-  tagContainer: {
-    marginTop: getResponsiveSize(2),
-    marginRight: getResponsiveSize(8),
-    paddingHorizontal: getResponsiveSize(12),
-    paddingVertical: getResponsiveSize(8),
-    borderRadius: getResponsiveSize(16),
-    backgroundColor: '#f0f0f0',
-  },
-  activeTagContainer: {
-    backgroundColor: '#FFF0F3',
-  },
-  noNotesContainer: {
-    flex: 1,
-    gap: getResponsiveSize(12),
-  },
-  noNotesText: {
-    fontSize: getResponsiveSize(18),
-  },
-  suggestionText: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'Roboto-Regular',
-    color: '#000000',
-  },
-  tag: {
-    fontSize: getResponsiveSize(16),
-    color: '#000000',
-    fontFamily: 'MonaSans-Regular',
-  },
-  notesList: {
-    flex: 1,
-  },
-  noteItem: {
-    paddingVertical: getResponsiveSize(16),
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    marginBottom: getResponsiveSize(12),
-  },
-  noteTitle: {
-    fontSize: getResponsiveSize(20),
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-    marginBottom: getResponsiveSize(4),
-  },
-  noteText: {
-    fontSize: getResponsiveSize(14),
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-  },
-  emptyStateCard: {
-    backgroundColor: '#FFFFFF',
-    padding: getResponsiveSize(20),
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: getResponsiveSize(12),
-  },
-  emptyStateTitle: {
-    fontSize: getResponsiveSize(20),
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    marginBottom: getResponsiveSize(24),
-    textAlign: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    paddingBottom: getResponsiveSize(12),
-  },
-  emptyStateSubtitle: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'Roboto-Regular',
-    color: '#666666',
-    marginBottom: getResponsiveSize(20),
-    textAlign: 'center',
-    lineHeight: getResponsiveSize(22),
-  },
-  examplesContainer: {
-    gap: getResponsiveSize(16),
-    marginBottom: getResponsiveSize(20),
-  },
-  exampleItem: {
-    gap: getResponsiveSize(4),
-  },
-  exampleText: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-    fontStyle: 'italic',
-  },
-  exampleDescription: {
-    fontSize: getResponsiveSize(14),
-    fontFamily: 'Roboto-Regular',
-    color: '#999999',
-  },
-  emptyStateFooter: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-    textAlign: 'center',
-  },
-  proTipsContainer: {
-    marginTop: getResponsiveSize(20),
-    paddingTop: getResponsiveSize(16),
-    borderTopWidth: 1,
-    borderTopColor: '#F0F0F0',
-  },
-  proTipsTitle: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    marginBottom: getResponsiveSize(12),
-  },
-  tipItem: {
-    marginBottom: getResponsiveSize(8),
-  },
-  tipText: {
-    fontSize: getResponsiveSize(14),
-    fontFamily: 'Roboto-Regular',
-    color: '#666666',
-    lineHeight: getResponsiveSize(20),
-  },
-});

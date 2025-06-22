@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { useTheme } from '@/hooks/useTheme';
 
 interface AppUsage {
   appName: string;
@@ -25,7 +26,87 @@ const formatAppName = (name: string) => {
 };
 
 export const UsageChart: React.FC<UsageChartProps> = ({ usageData }) => {
+  const { colors, createThemedStyles } = useTheme();
   const totalTime = usageData.reduce((sum, app) => sum + app.totalTimeInForeground, 0);
+
+  const styles = createThemedStyles((colors) => ({
+    container: {
+      padding: 20,
+      backgroundColor: colors.card,
+      marginVertical: 12,
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: 50,
+      borderRadius: 6,
+    },
+    title: {
+      fontSize: 20,
+      fontFamily: 'MonaSans-SemiBold',
+      color: colors.text,
+    },
+    subtitle: {
+      fontSize: 12,
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+      marginBottom: 20,
+    },
+    barContainer: {
+      marginBottom: 16,
+    },
+    barHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: 8,
+    },
+    appName: {
+      fontSize: 15,
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+      flex: 1,
+      marginRight: 12,
+    },
+    timeContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    percentage: {
+      fontSize: 14,
+      fontFamily: 'MonaSans-Medium',
+      color: colors.textSecondary,
+    },
+    time: {
+      fontSize: 14,
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+    },
+    barWrapper: {
+      height: 12,
+      backgroundColor: colors.divider,
+      borderRadius: 6,
+      overflow: 'hidden',
+    },
+    bar: {
+      height: '100%',
+      borderRadius: 6,
+      position: 'relative',
+    },
+    barGlow: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    },
+    totalTime: {
+      fontSize: 14,
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+      marginTop: 8,
+    },
+  }));
 
   return (
     <View style={styles.container}>
@@ -63,82 +144,3 @@ export const UsageChart: React.FC<UsageChartProps> = ({ usageData }) => {
     </View>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#ffffff',
-    marginVertical: 12,
-    borderWidth: 1,
-    borderColor: '#E8E8E8',
-    marginBottom: 50,
-    borderRadius: 6,
-  },
-  title: {
-    fontSize: 20,
-    fontFamily: 'MonaSans-SemiBold',
-    color: '#1A1A1A',
-  },
-  subtitle: {
-    fontSize: 12,
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-    marginBottom: 20,
-  },
-  barContainer: {
-    marginBottom: 16,
-  },
-  barHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  appName: {
-    fontSize: 15,
-    fontFamily: 'MonaSans-Medium',
-    color: '#333333',
-    flex: 1,
-    marginRight: 12,
-  },
-  timeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  percentage: {
-    fontSize: 14,
-    fontFamily: 'MonaSans-Medium',
-    color: '#666666',
-  },
-  time: {
-    fontSize: 14,
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-  },
-  barWrapper: {
-    height: 12,
-    backgroundColor: '#F5F5F5',
-    borderRadius: 6,
-    overflow: 'hidden',
-  },
-  bar: {
-    height: '100%',
-    borderRadius: 6,
-    position: 'relative',
-  },
-  barGlow: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  totalTime: {
-    fontSize: 14,
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-    marginTop: 8,
-  },
-});

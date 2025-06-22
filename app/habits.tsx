@@ -24,6 +24,7 @@ import { HabitHistory } from './components/HabitHistory';
 import type { Habit } from '@/utils/database';
 import { DateTime } from 'luxon';
 import { getResponsiveSize, getResponsiveHeight } from '../utils/responsive';
+import { useTheme } from '@/hooks/useTheme';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android') {
@@ -34,6 +35,7 @@ if (Platform.OS === 'android') {
 
 export default function Habits() {
   const router = useRouter();
+  const { colors, createThemedStyles } = useTheme();
   const [refreshing, setRefreshing] = React.useState(false);
   const [expandedHabitId, setExpandedHabitId] = React.useState<number | null>(null);
   const [isAddingHabit, setIsAddingHabit] = React.useState(false);
@@ -88,7 +90,7 @@ export default function Habits() {
               style={[
                 styles.circle,
                 progress[index] && { backgroundColor: habit.color },
-                !progress[index] && { backgroundColor: '#fafafa' }, // Light pink background for non-completed days
+                !progress[index] && { backgroundColor: colors.background }, // Light pink background for non-completed days
               ]}
             />
           </View>
@@ -142,12 +144,139 @@ export default function Habits() {
     );
   };
 
+  const styles = createThemedStyles(colors => ({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: getResponsiveHeight(28),
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: getResponsiveSize(24),
+      paddingTop: getResponsiveHeight(20),
+      paddingBottom: getResponsiveSize(10),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: getResponsiveSize(12),
+    },
+    backText: {
+      fontSize: getResponsiveSize(24),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+      marginBottom: getResponsiveSize(3),
+    },
+    container: {
+      flex: 1,
+      paddingHorizontal: getResponsiveSize(20),
+      paddingTop: getResponsiveSize(24),
+    },
+    habitsList: {
+      flex: 1,
+    },
+    habitItem: {
+      marginBottom: getResponsiveSize(24),
+      padding: getResponsiveSize(16),
+      borderWidth: 1,
+      borderColor: colors.border,
+      borderRadius: getResponsiveSize(6),
+    },
+    habitHeader: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: getResponsiveSize(24),
+    },
+    habitHeaderActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: getResponsiveSize(12),
+    },
+    habitHeaderContent: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: getResponsiveSize(12),
+    },
+    habitTitle: {
+      fontSize: getResponsiveSize(24),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+    },
+    progressContainer: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      padding: getResponsiveSize(2),
+    },
+    dayColumn: {
+      alignItems: 'center',
+    },
+    dayLabel: {
+      fontSize: getResponsiveSize(12),
+      color: colors.textSecondary,
+      marginBottom: getResponsiveSize(4),
+    },
+    circle: {
+      width: getResponsiveSize(36),
+      height: getResponsiveSize(36),
+      borderRadius: getResponsiveSize(20),
+      borderWidth: 1,
+      borderColor: colors.border,
+    },
+    habitHistoryContainer: {
+      marginTop: getResponsiveSize(16),
+    },
+    addHabitContainer: {
+      marginTop: 0,
+      alignItems: 'center',
+      opacity: 0.4,
+    },
+    addHabitButton: {
+      padding: getResponsiveSize(12),
+    },
+    addHabitInputContainer: {
+      width: '100%',
+      padding: getResponsiveSize(24),
+      borderWidth: 1,
+      borderColor: colors.border,
+      backgroundColor: colors.card,
+      borderRadius: getResponsiveSize(12),
+      marginBottom: getResponsiveSize(24),
+    },
+    addHabitInput: {
+      fontSize: getResponsiveSize(18),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+    },
+    deleteButton: {
+      padding: getResponsiveSize(4),
+      alignItems: 'flex-end',
+      marginBottom: getResponsiveSize(-4),
+    },
+    noHabitsContainer: {
+      flex: 1,
+      alignItems: 'center',
+      marginTop: getResponsiveHeight(100),
+      marginBottom: getResponsiveSize(24),
+    },
+    noHabitsText: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+    },
+  }));
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+      <StatusBar barStyle={colors.statusBarStyle} />
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={getResponsiveSize(28)} color="#000000" />
+          <Ionicons name="arrow-back" size={getResponsiveSize(28)} color={colors.text} />
           <Text style={styles.backText}>Habits</Text>
         </TouchableOpacity>
       </View>
@@ -160,7 +289,7 @@ export default function Habits() {
           style={styles.habitsList}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.text} />
           }>
 
           {habits.length === 0 && (
@@ -180,14 +309,14 @@ export default function Habits() {
                   <TouchableOpacity
                     onPress={() => habit.id && handleDeleteHabit(habit.id, habit.title)}
                     style={styles.deleteButton}>
-                    <Ionicons name="trash-outline" size={getResponsiveSize(20)} color="#000000" />
+                    <Ionicons name="trash-outline" size={getResponsiveSize(20)} color={colors.text} />
                   </TouchableOpacity>
                 </View>
                 <View style={styles.habitHeaderActions}>
                   <Ionicons
                     name={expandedHabitId === habit.id ? 'chevron-up' : 'chevron-down'}
                     size={getResponsiveSize(24)}
-                    color="#000000"
+                    color={colors.text}
                   />
                 </View>
               </TouchableOpacity>
@@ -209,6 +338,7 @@ export default function Habits() {
                   style={styles.addHabitInput}
                   value={newHabitTitle}
                   onChangeText={setNewHabitTitle}
+                  placeholderTextColor={colors.textTertiary}
                   placeholder="Reading..."
                   autoFocus
                   onBlur={() => setIsAddingHabit(false)}
@@ -225,7 +355,7 @@ export default function Habits() {
               <TouchableOpacity
                 style={styles.addHabitButton}
                 onPress={handleAddHabitPress}>
-                <Ionicons name="add-circle-outline" size={getResponsiveSize(32)} color="#000000" />
+                <Ionicons name="add-circle-outline" size={getResponsiveSize(32)} color={colors.text} />
               </TouchableOpacity>
             )}
           </View>
@@ -234,130 +364,3 @@ export default function Habits() {
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fafafa',
-    paddingTop: getResponsiveHeight(28),
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: getResponsiveSize(24),
-    paddingTop: getResponsiveHeight(20),
-    paddingBottom: getResponsiveSize(10),
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: getResponsiveSize(12),
-  },
-  backText: {
-    fontSize: getResponsiveSize(24),
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    marginBottom: getResponsiveSize(3),
-  },
-  container: {
-    flex: 1,
-    paddingHorizontal: getResponsiveSize(20),
-    paddingTop: getResponsiveSize(24),
-  },
-  habitsList: {
-    flex: 1,
-  },
-  habitItem: {
-    marginBottom: getResponsiveSize(24),
-    padding: getResponsiveSize(16),
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    borderRadius: getResponsiveSize(6),
-  },
-  habitHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: getResponsiveSize(24),
-  },
-  habitHeaderActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: getResponsiveSize(12),
-  },
-  habitHeaderContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: getResponsiveSize(12),
-  },
-  habitTitle: {
-    fontSize: getResponsiveSize(24),
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-  },
-  progressContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    padding: getResponsiveSize(2),
-  },
-  dayColumn: {
-    alignItems: 'center',
-  },
-  dayLabel: {
-    fontSize: getResponsiveSize(12),
-    color: '#666',
-    marginBottom: getResponsiveSize(4),
-  },
-  circle: {
-    width: getResponsiveSize(36),
-    height: getResponsiveSize(36),
-    borderRadius: getResponsiveSize(20),
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  habitHistoryContainer: {
-    marginTop: getResponsiveSize(16),
-  },
-  addHabitContainer: {
-    marginTop: 0,
-    alignItems: 'center',
-    opacity: 0.4,
-  },
-  addHabitButton: {
-    padding: getResponsiveSize(12),
-  },
-  addHabitInputContainer: {
-    width: '100%',
-    padding: getResponsiveSize(24),
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    backgroundColor: '#ffffff',
-    borderRadius: getResponsiveSize(12),
-    marginBottom: getResponsiveSize(24),
-  },
-  addHabitInput: {
-    fontSize: getResponsiveSize(18),
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-  },
-  deleteButton: {
-    padding: getResponsiveSize(4),
-    alignItems: 'flex-end',
-    marginBottom: getResponsiveSize(-4),
-  },
-  noHabitsContainer: {
-    flex: 1,
-    alignItems: 'center',
-    marginTop: getResponsiveHeight(100),
-    marginBottom: getResponsiveSize(24),
-  },
-  noHabitsText: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-  },
-});

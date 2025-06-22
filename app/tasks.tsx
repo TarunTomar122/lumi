@@ -24,15 +24,23 @@ import { DateTime } from 'luxon';
 import { clientTools } from '@/utils/tools';
 import { parseTaskInput } from '@/utils/taskParser';
 import { Gesture, GestureDetector, GestureHandlerRootView } from 'react-native-gesture-handler';
-import Animated, { useSharedValue, useAnimatedStyle, withTiming, withSpring, runOnJS } from 'react-native-reanimated';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withTiming,
+  withSpring,
+  runOnJS,
+} from 'react-native-reanimated';
 import { getResponsiveSize, getResponsiveHeight } from '../utils/responsive';
+import { useTheme } from '@/hooks/useTheme';
 
 const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoComplete }: any) => {
+  const { colors } = useTheme();
   const translateX = useSharedValue(0);
   const itemHeight = useSharedValue(0);
   const itemOpacity = useSharedValue(1);
   const screenWidth = Dimensions.get('window').width;
-  
+
   const DELETE_THRESHOLD = 0.3; // 30% of screen width to trigger delete
   const REVEAL_THRESHOLD = 0.15; // 15% of screen width to reveal delete button
 
@@ -47,33 +55,33 @@ const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoCom
         // Wait a bit, then swipe right
         await new Promise(resolve => setTimeout(resolve, 500));
         translateX.value = withTiming(screenWidth * REVEAL_THRESHOLD, { duration: 800 });
-        
+
         // Hold for a moment
         await new Promise(resolve => setTimeout(resolve, 1500));
-        
+
         // Swipe back
         translateX.value = withSpring(0, { duration: 600 });
-        
+
         // Wait for animation to complete, then notify parent
         await new Promise(resolve => setTimeout(resolve, 800));
         if (onDemoComplete) {
           runOnJS(onDemoComplete)();
         }
       };
-      
+
       demoSequence();
     }
   }, [isDemo]);
 
   const pan = Gesture.Pan()
     .activeOffsetX([-10, 10])
-    .onChange((event) => {
+    .onChange(event => {
       // Only allow swiping right (positive values)
       if (event.translationX > 0) {
         translateX.value = event.translationX;
       }
     })
-    .onFinalize((event) => {
+    .onFinalize(event => {
       const swipeDistance = Math.abs(event.translationX);
       const deleteThreshold = screenWidth * DELETE_THRESHOLD;
       const revealThreshold = screenWidth * REVEAL_THRESHOLD;
@@ -107,33 +115,94 @@ const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoCom
     opacity: translateX.value > screenWidth * REVEAL_THRESHOLD * 0.5 ? 1 : 0,
   }));
 
+  const itemStyles = StyleSheet.create({
+    swipeContainer: {
+      position: 'relative',
+      marginBottom: getResponsiveSize(12),
+    },
+    deleteBackground: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      backgroundColor: colors.divider,
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: '100%',
+    },
+    deleteButtonTouchable: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'flex-start',
+      width: '100%',
+      paddingLeft: getResponsiveSize(24),
+    },
+    taskItem: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingVertical: getResponsiveSize(12),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      gap: getResponsiveSize(12),
+      marginBottom: getResponsiveSize(12),
+    },
+    taskContent: {
+      flex: 1,
+    },
+    taskText: {
+      fontSize: getResponsiveSize(20),
+      fontFamily: 'MonaSans-Regular',
+      color: task.status === 'done' ? colors.textSecondary : colors.text,
+      marginBottom: getResponsiveSize(4),
+      textDecorationLine: task.status === 'done' ? 'line-through' : 'none',
+    },
+    taskDate: {
+      fontSize: getResponsiveSize(14),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+    },
+    taskCheckbox: {
+      width: getResponsiveSize(28),
+      height: getResponsiveSize(28),
+      borderRadius: getResponsiveSize(4),
+      borderWidth: 1,
+      borderColor: colors.text,
+      marginTop: getResponsiveSize(4),
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: task.status === 'done' ? colors.text : 'transparent',
+    },
+  });
+
   return (
     <Animated.View style={containerStyle}>
-      <View style={styles.swipeContainer}>
+      <View style={itemStyles.swipeContainer}>
         {/* Delete button background */}
-        <Animated.View style={[styles.deleteBackground, deleteButtonStyle]}>
-                      <TouchableOpacity
-              style={styles.deleteButtonTouchable}
-              onPress={handleDelete}>
-              <Ionicons name="trash-outline" size={getResponsiveSize(24)} color="#OOOOOO" />
-            </TouchableOpacity>
+        <Animated.View style={[itemStyles.deleteBackground, deleteButtonStyle]}>
+          <TouchableOpacity style={itemStyles.deleteButtonTouchable} onPress={handleDelete}>
+            <Ionicons name="trash-outline" size={getResponsiveSize(24)} color={colors.text} />
+          </TouchableOpacity>
         </Animated.View>
 
         {/* Main task item */}
         <GestureDetector gesture={pan}>
-          <Animated.View style={[styles.taskItem, animatedStyle]}>
-            <View style={styles.taskContent}>
-              <Text style={[styles.taskText, task.status === 'done' && styles.taskTextCompleted]}>
-                {task.title}
-              </Text>
-              <Text style={styles.taskDate}>
+          <Animated.View style={[itemStyles.taskItem, animatedStyle]}>
+            <View style={itemStyles.taskContent}>
+              <Text style={itemStyles.taskText}>{task.title}</Text>
+              <Text style={itemStyles.taskDate}>
                 {formatDate(task.due_date || task.reminder_date || '')}
               </Text>
             </View>
             <TouchableOpacity
-              style={[styles.taskCheckbox, task.status === 'done' && styles.taskCheckboxChecked]}
+              style={itemStyles.taskCheckbox}
               onPress={() => onToggle(task.id, task.status)}>
-              {task.status === 'done' && <Ionicons name="checkmark" size={getResponsiveSize(20)} color="#FFFFFF" />}
+              {task.status === 'done' && (
+                <Ionicons
+                  name="checkmark"
+                  size={getResponsiveSize(20)}
+                  color={colors.primaryText}
+                />
+              )}
             </TouchableOpacity>
           </Animated.View>
         </GestureDetector>
@@ -144,6 +213,7 @@ const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoCom
 
 export default function Tasks() {
   const router = useRouter();
+  const { colors, createThemedStyles } = useTheme();
   const [userResponse, setUserResponse] = React.useState('');
   const [isRecording, setIsRecording] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
@@ -170,12 +240,12 @@ export default function Tasks() {
         let groupKey = 'No Date';
 
         if (taskDateStr) {
-          const taskDate = DateTime.fromISO(taskDateStr)
-            .setZone('Asia/Kolkata')
-            .startOf('day');
+          const taskDate = DateTime.fromISO(taskDateStr).setZone('Asia/Kolkata').startOf('day');
           const diffDays = Math.floor(taskDate.diff(today, 'days').days);
 
-          if (diffDays === 0) {
+          if (diffDays < 0) {
+            groupKey = 'Overdue';
+          } else if (diffDays === 0) {
             groupKey = 'Today';
           } else if (diffDays === 1) {
             groupKey = 'Tomorrow';
@@ -233,7 +303,7 @@ export default function Tasks() {
       const timer = setTimeout(() => {
         setShowDemo(true);
       }, 1500); // Wait 1.5 seconds before showing demo
-      
+
       return () => clearTimeout(timer);
     }
   }, [tasks.length, demoCount, showDemo]);
@@ -249,7 +319,7 @@ export default function Tasks() {
     setRefreshing(false);
   }, []);
 
-    const handleSubmit = async () => {
+  const handleSubmit = async () => {
     if (!userResponse.trim()) return; // Don't create task if no input
 
     try {
@@ -260,7 +330,7 @@ export default function Tasks() {
       await clientTools.addTask(taskData);
       await refreshTasks();
       setShouldRegroup(true); // Trigger regrouping when new task is added
-      
+
       // Clear the input
       setUserResponse('');
     } catch (error) {
@@ -288,13 +358,204 @@ export default function Tasks() {
     }
   };
 
+  const styles = createThemedStyles(colors => ({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: getResponsiveHeight(28),
+    },
+    container: {
+      flex: 1,
+      padding: getResponsiveSize(24),
+    },
+    noTasksContainer: {
+      flex: 1,
+      gap: getResponsiveSize(12),
+    },
+    noTasksText: {
+      fontSize: getResponsiveSize(18),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+      marginBottom: getResponsiveSize(4),
+    },
+    suggestionText: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'Roboto-Regular',
+      color: colors.text,
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: getResponsiveSize(24),
+      paddingTop: getResponsiveHeight(20),
+      paddingBottom: getResponsiveSize(10),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+    },
+    backButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: getResponsiveSize(12),
+    },
+    backText: {
+      fontSize: getResponsiveSize(24),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+      marginBottom: getResponsiveSize(3),
+    },
+    title: {
+      fontSize: getResponsiveSize(32),
+      fontFamily: 'MonaSans-Bold',
+      color: colors.text,
+    },
+    taskList: {
+      flex: 1,
+      paddingRight: getResponsiveSize(8),
+    },
+    taskItem: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingVertical: getResponsiveSize(12),
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      gap: getResponsiveSize(12),
+      marginBottom: getResponsiveSize(12),
+    },
+    taskCheckbox: {
+      width: getResponsiveSize(28),
+      height: getResponsiveSize(28),
+      borderRadius: getResponsiveSize(4),
+      borderWidth: 1,
+      borderColor: colors.text,
+      marginTop: getResponsiveSize(4),
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    taskCheckboxChecked: {
+      backgroundColor: colors.text,
+    },
+    taskContent: {
+      flex: 1,
+    },
+    taskText: {
+      fontSize: getResponsiveSize(20),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+      marginBottom: getResponsiveSize(4),
+    },
+    taskTextCompleted: {
+      textDecorationLine: 'line-through',
+      color: colors.textSecondary,
+    },
+    taskDate: {
+      fontSize: getResponsiveSize(14),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+    },
+    inputContainer: {
+      paddingHorizontal: getResponsiveSize(24),
+      marginBottom: getResponsiveSize(24),
+    },
+    sectionHeader: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.textSecondary,
+      marginTop: getResponsiveSize(24),
+      marginBottom: getResponsiveSize(12),
+      textTransform: 'uppercase',
+      letterSpacing: 0.5,
+    },
+    firstSectionHeader: {
+      marginTop: 0,
+    },
+    swipeContainer: {
+      position: 'relative',
+      marginBottom: getResponsiveSize(12),
+    },
+    deleteBackground: {
+      position: 'absolute',
+      left: 0,
+      top: 0,
+      bottom: 0,
+      backgroundColor: colors.divider,
+      justifyContent: 'center',
+      alignItems: 'center',
+      width: '100%',
+    },
+    deleteButtonTouchable: {
+      flex: 1,
+      justifyContent: 'center',
+      alignItems: 'flex-start',
+      width: '100%',
+      paddingLeft: getResponsiveSize(24),
+    },
+    emptyStateCard: {
+      backgroundColor: colors.card,
+      padding: getResponsiveSize(20),
+      borderWidth: 1,
+      borderColor: colors.border,
+      shadowColor: colors.text,
+      shadowOffset: {
+        width: 0,
+        height: 2,
+      },
+      shadowOpacity: 0.1,
+      shadowRadius: 4,
+      elevation: 3,
+    },
+    emptyStateTitle: {
+      fontSize: getResponsiveSize(20),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+      marginBottom: getResponsiveSize(24),
+      textAlign: 'center',
+      borderBottomWidth: 1,
+      borderBottomColor: colors.border,
+      paddingBottom: getResponsiveSize(12),
+    },
+    emptyStateSubtitle: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'Roboto-Regular',
+      color: colors.textSecondary,
+      marginBottom: getResponsiveSize(20),
+      textAlign: 'center',
+      lineHeight: getResponsiveSize(22),
+    },
+    examplesContainer: {
+      gap: getResponsiveSize(16),
+      marginBottom: getResponsiveSize(20),
+    },
+    exampleItem: {
+      gap: getResponsiveSize(4),
+    },
+    exampleText: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+      fontStyle: 'italic',
+    },
+    exampleDescription: {
+      fontSize: getResponsiveSize(14),
+      fontFamily: 'Roboto-Regular',
+      color: colors.textTertiary,
+    },
+    emptyStateFooter: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+      textAlign: 'center',
+    },
+  }));
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="dark-content" />
+        <StatusBar barStyle={colors.statusBarStyle} />
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={getResponsiveSize(28)} color="#000000" />
+            <Ionicons name="arrow-back" size={getResponsiveSize(28)} color={colors.text} />
             <Text style={styles.backText}>Tasks</Text>
           </TouchableOpacity>
         </View>
@@ -335,17 +596,23 @@ export default function Tasks() {
               style={styles.taskList}
               showsVerticalScrollIndicator={false}
               refreshControl={
-                <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#000000" />
+                <RefreshControl
+                  refreshing={refreshing}
+                  onRefresh={onRefresh}
+                  tintColor={colors.text}
+                />
               }>
-                            {(() => {
+              {(() => {
                 // Use the grouped tasks from state
                 const today = DateTime.now().setZone('Asia/Kolkata').startOf('day');
 
                 // Create a map of section keys to their actual dates for proper sorting
                 const sectionDates: { [key: string]: DateTime | null } = {};
-                
+
                 Object.keys(groupedTasks).forEach(sectionKey => {
-                  if (sectionKey === 'Today') {
+                  if (sectionKey === 'Overdue') {
+                    sectionDates[sectionKey] = today.minus({ days: 1000 }); // Will be sorted first
+                  } else if (sectionKey === 'Today') {
                     sectionDates[sectionKey] = today;
                   } else if (sectionKey === 'Tomorrow') {
                     sectionDates[sectionKey] = today.plus({ days: 1 });
@@ -357,7 +624,9 @@ export default function Tasks() {
                     if (firstTask) {
                       const taskDateStr = firstTask.due_date || firstTask.reminder_date;
                       if (taskDateStr) {
-                        sectionDates[sectionKey] = DateTime.fromISO(taskDateStr).setZone('Asia/Kolkata').startOf('day');
+                        sectionDates[sectionKey] = DateTime.fromISO(taskDateStr)
+                          .setZone('Asia/Kolkata')
+                          .startOf('day');
                       } else {
                         sectionDates[sectionKey] = null;
                       }
@@ -412,9 +681,7 @@ export default function Tasks() {
                 ));
               })()}
             </ScrollView>
-            
 
-            
             <InputContainer
               userResponse={userResponse}
               setUserResponse={setUserResponse}
@@ -431,195 +698,3 @@ export default function Tasks() {
     </GestureHandlerRootView>
   );
 }
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fafafa',
-    paddingTop: getResponsiveHeight(28),
-  },
-  container: {
-    flex: 1,
-    padding: getResponsiveSize(24),
-  },
-  noTasksContainer: {
-    flex: 1,
-    gap: getResponsiveSize(12),
-  },
-  noTasksText: {
-    fontSize: getResponsiveSize(18),
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-    marginBottom: getResponsiveSize(4),
-  },
-  suggestionText: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'Roboto-Regular',
-    color: '#000000',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: getResponsiveSize(24),
-    paddingTop: getResponsiveHeight(20),
-    paddingBottom: getResponsiveSize(10),
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: getResponsiveSize(12),
-  },
-  backText: {
-    fontSize: getResponsiveSize(24),
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    marginBottom: getResponsiveSize(3),
-  },
-  title: {
-    fontSize: getResponsiveSize(32),
-    fontFamily: 'MonaSans-Bold',
-    color: '#000000',
-  },
-  taskList: {
-    flex: 1,
-    paddingRight: getResponsiveSize(8),
-  },
-  taskItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: getResponsiveSize(12),
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    gap: getResponsiveSize(12),
-    marginBottom: getResponsiveSize(12),
-  },
-  taskCheckbox: {
-    width: getResponsiveSize(28),
-    height: getResponsiveSize(28),
-    borderRadius: getResponsiveSize(4),
-    borderWidth: 1,
-    borderColor: '#000000',
-    marginTop: getResponsiveSize(4),
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  taskCheckboxChecked: {
-    backgroundColor: '#000000',
-  },
-  taskContent: {
-    flex: 1,
-  },
-  taskText: {
-    fontSize: getResponsiveSize(20),
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-    marginBottom: getResponsiveSize(4),
-  },
-  taskTextCompleted: {
-    textDecorationLine: 'line-through',
-    color: '#666666',
-  },
-  taskDate: {
-    fontSize: getResponsiveSize(14),
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-  },
-  inputContainer: {
-    paddingHorizontal: getResponsiveSize(24),
-    marginBottom: getResponsiveSize(24),
-  },
-  sectionHeader: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'MonaSans-Medium',
-    color: '#666666',
-    marginTop: getResponsiveSize(24),
-    marginBottom: getResponsiveSize(12),
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  firstSectionHeader: {
-    marginTop: 0,
-  },
-  swipeContainer: {
-    position: 'relative',
-    marginBottom: getResponsiveSize(12),
-  },
-  deleteBackground: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    bottom: 0,
-    backgroundColor: '#E5E5E5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-  },
-  deleteButtonTouchable: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
-    width: '100%',
-    paddingLeft: getResponsiveSize(24),
-  },
-  emptyStateCard: {
-    backgroundColor: '#FFFFFF',
-    padding: getResponsiveSize(20),
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  emptyStateTitle: {
-    fontSize: getResponsiveSize(20),
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    marginBottom: getResponsiveSize(24),
-    textAlign: 'center',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    paddingBottom: getResponsiveSize(12),
-  },
-  emptyStateSubtitle: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'Roboto-Regular',
-    color: '#666666',
-    marginBottom: getResponsiveSize(20),
-    textAlign: 'center',
-    lineHeight: getResponsiveSize(22),
-  },
-  examplesContainer: {
-    gap: getResponsiveSize(16),
-    marginBottom: getResponsiveSize(20),
-  },
-  exampleItem: {
-    gap: getResponsiveSize(4),
-  },
-  exampleText: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-    fontStyle: 'italic',
-  },
-  exampleDescription: {
-    fontSize: getResponsiveSize(14),
-    fontFamily: 'Roboto-Regular',
-    color: '#999999',
-  },
-  emptyStateFooter: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-    textAlign: 'center',
-  },
-
-});

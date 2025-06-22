@@ -20,9 +20,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useMemoryStore } from './store/memoryStore';
 import { getResponsiveSize, getResponsiveHeight } from '../utils/responsive';
+import { useTheme } from '@/hooks/useTheme';
 
 const DetailsPage = () => {
   const router = useRouter();
+  const { colors, createThemedStyles } = useTheme();
   const { item: itemString } = useLocalSearchParams();
   const item = JSON.parse(itemString as string);
   const [isLoading, setIsLoading] = React.useState<boolean>(false);
@@ -106,20 +108,101 @@ const DetailsPage = () => {
     debouncedSave(title, text, tags);
   };
 
+  const styles = createThemedStyles(colors => ({
+    safeArea: {
+      flex: 1,
+      backgroundColor: colors.background,
+      paddingTop: getResponsiveHeight(28),
+    },
+    header: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: getResponsiveSize(24),
+      paddingTop: getResponsiveHeight(20),
+      paddingBottom: getResponsiveSize(10),
+      borderBottomWidth: 1,
+      backgroundColor: colors.background,
+      borderBottomColor: colors.border,
+    },
+    headerButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'flex-start',
+      gap: getResponsiveSize(12),
+    },
+    headerActions: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: getResponsiveSize(12),
+    },
+    loader: {
+      marginRight: getResponsiveSize(4),
+    },
+    contentContainer: {
+      flex: 1,
+      paddingHorizontal: getResponsiveSize(20),
+      paddingTop: getResponsiveSize(12),
+    },
+    scrollContentContainer: {
+      paddingBottom: getResponsiveSize(120),
+    },
+    titleInput: {
+      fontSize: getResponsiveSize(22),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+      paddingVertical: getResponsiveSize(8),
+      paddingHorizontal: 0,
+    },
+    tagsInput: {
+      fontSize: getResponsiveSize(14),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+      paddingHorizontal: 0,
+      paddingVertical: getResponsiveSize(8),
+      borderBottomWidth: 1,
+      borderColor: colors.border,
+      marginBottom: getResponsiveSize(18),
+    },
+    contentInput: {
+      fontSize: getResponsiveSize(16),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+      lineHeight: getResponsiveSize(24),
+      minHeight: getResponsiveHeight(200),
+      paddingVertical: 0,
+      paddingHorizontal: 0,
+      marginBottom: getResponsiveSize(32),
+    },
+    bottomInfo: {
+      paddingHorizontal: getResponsiveSize(24),
+      paddingVertical: getResponsiveSize(16),
+      alignItems: 'center',
+    },
+    timestampText: {
+      fontSize: getResponsiveSize(12),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+    },
+    keyboardAvoidingView: {
+      flex: 1,
+    },
+  }));
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fafafa" />
+      <StatusBar barStyle={colors.statusBarStyle} backgroundColor={colors.statusBarBackground} />
 
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.headerButton}>
-          <Ionicons name="arrow-back" size={getResponsiveSize(28)} color="#000000" />
+          <Ionicons name="arrow-back" size={getResponsiveSize(28)} color={colors.text} />
         </TouchableOpacity>
 
         <View style={styles.headerActions}>
-          {isLoading && <ActivityIndicator size="small" color="#666666" style={styles.loader} />}
+          {isLoading && <ActivityIndicator size="small" color={colors.textSecondary} style={styles.loader} />}
           <TouchableOpacity onPress={handleDelete} style={styles.headerButton}>
-            <Ionicons name="trash-outline" size={getResponsiveSize(28)} color="#000000" />
+            <Ionicons name="trash-outline" size={getResponsiveSize(28)} color={colors.text} />
           </TouchableOpacity>
         </View>
       </View>
@@ -143,7 +226,7 @@ const DetailsPage = () => {
             value={title}
             onChangeText={handleTitleChange}
             placeholder="Title"
-            placeholderTextColor="#999999"
+            placeholderTextColor={colors.textTertiary}
             multiline={true}
             returnKeyType="next"
             onSubmitEditing={() => tagsInputRef.current?.focus()}
@@ -157,7 +240,7 @@ const DetailsPage = () => {
             value={tags}
             onChangeText={handleTagsChange}
             placeholder="Tags (comma separated)"
-            placeholderTextColor="#999999"
+            placeholderTextColor={colors.textTertiary}
             multiline={false}
             returnKeyType="next"
             onSubmitEditing={() => contentInputRef.current?.focus()}
@@ -172,7 +255,7 @@ const DetailsPage = () => {
             value={textContent}
             onChangeText={handleTextChange}
             placeholder="Note"
-            placeholderTextColor="#999999"
+            placeholderTextColor={colors.textTertiary}
             textAlignVertical="top"
             scrollEnabled={false}
           />
@@ -195,86 +278,5 @@ const DetailsPage = () => {
     </SafeAreaView>
   );
 };
-
-const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#fafafa',
-    paddingTop: getResponsiveHeight(28),
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: getResponsiveSize(24),
-    paddingTop: getResponsiveHeight(20),
-    paddingBottom: getResponsiveSize(10),
-    borderBottomWidth: 1,
-    backgroundColor: '#fafafa',
-    borderBottomColor: '#E0E0E0',
-  },
-  headerButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    gap: getResponsiveSize(12),
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: getResponsiveSize(12),
-  },
-  loader: {
-    marginRight: getResponsiveSize(4),
-  },
-  contentContainer: {
-    flex: 1,
-    paddingHorizontal: getResponsiveSize(24),
-    paddingTop: getResponsiveSize(12),
-  },
-  scrollContentContainer: {
-    paddingBottom: getResponsiveSize(120),
-  },
-  titleInput: {
-    fontSize: getResponsiveSize(22),
-    fontFamily: 'MonaSans-Medium',
-    color: '#000000',
-    paddingVertical: getResponsiveSize(8),
-    paddingHorizontal: 0,
-  },
-  tagsInput: {
-    fontSize: getResponsiveSize(14),
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-    paddingHorizontal: 0,
-    paddingVertical: getResponsiveSize(8),
-    borderBottomWidth: 1,
-    borderColor: '#E0E0E0',
-    marginBottom: getResponsiveSize(18),
-  },
-  contentInput: {
-    fontSize: getResponsiveSize(16),
-    fontFamily: 'MonaSans-Regular',
-    color: '#000000',
-    lineHeight: getResponsiveSize(24),
-    minHeight: getResponsiveHeight(200),
-    paddingVertical: 0,
-    paddingHorizontal: 0,
-    marginBottom: getResponsiveSize(32),
-  },
-  bottomInfo: {
-    paddingHorizontal: getResponsiveSize(24),
-    paddingVertical: getResponsiveSize(16),
-    alignItems: 'center',
-  },
-  timestampText: {
-    fontSize: getResponsiveSize(12),
-    fontFamily: 'MonaSans-Regular',
-    color: '#666666',
-  },
-  keyboardAvoidingView: {
-    flex: 1,
-  },
-});
 
 export default DetailsPage;
