@@ -1,7 +1,6 @@
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
@@ -12,9 +11,7 @@ import {
   UIManager,
   TextInput,
   Alert,
-  Image,
   KeyboardAvoidingView,
-  Dimensions,
 } from 'react-native';
 import React from 'react';
 import { useRouter } from 'expo-router';
@@ -35,7 +32,7 @@ if (Platform.OS === 'android') {
 
 export default function Habits() {
   const router = useRouter();
-  const { colors, createThemedStyles } = useTheme();
+  const { colors, createThemedStyles, isDark } = useTheme();
   const [refreshing, setRefreshing] = React.useState(false);
   const [expandedHabitId, setExpandedHabitId] = React.useState<number | null>(null);
   const [isAddingHabit, setIsAddingHabit] = React.useState(false);
@@ -89,7 +86,7 @@ export default function Habits() {
               onPress={() => onDayPress(weekDates[index])}
               style={[
                 styles.circle,
-                progress[index] && { backgroundColor: habit.color },
+                progress[index] && { backgroundColor: habit.color, opacity: isDark ? 0.8 : 1 },
                 !progress[index] && { backgroundColor: colors.background }, // Light pink background for non-completed days
               ]}
             />

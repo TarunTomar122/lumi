@@ -94,8 +94,8 @@ Project background_fetch = project(':react-native-background-fetch')
         applicationId 'com.lumi.mobile'
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 10
-        versionName "1.0.9"
+        versionCode 11
+        versionName "1.1.0"
     }
     signingConfigs {
         debug {

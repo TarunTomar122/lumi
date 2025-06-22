@@ -12,7 +12,7 @@ interface HabitHistoryProps {
 }
 
 export const HabitHistory: React.FC<HabitHistoryProps> = ({ habit }) => {
-  const { colors, createThemedStyles } = useTheme();
+  const { colors, createThemedStyles, isDark } = useTheme();
   const updateProgress = useHabitStore(state => state.updateHabitProgress);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -78,6 +78,9 @@ export const HabitHistory: React.FC<HabitHistoryProps> = ({ habit }) => {
           calendarBackground: colors.background,
           textSectionTitleColor: colors.textSecondary,
           selectedDayBackgroundColor: habit.color,
+          selectedDayBackgroundStyle: {
+            opacity: isDark ? 0.8 : 1,
+          },
           selectedDayTextColor: colors.primaryText,
           todayTextColor: colors.text,
           dayTextColor: colors.text,

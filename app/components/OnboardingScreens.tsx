@@ -258,8 +258,8 @@ export const OnboardingScreens: React.FC<OnboardingScreensProps> = ({ onComplete
 
   const screens = [
     {
-      title: 'Natural Language Tasks',
-      description: 'Just type naturally and Lumi understands when and what you need to do.',
+      title: 'Smart Task Input',
+      description: 'Just type naturally—Lumi figures out what you need to do and when.',
       backgroundColor: '#ffffff',
       illustration: <TasksIllustration />,
     },

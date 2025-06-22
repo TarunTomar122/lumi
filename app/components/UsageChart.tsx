@@ -26,7 +26,7 @@ const formatAppName = (name: string) => {
 };
 
 export const UsageChart: React.FC<UsageChartProps> = ({ usageData }) => {
-  const { colors, createThemedStyles } = useTheme();
+  const { colors, createThemedStyles, isDark } = useTheme();
   const totalTime = usageData.reduce((sum, app) => sum + app.totalTimeInForeground, 0);
 
   const styles = createThemedStyles((colors) => ({
@@ -132,6 +132,7 @@ export const UsageChart: React.FC<UsageChartProps> = ({ usageData }) => {
                   {
                     width: `${percentage}%`,
                     backgroundColor: `hsl(${index * 60}, 80%, 75%)`,
+                    opacity: isDark ? 0.8 : 1,
                   },
                 ]}>
                 <View style={styles.barGlow} />

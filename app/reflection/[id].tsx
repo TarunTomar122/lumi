@@ -281,14 +281,14 @@ const ReflectionDetails = () => {
       {/* Bottom timestamp */}
       {!isEditing && (
         <View style={styles.bottomInfo}>
-          <Text style={styles.timestampText}>
+          {/* <Text style={styles.timestampText}>
             Edited{' '}
             {new Date(reflection.created_at).toLocaleTimeString([], {
               hour: '2-digit',
               minute: '2-digit',
               hour12: true,
             })}
-          </Text>
+          </Text> */}
         </View>
       )}
     </SafeAreaView>
