@@ -1,6 +1,8 @@
-# 🌟 Lumi
+# 🌟 Lumi — Planner & Habit Tracker
 
-**Lumi** is a frictionless personal productivity app designed for people who want a minimalist space to track their tasks, habits, reflections, and notes — all without any unnecessary complexity or clutter. Think of it as your quiet companion, always there to help you stay on track.
+Lumi helps you stay on track gently, without distractions.      
+No cloud, no clutter — just your tasks, habits, notes, and reflections in one quiet space.    
+Everything stays on your device.   
 
 > ✨ *Currently in closed beta on the Play Store.*
 > [📲 Download from Play Store](https://play.google.com/store/apps/details?id=com.lumi.mobile)
