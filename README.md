@@ -7,7 +7,7 @@
 
 NOTE: I'd have to add your email to the list for you to be able to download the app. Send me your email at [tarat.hobbies](https://www.instagram.com/tarat.hobbies/) on Instagram.
    
-![feature-image](https://github.com/user-attachments/assets/226763cf-9eba-42b6-abdc-936739756b7d)
+![cover light](https://github.com/user-attachments/assets/6cbe543f-3b55-4f09-9a02-cf7a4ac861fa)
 
 ---
 
