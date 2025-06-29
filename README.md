@@ -4,7 +4,7 @@ Lumi helps you stay on track gently, without distractions.
 No cloud, no clutter — just your tasks, habits, notes, and reflections in one quiet space.    
 Everything stays on your device.   
 
-> [📲 Download from Play Store]([https://play.google.com/store/apps/details?id=com.lumi.mobile](https://play.google.com/store/apps/details?id=com.lumi.mobile)
+> [📲 Download from Play Store](https://play.google.com/store/apps/details?id=com.lumi.mobile)
 
 NOTE: Got any feedback? Send it across on [tarat.hobbies](https://www.instagram.com/tarat.hobbies/).
    
