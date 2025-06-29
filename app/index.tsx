@@ -3,27 +3,17 @@ import {
   Text,
   View,
   ScrollView,
-  StyleSheet,
   SafeAreaView,
-  RefreshControl,
   TouchableOpacity,
-  Keyboard,
   StatusBar,
-  Dimensions,
 } from 'react-native';
 import * as React from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import Message from './components/Message';
-import { getNotificationSummary, talkToAgent } from '@/utils/agent';
-import InputContainer from './components/inputContainer';
-import { useMessageStore } from './store/messageStore';
 import { useTaskStore } from './store/taskStore';
 import { useMemoryStore } from './store/memoryStore';
 import { useUsageStore } from './store/usageStore';
 import { useUserStore } from './store/userStore';
 import HomeCard from './components/HomeCard';
-import HeartAnimation from './components/HeartAnimation';
-import { SplashScreen } from './components/SplashScreen';
 import { OnboardingScreens } from './components/OnboardingScreens';
 import { clientTools, sendInstantNotification } from '@/utils/tools';
 import { UsageChart } from './components/UsageChart';
@@ -32,90 +22,15 @@ import { DateTime } from 'luxon';
 import { getResponsiveSize, getResponsiveHeight } from '../utils/responsive';
 import { useTheme } from '@/hooks/useTheme';
 
-const MAX_HISTORY = 50;
-
-interface AppUsage {
-  appName: string;
-  totalTimeInForeground: number;
-}
-
 export default function Page() {
   const navigation = useNavigation();
   const router = useRouter();
-  const [userResponse, setUserResponse] = React.useState<string>('');
-  const { messageHistory, updateMessageHistory } = useMessageStore();
   const { refreshTasks } = useTaskStore();
   const { refreshMemories } = useMemoryStore();
   const { usageData, refreshUsageData } = useUsageStore();
-  const { username, hasCompletedOnboarding, isLoading } = useUserStore();
+  const { username, hasCompletedOnboarding } = useUserStore();
   const { colors, createThemedStyles, isDark, setTheme } = useTheme();
   const resultsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  const [isThinking, setIsThinking] = React.useState(false);
-  const [assistantResponse, setAssistantResponse] = React.useState('');
-  const [activeContent, setActiveContent] = React.useState<string>('home');
-  const usageDataRef = React.useRef<AppUsage[]>([]);
-  const [, setUsageUpdateTrigger] = React.useState<number>(0);
-
-  // const manuallyTriggerFetch = async () => {
-  //   try {
-  //     await BackgroundFetch.configure(
-  //       {
-  //         minimumFetchInterval: 15,
-  //         stopOnTerminate: false,
-  //         enableHeadless: true,
-  //         startOnBoot: true,
-  //       },
-  //       async taskId => {
-  //         console.log('BackgroundFetch taskId:', taskId);
-  //         try {
-  //           // send usage summary to agent
-  //           const { title, body } = await getNotificationSummary();
-  //           await sendInstantNotification(title, body);
-  //         } catch (error) {
-  //           console.error('Background fetch task failed:', error);
-  //         } finally {
-  //           // REQUIRED: Signal to the OS that your task is complete
-  //           BackgroundFetch.finish(taskId);
-  //         }
-  //       },
-  //       error => {
-  //         console.error('[BackgroundFetch] Failed to configure:', error);
-  //       }
-  //     );
-
-  //     // Force immediate execution
-  //     await BackgroundFetch.start();
-
-  //     // Execute the task immediately
-  //     const taskId = 'immediate-fetch';
-  //     await BackgroundFetch.scheduleTask({
-  //       taskId,
-  //       delay: 0, // Execute immediately
-  //       periodic: false,
-  //       forceAlarmManager: true, // Force immediate execution
-  //     });
-
-  //     console.log('[BackgroundFetch] Manual fetch triggered');
-  //   } catch (error) {
-  //     console.error('[BackgroundFetch] configure ERROR:', error);
-  //   }
-  // };
-
-  const fetchUsageData = React.useCallback(async () => {
-    const result = await clientTools.getUsageStats();
-    if (result.success && result.appUsageStats) {
-      const usageArray = Object.entries(result.appUsageStats)
-        .map(([_, data]) => ({
-          appName: data.appName || 'Unknown App',
-          totalTimeInForeground: data.totalTimeInForeground || 0,
-        }))
-        .sort((a, b) => b.totalTimeInForeground - a.totalTimeInForeground)
-        .slice(0, 3);
-
-      usageDataRef.current = usageArray;
-      setUsageUpdateTrigger((prev: number) => prev + 1);
-    }
-  }, []);
 
   const checkReflectionToday = async () => {
     try {
@@ -226,10 +141,6 @@ export default function Page() {
     navigation.setOptions({ headerShown: false });
   }, [navigation]);
 
-  const navigateTo = (path: 'tasks' | 'notes' | 'habits' | 'reflections' | '') => {
-    router.push(`/${path}`);
-  };
-
   // Cleanup timeouts on unmount
   React.useEffect(() => {
     return () => {
@@ -321,7 +232,6 @@ export default function Page() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle={colors.statusBarStyle} />
-      {activeContent === 'home' && (
         <ScrollView style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.greeting}>Hello {username}</Text>
@@ -371,9 +281,8 @@ export default function Page() {
               </View>
             </View>
             <UsageChart usageData={usageData} />
-          </View>
-        </ScrollView>
-      )}
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

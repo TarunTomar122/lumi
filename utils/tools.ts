@@ -670,6 +670,12 @@ export const scheduleNotification = async (
         body: body || '',
         android: {
           channelId: 'reminder',
+          smallIcon: 'ic_launcher', // Use dedicated notification icon (create via Android Studio)
+          largeIcon: require('@/assets/images/icon.png'), // Uses the PNG icon from assets
+          color: '#007AFF', // Tint the small icon to match your app's theme
+          pressAction: {
+            id: 'default',
+          },
         },
       },
       trigger
@@ -702,6 +708,12 @@ export const sendInstantNotification = async (title: string, body: string) => {
     body,
     android: {
       channelId,
+      smallIcon: 'ic_launcher', // Use dedicated notification icon (create via Android Studio)
+      largeIcon: require('@/assets/images/icon.png'), // Uses the PNG icon from assets
+      color: '#007AFF', // Tint the small icon to match your app's theme
+      pressAction: {
+        id: 'default',
+      },
     },
   });
 };
