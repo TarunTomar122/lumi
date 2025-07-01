@@ -27,7 +27,7 @@ export default function Page() {
   const router = useRouter();
   const { refreshTasks } = useTaskStore();
   const { refreshMemories } = useMemoryStore();
-  const { usageData, refreshUsageData } = useUsageStore();
+  const { usageData, refreshUsageData, hasUsagePermission, checkPermissionStatus, requestUsagePermission } = useUsageStore();
   const { username, hasCompletedOnboarding } = useUserStore();
   const { colors, createThemedStyles, isDark, setTheme } = useTheme();
   const resultsTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
@@ -54,8 +54,16 @@ export default function Page() {
   };
 
   React.useEffect(() => {
-    refreshUsageDataWithRetry();
+    // Check permission status instead of auto-requesting
+    checkUsagePermissionStatus();
   }, []);
+
+  const checkUsagePermissionStatus = async () => {
+    const hasPermission = await checkPermissionStatus();
+    if (hasPermission) {
+      refreshUsageDataWithRetry();
+    }
+  };
 
   React.useEffect(() => {
     const initializeApp = async () => {
@@ -280,7 +288,13 @@ export default function Page() {
                 />
               </View>
             </View>
-            <UsageChart usageData={usageData} />
+            <UsageChart 
+              usageData={usageData} 
+              hasPermission={hasUsagePermission === null ? undefined : hasUsagePermission}
+              onRequestPermission={async () => {
+                await requestUsagePermission();
+              }}
+            />
         </View>
       </ScrollView>
     </SafeAreaView>

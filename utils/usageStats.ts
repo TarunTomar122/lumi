@@ -16,15 +16,15 @@ export interface AppUsageInfo {
   totalTimeInForeground: number;
 }
 
-export const checkUsagePermission = async (): Promise<boolean> => {
+export const checkUsagePermission = async (autoPrompt: boolean = false): Promise<boolean> => {
   if (Platform.OS !== 'android') return false;
 
   const hasPermission = await checkForPermission();
-  if (!hasPermission) {
+  if (!hasPermission && autoPrompt) {
     showUsageAccessSettings('');
     return false;
   }
-  return true;
+  return hasPermission;
 };
 
 export const getAppUsageStats = async (

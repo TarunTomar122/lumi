@@ -1,20 +1,17 @@
 import {
   View,
   Text,
-  StyleSheet,
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
   RefreshControl,
   StatusBar,
-  Dimensions,
 } from 'react-native';
 import React from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useMemoryStore } from './store/memoryStore';
 import InputContainer from './components/inputContainer';
-import { useMessageStore } from './store/messageStore';
 import { clientTools } from '@/utils/tools';
 import { getResponsiveSize, getResponsiveHeight } from '../utils/responsive';
 import { useTheme } from '@/hooks/useTheme';
@@ -59,10 +56,6 @@ export default function Notes() {
     }
     setRefreshing(false);
   }, []);
-
-  const navigateTo = (path: 'tasks' | 'notes' | 'habits' | 'reflections' | '') => {
-    router.push(`/${path}`);
-  };
 
   const handleSubmit = () => {
     // Extract tag and content from format "tag: content" if present
@@ -192,7 +185,7 @@ export default function Notes() {
       fontFamily: 'MonaSans-Medium',
       color: colors.text,
       marginBottom: getResponsiveSize(24),
-      textAlign: 'center',
+      textAlign: 'left',
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
       paddingBottom: getResponsiveSize(12),
@@ -265,7 +258,7 @@ export default function Notes() {
         {filteredMemories.length === 0 && (
           <View style={styles.noNotesContainer}>
             <View style={styles.emptyStateCard}>
-              <Text style={styles.emptyStateTitle}>Start capturing your thoughts!</Text>
+              <Text style={styles.emptyStateTitle}>Capture your thoughts!</Text>
 
               <View style={styles.examplesContainer}>
                 <View style={styles.exampleItem}>
@@ -287,11 +280,11 @@ export default function Notes() {
               key={index}
               onPress={() => {
                 if (tag === currTag) {
-                  router.push({
+                  router.replace({
                     pathname: '/notes',
                   });
                 } else {
-                  router.push({
+                  router.replace({
                     pathname: '/notes',
                     params: { tag: currTag },
                   });
