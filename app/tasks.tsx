@@ -3,23 +3,18 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
+  ScrollView, 
   SafeAreaView,
   RefreshControl,
   StatusBar,
-  Alert,
   Dimensions,
 } from 'react-native';
 import React from 'react';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
-import InputContainer from './components/inputContainer';
 import { useTaskStore } from './store/taskStore';
 import { formatDate } from '@/utils/commons';
-import { talkToAgent } from '@/utils/agent';
-import { useMessageStore } from './store/messageStore';
-import HeartAnimation from './components/HeartAnimation';
 import { DateTime } from 'luxon';
 import { clientTools } from '@/utils/tools';
 import { parseTaskInput } from '@/utils/taskParser';
@@ -33,6 +28,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { getResponsiveSize, getResponsiveHeight } from '../utils/responsive';
 import { useTheme } from '@/hooks/useTheme';
+import InputContainer from './components/inputContainer';
 
 const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoComplete }: any) => {
   const { colors } = useTheme();
@@ -217,7 +213,7 @@ export default function Tasks() {
   const [userResponse, setUserResponse] = React.useState('');
   const [isRecording, setIsRecording] = React.useState(false);
   const [refreshing, setRefreshing] = React.useState(false);
-  const { tasks, updateTask, refreshTasks, deleteTask } = useTaskStore();
+  const { tasks, updateTask, refreshTasks, deleteTask, addTask, error, clearError } = useTaskStore();
   const [activeContent, setActiveContent] = React.useState<string>('home');
   const [showDemo, setShowDemo] = React.useState(false);
   const [demoCount, setDemoCount] = React.useState(0);
@@ -326,16 +322,17 @@ export default function Tasks() {
       // Parse the user input using the utility function
       const taskData = parseTaskInput(userResponse);
 
-      // Save the task
-      await clientTools.addTask(taskData);
-      await refreshTasks();
-      setShouldRegroup(true); // Trigger regrouping when new task is added
-
-      // Clear the input
-      setUserResponse('');
+      // Save the task using the store method
+      const result = await addTask(taskData);
+      if (result.success) {
+        await refreshTasks();
+        setShouldRegroup(true); // Trigger regrouping when new task is added
+        // Clear the input
+        setUserResponse('');
+      }
+      // Error handling is done by the store and will be shown in UI
     } catch (error) {
       console.error('Error creating task:', error);
-      // Could show an alert to user if needed
     }
   };
 
@@ -496,21 +493,41 @@ export default function Tasks() {
       padding: getResponsiveSize(20),
       borderWidth: 1,
       borderColor: colors.border,
-      shadowColor: colors.text,
-      shadowOffset: {
-        width: 0,
-        height: 2,
-      },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      borderRadius: getResponsiveSize(12),
+    },
+    errorContainer: {
+      backgroundColor: colors.error,
+      padding: getResponsiveSize(16),
+      marginBottom: getResponsiveSize(16),
+      borderRadius: getResponsiveSize(8),
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    errorText: {
+      color: 'white',
+      fontSize: getResponsiveSize(14),
+      fontFamily: 'MonaSans-Regular',
+      flex: 1,
+      marginRight: getResponsiveSize(12),
+    },
+    errorButton: {
+      backgroundColor: 'rgba(255, 255, 255, 0.2)',
+      paddingHorizontal: getResponsiveSize(12),
+      paddingVertical: getResponsiveSize(8),
+      borderRadius: getResponsiveSize(6),
+    },
+    errorButtonText: {
+      color: 'white',
+      fontSize: getResponsiveSize(12),
+      fontFamily: 'MonaSans-Medium',
     },
     emptyStateTitle: {
       fontSize: getResponsiveSize(20),
       fontFamily: 'MonaSans-Medium',
       color: colors.text,
       marginBottom: getResponsiveSize(24),
-      textAlign: 'center',
+      textAlign: 'left',
       borderBottomWidth: 1,
       borderBottomColor: colors.border,
       paddingBottom: getResponsiveSize(12),
@@ -561,10 +578,18 @@ export default function Tasks() {
         </View>
         {activeContent === 'home' && (
           <View style={styles.container}>
+                         {error && (
+               <View style={styles.errorContainer}>
+                 <Text style={styles.errorText}>{error}</Text>
+                 <TouchableOpacity style={styles.errorButton} onPress={() => clearError()}>
+                   <Text style={styles.errorButtonText}>Dismiss</Text>
+                 </TouchableOpacity>
+               </View>
+             )}
             {tasks.length === 0 && (
               <View style={styles.noTasksContainer}>
                 <View style={styles.emptyStateCard}>
-                  <Text style={styles.emptyStateTitle}>Ready to get things done?</Text>
+                  <Text style={styles.emptyStateTitle}>Lumi can understand natural language</Text>
 
                   <View style={styles.examplesContainer}>
                     <View style={styles.exampleItem}>
@@ -587,8 +612,6 @@ export default function Tasks() {
                       <Text style={styles.exampleDescription}>No time needed</Text>
                     </View>
                   </View>
-
-                  <Text style={styles.emptyStateFooter}>Start typing in the box below! ⬇️</Text>
                 </View>
               </View>
             )}
@@ -693,7 +716,6 @@ export default function Tasks() {
             />
           </View>
         )}
-        {activeContent === 'chat' && <HeartAnimation />}
       </SafeAreaView>
     </GestureHandlerRootView>
   );

@@ -8,24 +8,35 @@ interface TaskWithType extends Task {
 
 interface TaskState {
   tasks: TaskWithType[];
+  error: string | null;
   setTasks: (tasks: TaskWithType[]) => void;
-  addTask: (task: Omit<Task, 'id'>) => Promise<void>;
+  addTask: (task: Omit<Task, 'id'>) => Promise<{ success: boolean; error?: string }>;
   updateTask: (id: number, updates: Partial<Omit<Task, 'id'>>) => Promise<void>;
   deleteTask: (id: number) => Promise<void>;
   refreshTasks: () => Promise<void>;
+  clearError: () => void;
 }
 
 export const useTaskStore = create<TaskState>(set => ({
   tasks: [],
+  error: null,
 
   setTasks: tasks => set({ tasks }),
+  
+  clearError: () => set({ error: null }),
 
   addTask: async taskData => {
+    set({ error: null }); // Clear any previous errors
     const result = await clientTools.addTask(taskData);
     if (result.success && result.task) {
       set(state => ({
         tasks: [...state.tasks, { ...result.task, type: 'task' } as TaskWithType],
       }));
+      return { success: true };
+    } else {
+      const errorMessage = result.error || 'Failed to add task';
+      set({ error: errorMessage });
+      return { success: false, error: errorMessage };
     }
   },
 

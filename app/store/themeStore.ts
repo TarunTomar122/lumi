@@ -27,6 +27,9 @@ export interface ThemeColors {
   // Status bar
   statusBarStyle: 'light-content' | 'dark-content';
   statusBarBackground: string;
+
+  // Error
+  error: string;
 }
 
 const lightTheme: ThemeColors = {
@@ -42,6 +45,7 @@ const lightTheme: ThemeColors = {
   primaryText: '#ffffff',
   statusBarStyle: 'dark-content',
   statusBarBackground: '#fafafa',
+  error: 'rgba(255, 68, 68, 0.8)',
 };
 
 const darkTheme: ThemeColors = {
@@ -57,6 +61,7 @@ const darkTheme: ThemeColors = {
   primaryText: '#1a1a1a',
   statusBarStyle: 'light-content',
   statusBarBackground: '#252525',
+  error: 'rgba(255, 68, 68, 0.8)',
 };
 
 interface ThemeState {

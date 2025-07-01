@@ -1,6 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/hooks/useTheme';
+import { getResponsiveSize } from '@/utils/responsive';
 
 interface AppUsage {
   appName: string;
@@ -9,6 +11,8 @@ interface AppUsage {
 
 interface UsageChartProps {
   usageData: AppUsage[];
+  hasPermission?: boolean;
+  onRequestPermission?: () => void;
 }
 
 const formatAppName = (name: string) => {
@@ -25,15 +29,95 @@ const formatAppName = (name: string) => {
     .join(' ');
 };
 
-export const UsageChart: React.FC<UsageChartProps> = ({ usageData }) => {
+const UsagePermissionRequest: React.FC<{ onRequestPermission: () => void }> = ({ onRequestPermission }) => {
+  const { colors, createThemedStyles } = useTheme();
+
+  const styles = createThemedStyles((colors) => ({
+    container: {
+      padding: getResponsiveSize(20),
+      backgroundColor: colors.card,
+      marginVertical: getResponsiveSize(12),
+      borderWidth: 1,
+      borderColor: colors.border,
+      marginBottom: getResponsiveSize(50),
+      borderRadius: 6,
+      alignItems: 'center',
+    },
+    icon: {
+      marginBottom: getResponsiveSize(16),
+    },
+    title: {
+      fontSize: getResponsiveSize(18),
+      fontFamily: 'MonaSans-SemiBold',
+      color: colors.text,
+      textAlign: 'center',
+      marginBottom: getResponsiveSize(8),
+    },
+    description: {
+      fontSize: getResponsiveSize(14),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.textSecondary,
+      textAlign: 'center',
+      marginBottom: getResponsiveSize(20),
+      lineHeight: getResponsiveSize(20),
+    },
+    button: {
+      backgroundColor: colors.primary,
+      paddingHorizontal: getResponsiveSize(24),
+      paddingVertical: getResponsiveSize(12),
+      borderRadius: 6,
+    },
+    buttonText: {
+      fontSize: getResponsiveSize(14),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.background,
+    },
+  }));
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.icon}>
+        <Ionicons 
+          name="bar-chart-outline" 
+          size={getResponsiveSize(48)} 
+          color={colors.textSecondary} 
+        />
+      </View>
+      <Text style={styles.title}>App Usage Insights</Text>
+      <Text style={styles.description}>
+        Allow Lumi to access your app usage data to show you insights about your most used apps and screen time.
+      </Text>
+      <TouchableOpacity style={styles.button} onPress={onRequestPermission}>
+        <Text style={styles.buttonText}>Allow Access</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+export const UsageChart: React.FC<UsageChartProps> = ({ 
+  usageData, 
+  hasPermission = true, 
+  onRequestPermission 
+}) => {
   const { colors, createThemedStyles, isDark } = useTheme();
+
+  // Show permission request if we don't have permission
+  if (hasPermission === false && onRequestPermission) {
+    return <UsagePermissionRequest onRequestPermission={onRequestPermission} />;
+  }
+
+  // Don't render anything if we don't have data or permission is unknown
+  if (!hasPermission || usageData.length === 0) {
+    return null;
+  }
+
   const totalTime = usageData.reduce((sum, app) => sum + app.totalTimeInForeground, 0);
 
   const styles = createThemedStyles((colors) => ({
     container: {
       padding: 20,
       backgroundColor: colors.card,
-      marginVertical: 12,
+      marginVertical: 6,
       borderWidth: 1,
       borderColor: colors.border,
       marginBottom: 50,

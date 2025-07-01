@@ -307,6 +307,15 @@ const clientTools = {
     try {
       let notificationId = null;
       if (taskData.reminder_date) {
+        // Check notification permission before scheduling
+        const hasPermission = await requestNotificationPermissionIfNeeded();
+        if (!hasPermission) {
+          return { 
+            success: false, 
+            error: 'Notification permission required for task reminders. Please enable notifications in your device settings.' 
+          };
+        }
+
         // if the reminder date is in the past, schedule a notification for 9pm today
         if (
           DateTime.fromISO(taskData.reminder_date).setZone('Asia/Kolkata').diffNow().toMillis() < 0
@@ -496,11 +505,11 @@ const clientTools = {
     }
   },
   getUsageStats: async () => {
-    const permission = await checkUsagePermission();
+    const permission = await checkUsagePermission(false); // Don't auto-prompt
     console.log('Permission:', permission);
     if (!permission) {
       console.log('No permission to get usage stats');
-      return { success: false, error: 'Failed to get usage stats.' };
+      return { success: false, error: 'No usage permission.' };
     }
     const appUsageStats = await getLastDayUsageStats();
     return { success: true, appUsageStats };
@@ -670,6 +679,12 @@ export const scheduleNotification = async (
         body: body || '',
         android: {
           channelId: 'reminder',
+          smallIcon: 'ic_launcher', // Use dedicated notification icon (create via Android Studio)
+          largeIcon: require('@/assets/images/icon.png'), // Uses the PNG icon from assets
+          color: '#007AFF', // Tint the small icon to match your app's theme
+          pressAction: {
+            id: 'default',
+          },
         },
       },
       trigger
@@ -702,6 +717,51 @@ export const sendInstantNotification = async (title: string, body: string) => {
     body,
     android: {
       channelId,
+      smallIcon: 'ic_launcher', // Use dedicated notification icon (create via Android Studio)
+      largeIcon: require('@/assets/images/icon.png'), // Uses the PNG icon from assets
+      color: '#007AFF', // Tint the small icon to match your app's theme
+      pressAction: {
+        id: 'default',
+      },
     },
   });
+};
+
+// Check notification permission status
+export const checkNotificationPermission = async (): Promise<boolean> => {
+  try {
+    const settings = await notifee.getNotificationSettings();
+    return settings.authorizationStatus === 1; // 1 = AUTHORIZED
+  } catch (error) {
+    console.error('Error checking notification permission:', error);
+    return false;
+  }
+};
+
+// Request notification permission if not already granted
+export const requestNotificationPermissionIfNeeded = async (): Promise<boolean> => {
+  try {
+    const hasPermission = await checkNotificationPermission();
+    if (hasPermission) {
+      return true;
+    }
+
+    // Request permission
+    const settings = await notifee.requestPermission();
+    const granted = settings.authorizationStatus === 1; // 1 = AUTHORIZED
+    
+    if (granted) {
+      // Setup channels if permission was just granted
+      await notifee.createChannel({
+        id: 'reminder',
+        name: 'Reminder Channel',
+      });
+      console.log('✅ Notification permission granted and channels setup');
+    }
+    
+    return granted;
+  } catch (error) {
+    console.error('Error requesting notification permission:', error);
+    return false;
+  }
 };
