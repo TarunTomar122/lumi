@@ -49,15 +49,6 @@ All data is stored **locally on your device**, giving you complete control and p
 </table>
 
 
-
----
-
-## 🚧 Currently in Beta
-
-We're still iterating, and your feedback helps shape Lumi. Expect frequent updates, visual tweaks, and possibly a surprise or two.
-
-You can also open issues here for any bugs or suggestions.
-
 ---
 
 ## 🔮 What's Next?
