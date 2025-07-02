@@ -244,9 +244,9 @@ export default function Page() {
           <View style={styles.header}>
             <Text style={styles.greeting}>Hello {username}</Text>
             <View style={styles.headerActions}>
-              <TouchableOpacity onPress={() => setTheme(isDark ? 'light' : 'dark')}>
+              <TouchableOpacity onPress={() => router.push('/settings')}>
                 <Ionicons 
-                  name={isDark ? 'sunny-outline' : 'moon-outline'} 
+                  name="settings-outline" 
                   size={getResponsiveSize(24)} 
                   color={colors.text} 
                 />

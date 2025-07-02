@@ -42,6 +42,7 @@
     "react-native": "0.76.9",
     "react-native-background-fetch": "^4.2.8",
     "react-native-calendars": "^1.1312.0",
+    "react-native-device-info": "^14.0.4",
     "react-native-gesture-handler": "~2.20.2",
     "react-native-keyboard-aware-scroll-view": "^0.9.5",
     "react-native-reanimated": "~3.16.1",
@@ -50,6 +51,7 @@
     "react-native-sqlite-storage": "^6.0.1",
     "react-native-svg": "15.8.0",
     "react-native-url-polyfill": "^2.0.0",
+    "react-native-version-check": "^3.5.0",
     "zustand": "^5.0.4"
   },
   "devDependencies": {

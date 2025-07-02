@@ -2,7 +2,7 @@ import { checkNotificationPermission } from '@/utils/tools';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
 import { db } from '../utils/database';
 import { Slot } from 'expo-router';
@@ -10,17 +10,50 @@ import { useVoiceRecognition } from '@/hooks/useVoiceRecognition';
 import { useUserStore } from './store/userStore';
 import { useThemeStore } from './store/themeStore';
 import notifee from '@notifee/react-native';
+import { UpdateModal } from './components/ReleaseNotesModal';
+import { checkForAppUpdate, UpdateInfo } from '../utils/versionChecker';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
 
 function NavigatorContent() {
   const { colors } = useThemeStore();
+  const [updateInfo, setUpdateInfo] = useState<UpdateInfo | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = useState(false);
+  
+  // Check for app updates
+  useEffect(() => {
+    const checkForUpdates = async () => {
+      try {
+        const updateResult = await checkForAppUpdate();
+        console.log('updateResult', updateResult);
+        if (updateResult && updateResult.updateAvailable) {
+          // Small delay to ensure app is fully loaded
+          setTimeout(() => {
+            setUpdateInfo(updateResult);
+            setShowUpdateModal(true);
+          }, 2000); // 2 seconds delay for better UX
+        }
+      } catch (error) {
+        console.error('Error checking for app updates:', error);
+      }
+    };
+
+    // Check for updates after a short delay
+    const timeout = setTimeout(checkForUpdates, 3000);
+    return () => clearTimeout(timeout);
+  }, []);
   
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar style={colors.statusBarStyle} backgroundColor={colors.statusBarBackground} />
+      <StatusBar style={colors.statusBarStyle as any} backgroundColor={colors.statusBarBackground} />
       <Slot />
+      <UpdateModal 
+        visible={showUpdateModal} 
+        updateInfo={updateInfo}
+        onClose={() => setShowUpdateModal(false)}
+        onDismiss={() => setShowUpdateModal(false)}
+      />
     </View>
   );
 }
