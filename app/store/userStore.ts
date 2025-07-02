@@ -6,6 +6,7 @@ interface UserState {
   hasCompletedOnboarding: boolean;
   isLoading: boolean;
   setUsername: (username: string) => void;
+  updateUsername: (username: string) => Promise<void>;
   setOnboardingComplete: (username: string) => Promise<void>;
   initializeUser: () => Promise<void>;
 }
@@ -17,6 +18,16 @@ export const useUserStore = create<UserState>((set, get) => ({
 
   setUsername: (username: string) => {
     set({ username });
+  },
+
+  updateUsername: async (username: string) => {
+    try {
+      await AsyncStorage.setItem('username', username);
+      set({ username });
+    } catch (error) {
+      console.error('Error updating username:', error);
+      throw error;
+    }
   },
 
   setOnboardingComplete: async (username: string) => {
