@@ -419,6 +419,16 @@ const clientTools = {
     }
   },
 
+  getTaskHistory: async (days: number = 30) => {
+    try {
+      const tasks = await db.getTaskHistory(days);
+      return { success: true, tasks };
+    } catch (error) {
+      console.error('Error getting task history:', error);
+      return { success: false, error: 'Failed to get task history.' };
+    }
+  },
+
   addMemory: async ({
     title,
     content,

@@ -13,6 +13,7 @@ export interface Task {
   reminder_date?: string | null; // Will store full datetime string
   status: 'todo' | 'done';
   created_at: string;
+  completed_at?: string | null; // Track when task was completed
 }
 
 export interface Memory {
@@ -107,9 +108,19 @@ class DatabaseManager {
           due_date TEXT,
           reminder_date TEXT,
           status TEXT NOT NULL DEFAULT 'todo',
-          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+          created_at TEXT NOT NULL DEFAULT (datetime('now')),
+          completed_at TEXT
         )
       `);
+
+      // Add completed_at column if it doesn't exist (for existing databases)
+      try {
+        await this.database.executeSql(`
+          ALTER TABLE tasks ADD COLUMN completed_at TEXT
+        `);
+      } catch (error) {
+        // Column already exists, ignore error
+      }
 
       // Create memories table
       await this.database.executeSql(`
@@ -205,6 +216,15 @@ class DatabaseManager {
     await this.waitForInit();
     if (!this.database) throw new Error('Database not initialized');
 
+    // If marking as done, set completed_at timestamp
+    if (updates.status === 'done') {
+      updates.completed_at = new Date().toISOString();
+    }
+    // If marking as todo, clear completed_at timestamp
+    else if (updates.status === 'todo') {
+      updates.completed_at = null;
+    }
+
     const updateFields = Object.keys(updates)
       .map(key => `${key} = ?`)
       .join(', ');
@@ -229,6 +249,28 @@ class DatabaseManager {
       await this.database.executeSql('DELETE FROM tasks WHERE id = ?;', [id]);
     } catch (error) {
       console.error('Error deleting task:', error);
+      throw error;
+    }
+  }
+
+  async getTaskHistory(days: number = 30): Promise<Task[]> {
+    await this.waitForInit();
+    if (!this.database) throw new Error('Database not initialized');
+
+    try {
+      const [results] = await this.database.executeSql(
+        `SELECT * FROM tasks 
+         WHERE completed_at IS NOT NULL 
+         AND datetime(completed_at) >= datetime('now', '-${days} days')
+         ORDER BY completed_at DESC;`
+      );
+      const tasks: Task[] = [];
+      for (let i = 0; i < results.rows.length; i++) {
+        tasks.push(results.rows.item(i));
+      }
+      return tasks;
+    } catch (error) {
+      console.error('Error getting task history:', error);
       throw error;
     }
   }
