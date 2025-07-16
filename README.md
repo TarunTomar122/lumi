@@ -57,7 +57,7 @@ Here’s what we’re planning to add in the near future:
 
 - [x] Ability to **delete habits/tasks** to keep your tracker clean
 - [x] Tag management: Add tags to **untagged notes** for better organization
-- [ ] Gentle **reminders** to fill in your daily reflection
+- [x] Gentle **reminders** to fill in your daily reflection
 - [ ] Ability to add images to notes
 - [ ] Export a **shareable image of your monthly habit streaks**
 - [ ] **Export your notes and reflections** to a Google Doc or `.txt` file
