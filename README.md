@@ -63,7 +63,7 @@ Here’s what we’re planning to add in the near future:
 - [ ] **Export your notes and reflections** to a Google Doc or `.txt` file
 - [ ] **Speech-to-text notes** for quick voice capture
 - [ ] **Background nudges**: smart prompts based on your patterns (using background fetch)
-- [ ] Light **task management analytics** to help you reflect on your habits and productivity
+- [x] Light **task management analytics** to help you reflect on your habits and productivity
 
 > Have ideas or feature requests? [Open an issue](https://github.com/TarunTomar122/lumi/issues) or reach out!
 
