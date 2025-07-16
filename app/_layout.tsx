@@ -12,6 +12,7 @@ import { useThemeStore } from './store/themeStore';
 import notifee from '@notifee/react-native';
 import { UpdateModal } from './components/ReleaseNotesModal';
 import { checkForAppUpdate, UpdateInfo } from '../utils/versionChecker';
+import { ReflectionReminderService } from '../utils/reflectionReminder';
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -107,6 +108,8 @@ export default function RootLayout() {
         await setupNotificationChannelsIfPermitted();
         // initialize the database
         await db.init();
+        // initialize reflection reminder service (runs in background)
+        ReflectionReminderService.init();
         console.log('✅ Database initialized & notifications setup');
       } catch (error) {
         console.error('❌ Error initializing:', error);

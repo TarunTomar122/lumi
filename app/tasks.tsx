@@ -402,6 +402,10 @@ export default function Tasks() {
       color: colors.text,
       marginBottom: getResponsiveSize(3),
     },
+    historyButton: {
+      padding: getResponsiveSize(8),
+      borderRadius: getResponsiveSize(8),
+    },
     title: {
       fontSize: getResponsiveSize(32),
       fontFamily: 'MonaSans-Bold',
@@ -574,6 +578,9 @@ export default function Tasks() {
           <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
             <Ionicons name="arrow-back" size={getResponsiveSize(28)} color={colors.text} />
             <Text style={styles.backText}>Tasks</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/task-history')} style={styles.historyButton}>
+            <Ionicons name="analytics-outline" size={getResponsiveSize(24)} color={colors.text} />
           </TouchableOpacity>
         </View>
         {activeContent === 'home' && (
