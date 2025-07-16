@@ -169,6 +169,9 @@ export default function Habits() {
       color: colors.text,
       marginBottom: getResponsiveSize(3),
     },
+    analysisButton: {
+      padding: getResponsiveSize(4),
+    },
     container: {
       flex: 1,
       paddingHorizontal: getResponsiveSize(20),
@@ -275,6 +278,9 @@ export default function Habits() {
         <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
           <Ionicons name="arrow-back" size={getResponsiveSize(28)} color={colors.text} />
           <Text style={styles.backText}>Habits</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={() => router.push('/habits-analysis')} style={styles.analysisButton}>
+          <Ionicons name="analytics-outline" size={getResponsiveSize(28)} color={colors.text} />
         </TouchableOpacity>
       </View>
       <KeyboardAvoidingView 

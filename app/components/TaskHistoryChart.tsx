@@ -126,7 +126,7 @@ const ProductivityPatterns: React.FC<ProductivityPatternsProps> = ({ tasks }) =>
       fontSize: getResponsiveSize(16),
       fontFamily: 'MonaSans-SemiBold',
       color: colors.text,
-      marginBottom: getResponsiveSize(12),
+      marginBottom: getResponsiveSize(24),
     },
     dayChart: {
       marginBottom: getResponsiveSize(24),

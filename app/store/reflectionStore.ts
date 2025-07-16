@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { clientTools } from '@/utils/tools';
 import type { Reflection } from '@/utils/database';
 import { DateTime } from 'luxon';
+import { ReflectionReminderService } from '@/utils/reflectionReminder';
 
 interface ReflectionState {
   reflections: Reflection[];
@@ -38,6 +39,8 @@ export const useReflectionStore = create<ReflectionState>((set, get) => ({
               : reflection
           ),
         }));
+        // Cancel any pending reflection reminders since user added reflection
+        ReflectionReminderService.onReflectionAdded();
       }
     } else {
       // If there isn't, create a new reflection
@@ -46,6 +49,8 @@ export const useReflectionStore = create<ReflectionState>((set, get) => ({
         set(state => ({
           reflections: [result.reflection, ...state.reflections],
         }));
+        // Cancel any pending reflection reminders since user added reflection
+        ReflectionReminderService.onReflectionAdded();
       }
     }
   },
@@ -78,6 +83,8 @@ export const useReflectionStore = create<ReflectionState>((set, get) => ({
     });
     if (result.success && sortedReflections) {
       set({ reflections: sortedReflections });
+      // Check if reminder needs to be scheduled after refreshing reflections
+      ReflectionReminderService.checkAndScheduleReminder();
     }
   },
 }));

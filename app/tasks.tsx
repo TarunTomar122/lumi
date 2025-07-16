@@ -580,7 +580,7 @@ export default function Tasks() {
             <Text style={styles.backText}>Tasks</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/task-history')} style={styles.historyButton}>
-            <Ionicons name="bar-chart-outline" size={getResponsiveSize(24)} color={colors.text} />
+            <Ionicons name="analytics-outline" size={getResponsiveSize(24)} color={colors.text} />
           </TouchableOpacity>
         </View>
         {activeContent === 'home' && (
