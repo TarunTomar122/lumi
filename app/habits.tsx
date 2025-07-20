@@ -12,6 +12,8 @@ import {
   TextInput,
   Alert,
   KeyboardAvoidingView,
+  Keyboard,
+  TouchableWithoutFeedback,
 } from 'react-native';
 import React from 'react';
 import { useRouter } from 'expo-router';
@@ -22,6 +24,7 @@ import type { Habit } from '@/utils/database';
 import { DateTime } from 'luxon';
 import { getResponsiveSize, getResponsiveHeight } from '../utils/responsive';
 import { useTheme } from '@/hooks/useTheme';
+import { clientTools } from '@/utils/tools';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android') {
@@ -37,6 +40,8 @@ export default function Habits() {
   const [expandedHabitId, setExpandedHabitId] = React.useState<number | null>(null);
   const [isAddingHabit, setIsAddingHabit] = React.useState(false);
   const [newHabitTitle, setNewHabitTitle] = React.useState('');
+  const [editingHabitId, setEditingHabitId] = React.useState<number | null>(null);
+  const [editHabitTitle, setEditHabitTitle] = React.useState('');
   const scrollViewRef = React.useRef<ScrollView>(null);
   const { habits, updateHabitProgress, refreshHabits, getWeekProgress, addHabit, deleteHabit } =
     useHabitStore();
@@ -54,6 +59,21 @@ export default function Habits() {
   React.useEffect(() => {
     refreshHabits();
   }, []);
+
+  // Handle keyboard dismiss for edit mode
+  React.useEffect(() => {
+    if (!editingHabitId) return;
+
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      setTimeout(() => {
+        handleSaveEdit();
+      }, 100);
+    });
+
+    return () => {
+      keyboardDidHideListener.remove();
+    };
+  }, [editingHabitId, editHabitTitle]);
 
   const toggleExpand = (habitId: number) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -86,7 +106,7 @@ export default function Habits() {
               onPress={() => onDayPress(weekDates[index])}
               style={[
                 styles.circle,
-                progress[index] && { backgroundColor: habit.color, opacity: isDark ? 0.8 : 1 },
+                progress[index] && { backgroundColor: habit.color, opacity: isDark ? 0.9 : 1 },
                 !progress[index] && { backgroundColor: colors.background }, // Light pink background for non-completed days
               ]}
             />
@@ -141,6 +161,45 @@ export default function Habits() {
     );
   };
 
+  const handleEditHabit = (habitId: number, currentTitle: string) => {
+    setEditingHabitId(habitId);
+    setEditHabitTitle(currentTitle);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingHabitId || !editHabitTitle.trim()) {
+      setEditingHabitId(null);
+      return;
+    }
+
+    try {
+      const result = await clientTools.updateHabit({
+        id: editingHabitId.toString(),
+        title: editHabitTitle.trim()
+      });
+
+      if (result.success) {
+        await refreshHabits();
+      }
+    } catch (error) {
+      console.error('Error updating habit:', error);
+    }
+
+    setEditingHabitId(null);
+    setEditHabitTitle('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingHabitId(null);
+    setEditHabitTitle('');
+  };
+
+  const handleOutsidePress = () => {
+    if (editingHabitId !== null) {
+      Keyboard.dismiss();
+    }
+  };
+
   const styles = createThemedStyles(colors => ({
     safeArea: {
       flex: 1,
@@ -191,7 +250,6 @@ export default function Habits() {
       flexDirection: 'row',
       justifyContent: 'space-between',
       alignItems: 'center',
-      marginBottom: getResponsiveSize(24),
     },
     habitHeaderActions: {
       flexDirection: 'row',
@@ -199,9 +257,9 @@ export default function Habits() {
       gap: getResponsiveSize(12),
     },
     habitHeaderContent: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: getResponsiveSize(12),
+      flex: 1,
+      justifyContent: 'center',
+      minWidth: 0,
     },
     habitTitle: {
       fontSize: getResponsiveSize(24),
@@ -253,11 +311,7 @@ export default function Habits() {
       fontFamily: 'MonaSans-Medium',
       color: colors.text,
     },
-    deleteButton: {
-      padding: getResponsiveSize(4),
-      alignItems: 'flex-end',
-      marginBottom: getResponsiveSize(-4),
-    },
+
     noHabitsContainer: {
       flex: 1,
       alignItems: 'center',
@@ -269,24 +323,70 @@ export default function Habits() {
       fontFamily: 'MonaSans-Regular',
       color: colors.textSecondary,
     },
+    editHabitInput: {
+      flex: 1,
+      fontSize: getResponsiveSize(24),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+      borderWidth: 1,
+      borderColor: colors.primary,
+      borderRadius: getResponsiveSize(6),
+      paddingHorizontal: getResponsiveSize(8),
+      paddingVertical: getResponsiveSize(4),
+      backgroundColor: colors.background,
+      marginRight: getResponsiveSize(12),
+    },
+    bottomActions: {
+      flexDirection: 'row',
+      marginTop: getResponsiveSize(16),
+      paddingTop: getResponsiveSize(12),
+      borderTopWidth: 1,
+      borderTopColor: colors.border,
+    },
+    compactButton: {
+      flex: 1,
+      paddingHorizontal: getResponsiveSize(12),
+      paddingVertical: getResponsiveSize(8),
+      backgroundColor: 'transparent',
+    },
+    compactButtonWithDivider: {
+      flex: 1,
+      paddingHorizontal: getResponsiveSize(12),
+      paddingVertical: getResponsiveSize(8),
+      backgroundColor: 'transparent',
+      borderRightWidth: 1,
+      borderRightColor: colors.border,
+    },
+    compactButtonText: {
+      fontSize: getResponsiveSize(12),
+      fontFamily: 'MonaSans-Medium',
+      color: colors.text,
+      textAlign: 'center',
+    },
+    deleteText: {
+      color: colors.error || '#FF6B6B',
+    },
   }));
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle={colors.statusBarStyle} />
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
-          <Ionicons name="arrow-back" size={getResponsiveSize(28)} color={colors.text} />
-          <Text style={styles.backText}>Habits</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => router.push('/habits-analysis')} style={styles.analysisButton}>
-          <Ionicons name="analytics-outline" size={getResponsiveSize(28)} color={colors.text} />
-        </TouchableOpacity>
-      </View>
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.container}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
+    <TouchableWithoutFeedback 
+      onPress={handleOutsidePress}
+      disabled={editingHabitId === null}>
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle={colors.statusBarStyle} />
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={getResponsiveSize(28)} color={colors.text} />
+            <Text style={styles.backText}>Habits</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => router.push('/habits-analysis')} style={styles.analysisButton}>
+            <Ionicons name="analytics-outline" size={getResponsiveSize(28)} color={colors.text} />
+          </TouchableOpacity>
+        </View>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={styles.container}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}>
         <ScrollView
           ref={scrollViewRef}
           style={styles.habitsList}
@@ -305,15 +405,25 @@ export default function Habits() {
           {habits.map(habit => (
             <View key={habit.id} style={styles.habitItem}>
               <TouchableOpacity
-                onPress={() => habit.id && toggleExpand(habit.id)}
-                style={styles.habitHeader}>
+                onPress={() => habit.id && editingHabitId !== habit.id && toggleExpand(habit.id)}
+                style={styles.habitHeader}
+                disabled={editingHabitId === habit.id}>
                 <View style={styles.habitHeaderContent}>
-                  <Text style={styles.habitTitle}>{habit.title}</Text>
-                  <TouchableOpacity
-                    onPress={() => habit.id && handleDeleteHabit(habit.id, habit.title)}
-                    style={styles.deleteButton}>
-                    <Ionicons name="trash-outline" size={getResponsiveSize(20)} color={colors.text} />
-                  </TouchableOpacity>
+                  {editingHabitId === habit.id ? (
+                    <TextInput
+                      style={styles.editHabitInput}
+                      value={editHabitTitle}
+                      onChangeText={setEditHabitTitle}
+                      onEndEditing={handleSaveEdit}
+                      onSubmitEditing={handleSaveEdit}
+                      autoFocus
+                      returnKeyType="done"
+                      blurOnSubmit={true}
+                      placeholderTextColor={colors.textTertiary}
+                    />
+                  ) : (
+                    <Text style={styles.habitTitle}>{habit.title}</Text>
+                  )}
                 </View>
                 <View style={styles.habitHeaderActions}>
                   <Ionicons
@@ -323,9 +433,26 @@ export default function Habits() {
                   />
                 </View>
               </TouchableOpacity>
+              
               {expandedHabitId === habit.id ? (
-                <View style={styles.habitHistoryContainer}>
-                  <HabitHistory habit={habit} onClose={() => toggleExpand(habit.id!)} />
+                <View>
+                  <View style={styles.habitHistoryContainer}>
+                    <HabitHistory habit={habit} onClose={() => toggleExpand(habit.id!)} />
+                  </View>
+                  {editingHabitId !== habit.id && (
+                    <View style={styles.bottomActions}>
+                      <TouchableOpacity
+                        onPress={() => habit.id && handleEditHabit(habit.id, habit.title)}
+                        style={styles.compactButtonWithDivider}>
+                        <Text style={styles.compactButtonText}>Edit</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={() => habit.id && handleDeleteHabit(habit.id, habit.title)}
+                        style={styles.compactButton}>
+                        <Text style={[styles.compactButtonText, styles.deleteText]}>Delete</Text>
+                      </TouchableOpacity>
+                    </View>
+                  )}
                 </View>
               ) : (
                 <ProgressCircles habit={habit} onDayPress={date => handleDayPress(habit, date)} />
@@ -365,5 +492,6 @@ export default function Habits() {
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }

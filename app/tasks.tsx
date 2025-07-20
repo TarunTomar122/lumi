@@ -8,6 +8,9 @@ import {
   RefreshControl,
   StatusBar,
   Dimensions,
+  TextInput,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import React from 'react';
 import { useRouter } from 'expo-router';
@@ -30,18 +33,71 @@ import { getResponsiveSize, getResponsiveHeight } from '../utils/responsive';
 import { useTheme } from '@/hooks/useTheme';
 import InputContainer from './components/inputContainer';
 
-const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoComplete }: any) => {
+const SwipeableTaskItem = ({ 
+  task, 
+  onToggle, 
+  onDelete, 
+  onUpdate, 
+  isDemo = false, 
+  onDemoComplete, 
+  isEditing, 
+  onEditStart, 
+  onEditEnd 
+}: any) => {
   const { colors } = useTheme();
   const translateX = useSharedValue(0);
   const itemHeight = useSharedValue(0);
   const itemOpacity = useSharedValue(1);
   const screenWidth = Dimensions.get('window').width;
+  const [editText, setEditText] = React.useState(task.title);
+  const editInputRef = React.useRef<TextInput>(null);
 
   const DELETE_THRESHOLD = 0.3; // 30% of screen width to trigger delete
   const REVEAL_THRESHOLD = 0.15; // 15% of screen width to reveal delete button
 
+  // Focus input when edit mode starts
+  React.useEffect(() => {
+    if (isEditing) {
+      setEditText(task.title);
+      setTimeout(() => {
+        editInputRef.current?.focus();
+      }, 100);
+    }
+  }, [isEditing, task.title]);
+
+  // Handle keyboard dismiss
+  React.useEffect(() => {
+    if (!isEditing) return;
+
+    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
+      // Use setTimeout to ensure the TextInput has lost focus
+      setTimeout(() => {
+        if (editText.trim() && editText.trim() !== task.title) {
+          onUpdate(task.id, { title: editText.trim() });
+        }
+        onEditEnd();
+      }, 100);
+    });
+
+    return () => {
+      keyboardDidHideListener.remove();
+    };
+  }, [isEditing, editText, task.title]);
+
   const handleDelete = async () => {
     await onDelete(task.id);
+  };
+
+  const handleSaveEdit = async () => {
+    if (editText.trim() && editText.trim() !== task.title) {
+      await onUpdate(task.id, { title: editText.trim() });
+    }
+    onEditEnd();
+  };
+
+  const handleCancelEdit = () => {
+    setEditText(task.title);
+    onEditEnd();
   };
 
   // Demo animation effect
@@ -71,6 +127,7 @@ const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoCom
 
   const pan = Gesture.Pan()
     .activeOffsetX([-10, 10])
+    .enabled(!isEditing) // Disable swipe when editing
     .onChange(event => {
       // Only allow swiping right (positive values)
       if (event.translationX > 0) {
@@ -95,6 +152,16 @@ const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoCom
       } else {
         // Snap back to original position
         translateX.value = withSpring(0);
+      }
+    });
+
+  // Double tap gesture for editing
+  const doubleTap = Gesture.Tap()
+    .numberOfTaps(2)
+    .enabled(!isDemo) // Disable during demo
+    .onStart(() => {
+      if (!isEditing) {
+        runOnJS(onEditStart)(task.id);
       }
     });
 
@@ -141,6 +208,7 @@ const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoCom
       borderBottomColor: colors.border,
       gap: getResponsiveSize(12),
       marginBottom: getResponsiveSize(12),
+      backgroundColor: colors.background,
     },
     taskContent: {
       flex: 1,
@@ -151,6 +219,18 @@ const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoCom
       color: task.status === 'done' ? colors.textSecondary : colors.text,
       marginBottom: getResponsiveSize(4),
       textDecorationLine: task.status === 'done' ? 'line-through' : 'none',
+    },
+    taskEditInput: {
+      fontSize: getResponsiveSize(20),
+      fontFamily: 'MonaSans-Regular',
+      color: colors.text,
+      marginBottom: getResponsiveSize(4),
+      borderWidth: 1,
+      borderColor: colors.primary,
+      borderRadius: getResponsiveSize(6),
+      paddingHorizontal: getResponsiveSize(8),
+      paddingVertical: getResponsiveSize(4),
+      backgroundColor: colors.background,
     },
     taskDate: {
       fontSize: getResponsiveSize(14),
@@ -181,17 +261,33 @@ const SwipeableTaskItem = ({ task, onToggle, onDelete, isDemo = false, onDemoCom
         </Animated.View>
 
         {/* Main task item */}
-        <GestureDetector gesture={pan}>
+        <GestureDetector gesture={Gesture.Simultaneous(pan, doubleTap)}>
           <Animated.View style={[itemStyles.taskItem, animatedStyle]}>
             <View style={itemStyles.taskContent}>
-              <Text style={itemStyles.taskText}>{task.title}</Text>
+              {isEditing ? (
+                <TextInput
+                  ref={editInputRef}
+                  style={itemStyles.taskEditInput}
+                  value={editText}
+                  onChangeText={setEditText}
+                  onEndEditing={handleSaveEdit}
+                  onSubmitEditing={handleSaveEdit}
+                  returnKeyType="done"
+                  multiline={false}
+                  selectTextOnFocus={true}
+                  blurOnSubmit={true}
+                />
+              ) : (
+                <Text style={itemStyles.taskText}>{task.title}</Text>
+              )}
               <Text style={itemStyles.taskDate}>
                 {formatDate(task.due_date || task.reminder_date || '')}
               </Text>
             </View>
             <TouchableOpacity
               style={itemStyles.taskCheckbox}
-              onPress={() => onToggle(task.id, task.status)}>
+              onPress={() => onToggle(task.id, task.status)}
+              disabled={isEditing}>
               {task.status === 'done' && (
                 <Ionicons
                   name="checkmark"
@@ -219,6 +315,7 @@ export default function Tasks() {
   const [demoCount, setDemoCount] = React.useState(0);
   const [groupedTasks, setGroupedTasks] = React.useState<{ [key: string]: typeof tasks }>({});
   const [shouldRegroup, setShouldRegroup] = React.useState(true);
+  const [editingTaskId, setEditingTaskId] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     refreshTasks();
@@ -353,6 +450,22 @@ export default function Tasks() {
     } catch (error) {
       console.error('Failed to delete task:', error);
     }
+  };
+
+  const handleTaskUpdate = async (id: number, updates: any) => {
+    try {
+      await updateTask(id, updates);
+    } catch (error) {
+      console.error('Failed to update task:', error);
+    }
+  };
+
+  const handleEditStart = (taskId: number) => {
+    setEditingTaskId(taskId);
+  };
+
+  const handleEditEnd = () => {
+    setEditingTaskId(null);
   };
 
   const styles = createThemedStyles(colors => ({
@@ -570,20 +683,30 @@ export default function Tasks() {
     },
   }));
 
+  const handleOutsidePress = () => {
+    if (editingTaskId !== null) {
+      // Dismiss keyboard which will trigger save via keyboard listener
+      Keyboard.dismiss();
+    }
+  };
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle={colors.statusBarStyle} />
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={getResponsiveSize(28)} color={colors.text} />
-            <Text style={styles.backText}>Tasks</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.push('/task-history')} style={styles.historyButton}>
-            <Ionicons name="analytics-outline" size={getResponsiveSize(24)} color={colors.text} />
-          </TouchableOpacity>
-        </View>
-        {activeContent === 'home' && (
+      <TouchableWithoutFeedback 
+        onPress={handleOutsidePress}
+        disabled={editingTaskId === null}>
+        <SafeAreaView style={styles.safeArea}>
+          <StatusBar barStyle={colors.statusBarStyle} />
+          <View style={styles.header}>
+            <TouchableOpacity onPress={() => router.push('/')} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={getResponsiveSize(28)} color={colors.text} />
+              <Text style={styles.backText}>Tasks</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => router.push('/task-history')} style={styles.historyButton}>
+              <Ionicons name="analytics-outline" size={getResponsiveSize(24)} color={colors.text} />
+            </TouchableOpacity>
+          </View>
+          {activeContent === 'home' && (
           <View style={styles.container}>
                          {error && (
                <View style={styles.errorContainer}>
@@ -697,6 +820,10 @@ export default function Tasks() {
                               task={currentTask}
                               onToggle={handleTaskToggle}
                               onDelete={handleTaskDelete}
+                              onUpdate={handleTaskUpdate}
+                              isEditing={editingTaskId === currentTask.id}
+                              onEditStart={handleEditStart}
+                              onEditEnd={handleEditEnd}
                               isDemo={showDemo && sectionIndex === 0 && index === 0}
                               onDemoComplete={() => {
                                 setShowDemo(false);
@@ -712,18 +839,22 @@ export default function Tasks() {
               })()}
             </ScrollView>
 
-            <InputContainer
-              userResponse={userResponse}
-              setUserResponse={setUserResponse}
-              handleSubmit={handleSubmit}
-              isRecording={isRecording}
-              setIsRecording={setIsRecording}
-              onlyRecording={false}
-              placeholder="Call mom at 9pm"
-            />
+            {/* Only show InputContainer when not editing any task */}
+            {editingTaskId === null && (
+              <InputContainer
+                userResponse={userResponse}
+                setUserResponse={setUserResponse}
+                handleSubmit={handleSubmit}
+                isRecording={isRecording}
+                setIsRecording={setIsRecording}
+                onlyRecording={false}
+                placeholder="Call mom at 9pm"
+              />
+            )}
           </View>
         )}
-      </SafeAreaView>
+        </SafeAreaView>
+      </TouchableWithoutFeedback>
     </GestureHandlerRootView>
   );
 }
